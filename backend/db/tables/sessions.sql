@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_agent TEXT,
 
     -- Session management
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
