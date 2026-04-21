@@ -335,3 +335,18 @@ const (
 		WHERE user_id = ? AND is_read = 0
 	`
 )
+
+// Event queries
+const (
+	CreateEvent = `
+		INSERT INTO events (uuid, group_id, creator_id,
+		 title, description, event_time)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
+
+	CreateEventRSVP = `
+		INSERT INTO event_rsvps (event_id, user_id, status)
+		VALUES (?, ?, ?)
+		ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?
+	`
+)

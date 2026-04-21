@@ -40,6 +40,7 @@ echo "📦 Updating system..."
 sudo pacman -Syu --noconfirm
  
 echo "📦 Installing system packages..."
+<<<<<<< HEAD
 sudo pacman -S --noconfirm \
     base-devel \
     go \
@@ -61,8 +62,30 @@ go install github.com/gorilla/websocket@latest
 go install github.com/mattn/go-sqlite3@latest
 go install github.com/google/uuid@latest
 go install golang.org/x/crypto/bcrypt@latest
+=======
+
+# Update system and install base tools (Go, SQLite, Node, etc.)
+sudo dnf update -y
+sudo dnf install -y golang sqlite sqlite-devel git make curl gcc glibc-devel
+
+# Install Node
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+sudo npm install -g typescript react react-dom vite create-vite
+
+echo "🔧 Setting up Go environment..."
+
+# 1. Add Go bin directory to PATH permanently
+echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
+export PATH=$PATH:$HOME/go/bin
+
+# 2. Install the 'migrate' CLI tool
+>>>>>>> refs/remotes/origin/master
 go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# 3. Install Air for live reloading
 go install github.com/air-verse/air@latest
+<<<<<<< HEAD
  
 # Persist Go bin path
 grep -qxF 'export PATH=$PATH:$HOME/go/bin' ~/.bashrc \
@@ -87,6 +110,18 @@ chmod +x "$SETUP_SCRIPT"
 echo "🔧 Running setup inside container..."
 distrobox enter $CONTAINER_NAME -- bash "$SETUP_SCRIPT"
  
+=======
+
+echo ""
+echo "✅ Go toolchain is ready."
+echo "   When you are inside the container and in your project directory,"
+echo "   run 'go mod download' to install all your project dependencies."
+echo ""
+echo "✨ Setup complete."
+
+EOF
+
+>>>>>>> refs/remotes/origin/master
 echo ""
 echo "🎉 Container '$CONTAINER_NAME' is ready!"
 echo ""
