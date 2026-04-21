@@ -1,6 +1,6 @@
 module social-network
 
-go 1.26.2
+go 1.25
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.17.1
