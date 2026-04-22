@@ -1,6 +1,6 @@
 package main
 
-import "social/entry"
+import "social-network/backend/entry"
 
 func main() {
 

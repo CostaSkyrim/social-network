@@ -1,10 +1,6 @@
 module social-network
 
-<<<<<<< HEAD
-go 1.25
-=======
 go 1.24.0
->>>>>>> refs/remotes/origin/master
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.18.2

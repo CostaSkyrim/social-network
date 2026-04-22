@@ -5,6 +5,7 @@ package entry
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -31,6 +32,40 @@ func Start() {
 	// Populate the db with mock data
 	populate.StartProcedure()
 
+	// Setup database
+	db, shutDownDb, err := setupDatabase()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Assign configs to handlers
+	handlers.Configuration = g.Configs.Handlers
+
+	server := g.Configs.Server
+	server.Handler = handlers.SetHandlers(db)
+
+	// Configure TLS
+	useHTTPS, certFile, certKey, err := configureTLS(server)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config.InitOAuthConfig(g.Configs.OAuth, useHTTPS)
+
+	startServer(server, useHTTPS, certFile, certKey)
+
+	// Wait here for process termination signal to initiate graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+
+	// Graceful shutdown
+	gracefulShutdown(db, server, shutDownDb)
+}
+
+// setupDatabase initializes the database and context
+func setupDatabase() (*sql.DB, context.CancelFunc, error) {
 	dbCtx, shutDownDb := context.WithCancel(context.Background())
 	g.Configs.Database.Ctx = dbCtx
 
@@ -38,28 +73,26 @@ func Start() {
 
 	db, err := database.Open(g.Configs.Database)
 	if err != nil {
-		log.Fatal(fmt.Println("Error initializing database: ", err))
+		return nil, nil, fmt.Errorf("error initializing database: %w", err)
 	}
 
-	// Assign configs to handlers
-	handlers.Configuration = g.Configs.Handlers
+	return db, shutDownDb, nil
+}
 
-	server := g.Configs.Server
-
-	server.Handler = handlers.SetHandlers(db)
-
+// configureTLS validates certificates and configures TLS settings
+func configureTLS(server *http.Server) (bool, string, string, error) {
 	useHTTPS := g.Configs.Certifications.UseHTTPS
 	certFile := filepath.Join(g.Configs.Certifications.File...)
 	certKey := filepath.Join(g.Configs.Certifications.Key...)
 
 	// Use HTTP if there's no SSL keys
-	_, err = os.Stat(certFile)
+	_, err := os.Stat(certFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Printf("SSL certs not found in %s. Running in HTTP.\n", certFile)
 			useHTTPS = false
 		} else {
-			log.Fatal("Something bad happened when looking for certs: ", err.Error())
+			return false, "", "", fmt.Errorf("error checking certificates: %w", err)
 		}
 	}
 
@@ -72,8 +105,11 @@ func Start() {
 		}
 	}
 
-	config.InitOAuthConfig(g.Configs.OAuth, g.Configs.Certifications.UseHTTPS)
+	return useHTTPS, certFile, certKey, nil
+}
 
+// startServer launches the HTTP or HTTPS server
+func startServer(server *http.Server, useHTTPS bool, certFile, certKey string) {
 	go func() {
 		if useHTTPS {
 			log.Printf("Server running on https://localhost%s\n", server.Addr)
@@ -87,13 +123,10 @@ func Start() {
 			}
 		}
 	}()
+}
 
-	// Wait here for process termination signal to initiate graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	<-quit
-
+// gracefulShutdown handles clean database and server shutdown
+func gracefulShutdown(db *sql.DB, server *http.Server, shutDownDb context.CancelFunc) {
 	shutDownDb()
 	if g.Configs.Database.Wal.AutoTruncate {
 		database.ManualTruncate <- struct{}{}
