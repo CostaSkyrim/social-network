@@ -30,7 +30,7 @@ func Start() {
 	}
 
 	// Populate the db with mock data
-	populate.StartProcedure()
+	//populate.StartProcedure()
 
 	// Setup database
 	db, shutDownDb, err := setupDatabase()
