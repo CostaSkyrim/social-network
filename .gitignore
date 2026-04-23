@@ -14,7 +14,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-.toolbox-setup.sh
+toolbox-setup.sh
 
 # IDE
 .vscode/

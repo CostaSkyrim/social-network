@@ -39,9 +39,9 @@ const (
 
 	UpdateUserProfile = `
 		UPDATE users
-		SET nickname = COALESCE(?, nickname),
-			about_me = COALESCE(?, about_me),
-			avatar_path = COALESCE(?, avatar_path),
+		SET nickname = CASE WHEN ? IS NOT NULL THEN ? ELSE nickname END,
+			about_me = CASE WHEN ? IS NOT NULL THEN ? ELSE about_me END,
+			avatar_path = CASE WHEN ? IS NOT NULL THEN ? ELSE avatar_path END,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
@@ -71,6 +71,14 @@ const (
 		UPDATE sessions
 		SET is_active = 0
 		WHERE expires_at < CURRENT_TIMESTAMP
+	`
+
+	GetUserBySession = `
+		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name, u.nickname,
+			 u.date_of_birth, u.about_me, u.avatar_path, u.is_public, u.created_at
+		FROM users u
+		JOIN sessions s ON s.user_id = u.id
+		WHERE s.session_id = ? AND s.is_active = 1 AND s.expires_at > CURRENT_TIMESTAMP
 	`
 )
 
@@ -156,10 +164,48 @@ const (
 		LIMIT ? OFFSET ?
 	`
 
+	GetFeed = `
+		SELECT DISTINCT p.id, p.uuid, p.author_id, p.content, p.image_path,
+				 p.privacy_level, p.created_at, u.first_name, u.last_name,
+				 u.nickname, u.avatar_path
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN followers f ON f.following_id = p.author_id
+			AND f.follower_id = ? AND f.status = 'accepted'
+		WHERE p.group_id IS NULL
+			AND p.is_deleted = 0
+			AND (
+				p.privacy_level = 'public'
+				OR (p.privacy_level = 'followers' AND f.follower_id IS NOT NULL)
+				OR (p.privacy_level = 'private' AND p.id IN (
+					SELECT post_id FROM post_visibility WHERE user_id = ?
+				))
+			)
+		ORDER BY p.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
 	DeletePost = `
 		UPDATE posts
 		SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
 		WHERE id = ? AND author_id = ?
+	`
+
+	AddPostVisibility = `
+		INSERT INTO post_visibility (post_id, user_id)
+		VALUES (?, ?)
+		ON CONFLICT(post_id, user_id) DO NOTHING
+	`
+
+	GetPostVisibleUsers = `
+		SELECT user_id
+		FROM post_visibility
+		WHERE post_id = ?
+	`
+
+	RemovePostVisibility = `
+		DELETE FROM post_visibility
+		WHERE post_id = ? AND user_id = ?
 	`
 )
 
@@ -216,6 +262,16 @@ const (
 		WHERE gm.group_id = ? AND u.is_active = 1
 		ORDER BY gm.joined_at DESC
 	`
+
+	GetAllGroups = `
+		SELECT g.id, g.uuid, g.creator_id, g.title, g.description, g.avatar_path,
+			 g.created_at, COUNT(gm.user_id) as member_count
+		FROM groups g
+		LEFT JOIN group_members gm ON gm.group_id = g.id AND gm.status = 'accepted'
+		GROUP BY g.id
+		ORDER BY g.created_at DESC
+		LIMIT ? OFFSET ?
+	`
 )
 
 // Message queries
@@ -223,11 +279,8 @@ const (
 	GetOrCreateDM = `
 		INSERT INTO direct_messages (user1_id, user2_id)
 		SELECT ?, ? 
-		WHERE NOT EXISTS (
-			SELECT 1 FROM direct_messages
-			WHERE (user1_id = ? AND user2_id = ?) 
-			OR (user1_id = ? AND user2_id = ?)
-		)
+		ON CONFLICT(user1_id, user2_id) DO UPDATE SET user1_id = user1_id
+		RETURNING id
 	`
 	GetDMid = `
 		SELECT id, user1_id, user2_id, created_at, last_message_at
@@ -307,6 +360,31 @@ const (
 	`
 )
 
+// Comment queries
+const (
+	CreateComment = `
+		INSERT INTO comments (uuid, post_id, author_id, parent_comment_id, content,
+			 image_path)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
+
+	GetPostComments = `
+		SELECT c.id, c.uuid, c.post_id, c.author_id, c.parent_comment_id,
+			 c.content, c.image_path, c.created_at, c.updated_at, u.first_name,
+			 u.last_name, u.nickname, u.avatar_path
+		FROM comments c
+		JOIN users u ON u.id = c.author_id
+		WHERE c.post_id = ? AND c.is_deleted = 0
+		ORDER BY c.created_at ASC
+	`
+
+	DeleteComment = `
+		UPDATE comments
+		SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND author_id = ?
+	`
+)
+
 // Notification queries
 const (
 	CreateNotification = `
@@ -340,13 +418,22 @@ const (
 const (
 	CreateEvent = `
 		INSERT INTO events (uuid, group_id, creator_id,
-		 title, description, event_time)
+		 title, description, event_datetime)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
 	CreateEventRSVP = `
-		INSERT INTO event_rsvps (event_id, user_id, status)
+		INSERT INTO event_responses (event_id, user_id, response)
 		VALUES (?, ?, ?)
-		ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?
+		ON CONFLICT(event_id, user_id) DO UPDATE SET response = ?
+	`
+
+	GetGroupEvents = `
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
+			 e.event_datetime, e.created_at, u.first_name, u.last_name, u.nickname
+		FROM events e
+		JOIN users u ON u.id = e.creator_id
+		WHERE e.group_id = ?
+		ORDER BY e.event_datetime ASC
 	`
 )

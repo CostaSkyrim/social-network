@@ -3,11 +3,15 @@ package database
 import (
 	"context"
 	"database/sql"
-	"social-network/backend/internal/queries"
+	"log"
+	"social-network/backend/db/queries"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/golang-migrate/migrate"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type Executor interface {
@@ -39,6 +43,7 @@ type Queries struct {
 	Messages      MessageQueries
 	Events        EventQueries
 	Notifications NotificationQueries
+	Comments      CommentQueries
 }
 
 // New opens a connection to the SQLite database, applies migrations, and returns a DB instance
@@ -79,6 +84,10 @@ func (db *DataBase) Close() error {
 }
 
 func applyMigrations(migrationsPath, dbPath string) error {
+	if !strings.HasPrefix(migrationsPath, "file://") {
+		migrationsPath = "file://" + migrationsPath
+	}
+
 	m, err := migrate.New(
 		migrationsPath,
 		"sqlite3://"+dbPath,
@@ -150,6 +159,11 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 		return err
 	}
 
+	db.Queries.Sessions.GetUserBySession, err = db.conn.PrepareContext(ctx, queries.GetUserBySession)
+	if err != nil {
+		return err
+	}
+
 	// Follow queries
 	db.Queries.Follows.Create, err = db.conn.PrepareContext(ctx, queries.CreateFollowRequest)
 	if err != nil {
@@ -181,11 +195,6 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 		return err
 	}
 
-	db.Queries.Follows.Create, err = db.conn.PrepareContext(ctx, queries.CreateFollowRequest)
-	if err != nil {
-		return err
-	}
-
 	db.Queries.Follows.GetPending, err = db.conn.PrepareContext(ctx, queries.GetPendingFollowRequests)
 	if err != nil {
 		return err
@@ -202,12 +211,48 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 		return err
 	}
 
-	db.Queries.Posts.GetUser, err = db.conn.PrepareContext(ctx, queries.GetUserPosts)
+	db.Queries.Posts.GetFeed, err = db.conn.PrepareContext(ctx, queries.GetFeed)
 	if err != nil {
 		return err
 	}
 
 	db.Queries.Posts.Delete, err = db.conn.PrepareContext(ctx, queries.DeletePost)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Posts.AddVisibility, err = db.conn.PrepareContext(ctx, queries.AddPostVisibility)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Posts.GetVisible, err = db.conn.PrepareContext(ctx, queries.GetPostVisibleUsers)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Posts.RemoveVisibility, err = db.conn.PrepareContext(ctx, queries.RemovePostVisibility)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Posts.GetUserPosts, err = db.conn.PrepareContext(ctx, queries.GetUserPosts)
+	if err != nil {
+		return err
+	}
+
+	// Comments queries
+	db.Queries.Comments.Create, err = db.conn.PrepareContext(ctx, queries.CreateComment)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Comments.GetPostComments, err = db.conn.PrepareContext(ctx, queries.GetPostComments)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Comments.Delete, err = db.conn.PrepareContext(ctx, queries.DeleteComment)
 	if err != nil {
 		return err
 	}
@@ -223,7 +268,7 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 		return err
 	}
 
-	db.Queries.Groups.GetUser, err = db.conn.PrepareContext(ctx, queries.GetUserGroups)
+	db.Queries.Groups.GetUserGroups, err = db.conn.PrepareContext(ctx, queries.GetUserGroups)
 	if err != nil {
 		return err
 	}
@@ -239,6 +284,11 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 	}
 
 	db.Queries.Groups.GetMembers, err = db.conn.PrepareContext(ctx, queries.GetGroupMembers)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Groups.GetAllGroups, err = db.conn.PrepareContext(ctx, queries.GetAllGroups)
 	if err != nil {
 		return err
 	}
@@ -289,5 +339,58 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 		return err
 	}
 
+	// Notification queries
+	db.Queries.Notifications.Create, err = db.conn.PrepareContext(ctx, queries.CreateNotification)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Notifications.Get, err = db.conn.PrepareContext(ctx, queries.GetUserNotifications)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Notifications.MarkRead, err = db.conn.PrepareContext(ctx, queries.MarkNotificationsAsRead)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Notifications.GetUnread, err = db.conn.PrepareContext(ctx, queries.GetUnreadCount)
+	if err != nil {
+		return err
+	}
+
+	// Event queries
+	db.Queries.Events.Create, err = db.conn.PrepareContext(ctx, queries.CreateEvent)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Events.GetGroupEvents, err = db.conn.PrepareContext(ctx, queries.GetGroupEvents)
+	if err != nil {
+		return err
+	}
+
+	db.Queries.Events.RSVP, err = db.conn.PrepareContext(ctx, queries.CreateEventRSVP)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
+	ticker := time.NewTicker(db.cfg.SessionCleanupInt)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := db.Queries.Sessions.Cleanup.ExecContext(ctx); err != nil {
+				log.Printf("Session cleanup error: %v", err)
+			}
+		}
+	}
 }

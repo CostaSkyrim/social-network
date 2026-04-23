@@ -1,0 +1,222 @@
+package database
+
+import (
+	"database/sql"
+	"time"
+)
+
+//====================================
+// MODELS
+//====================================
+
+type User struct {
+	ID           int64     `json:"-"`
+	UUID         string    `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	Nickname     *string   `json:"nickname,omitempty"`
+	DateOfBirth  time.Time `json:"date_of_birth"`
+	AboutMe      *string   `json:"about_me,omitempty"`
+	AvatarPath   *string   `json:"avatar_path,omitempty"`
+	IsPublic     bool      `json:"is_public"`
+	IsActive     bool      `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type UserQueries struct {
+	Create        *sql.Stmt
+	GetByEmail    *sql.Stmt
+	GetByID       *sql.Stmt
+	GetByUUID     *sql.Stmt
+	UpdatePrivacy *sql.Stmt
+	UpdateProfile *sql.Stmt
+}
+
+type Session struct {
+	ID        int64  `json:"-"`
+	SessionID string `json:"session_id"`
+	UserID    int64  `json:"user_id"`
+	IPAddress string
+	UserAgent string
+	ExpiresAt time.Time `json:"expires_at"`
+	IsActive  bool
+	CreatedAt time.Time
+}
+
+type SessionQueries struct {
+	Create           *sql.Stmt
+	Get              *sql.Stmt
+	Delete           *sql.Stmt
+	Cleanup          *sql.Stmt
+	GetUserBySession *sql.Stmt
+}
+
+type Follow struct {
+	FollowerID  int64     `json:"follower_id"`
+	FollowingID int64     `json:"following_id"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type FollowQueries struct {
+	Create       *sql.Stmt
+	Update       *sql.Stmt
+	GetRequest   *sql.Stmt
+	GetFollowers *sql.Stmt
+	GetFollowing *sql.Stmt
+	Check        *sql.Stmt
+	GetPending   *sql.Stmt
+}
+
+type Post struct {
+	ID           int64   `json:"-"`
+	UUID         string  `json:"id"`
+	AuthorID     int64   `json:"author_id"`
+	Author       *User   `json:"author,omitempty"`
+	GroupID      *int64  `json:"group_id,omitempty"`
+	Content      string  `json:"content"`
+	ImagePath    *string `json:"image_path,omitempty"`
+	PrivacyLevel string  `json:"privacy_level"`
+	IsDeleted    bool
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Comments     []Comment `json:"comments,omitempty"`
+	CommentCount int       `json:"comment_count,omitempty"`
+}
+
+type Comment struct {
+	ID              int64     `json:"id"`
+	UUID            string    `json:"uuid"`
+	PostID          int64     `json:"post_id"`
+	AuthorID        int64     `json:"author_id"`
+	Author          *User     `json:"author,omitempty"`
+	ParentCommentID *int64    `json:"parent_comment_id,omitempty"`
+	Content         string    `json:"content"`
+	ImagePath       *string   `json:"image_path,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type CommentQueries struct {
+	Create          *sql.Stmt
+	GetPostComments *sql.Stmt
+	Delete          *sql.Stmt
+}
+
+type PostQueries struct {
+	Create           *sql.Stmt
+	GetByID          *sql.Stmt
+	GetFeed          *sql.Stmt
+	Delete           *sql.Stmt
+	AddVisibility    *sql.Stmt
+	GetVisible       *sql.Stmt
+	RemoveVisibility *sql.Stmt
+	GetUserPosts     *sql.Stmt
+}
+
+type Group struct {
+	ID            int64      `json:"-"`
+	UUID          string     `json:"id"`
+	CreatorID     int64      `json:"creator_id"`
+	Title         string     `json:"title"`
+	Description   string     `json:"description"`
+	AvatarPath    *string    `json:"avatar_path,omitempty"`
+	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+type GroupMember struct {
+	ID        int64     `json:"-"`
+	GroupID   int64     `json:"group_id"`
+	UserID    int64     `json:"user_id"`
+	Status    string    `json:"status"`
+	InvitedBy int64     `json:"invited_by,omitempty"`
+	JoinedAt  time.Time `json:"joined_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type GroupQueries struct {
+	Create        *sql.Stmt
+	GetByID       *sql.Stmt
+	GetUserGroups *sql.Stmt
+	AddMember     *sql.Stmt
+	UpdateStatus  *sql.Stmt
+	GetMembers    *sql.Stmt
+	GetAllGroups  *sql.Stmt
+}
+
+type Event struct {
+	ID            int64     `json:"-"`
+	UUID          string    `json:"id"`
+	GroupID       int64     `json:"group_id"`
+	CreatorID     int64     `json:"creator_id"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	EventDateTime time.Time `json:"event_datetime"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type EventQueries struct {
+	Create         *sql.Stmt
+	RSVP           *sql.Stmt
+	GetGroupEvents *sql.Stmt
+}
+
+type Message struct {
+	ID              int64     `json:"-"`
+	UUID            string    `json:"uuid"`
+	SenderID        int64     `json:"sender_id"`
+	Sender          *User     `json:"sender,omitempty"`
+	DirectMessageID *int64    `json:"direct_message_id,omitempty"`
+	GroupID         *int64    `json:"group_id,omitempty"`
+	Content         string    `json:"content"`
+	IsRead          bool      `json:"is_read"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type DirectMessage struct {
+	ID            int64      `json:"id"`
+	User1ID       int64      `json:"-"`
+	User2ID       int64      `json:"-"`
+	OtherUser     *User      `json:"other_user"`
+	LastMessage   *string    `json:"last_message,omitempty"`
+	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
+
+type MessageQueries struct {
+	Create        *sql.Stmt
+	GetByID       *sql.Stmt
+	GetOrCreate   *sql.Stmt
+	GetGroup      *sql.Stmt
+	GetAll        *sql.Stmt
+	GetPrivate    *sql.Stmt
+	MarkRead      *sql.Stmt
+	UpdateMessage *sql.Stmt
+	UpdateDM      *sql.Stmt
+}
+
+type Notification struct {
+	ID         int64     `json:"id"`
+	UserID     int64     `json:"-"`
+	FromUserID *int64    `json:"from_user_id,omitempty"`
+	FromUser   *User     `json:"from_user,omitempty"`
+	Type       string    `json:"type"`
+	Content    string    `json:"content"`
+	RelatedID  *int64    `json:"related_id,omitempty"`
+	IsRead     bool      `json:"is_read"`
+	ReadAt     time.Time `json:"read_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type NotificationQueries struct {
+	Create    *sql.Stmt
+	Get       *sql.Stmt
+	MarkRead  *sql.Stmt
+	GetUnread *sql.Stmt
+}
