@@ -1,51 +1,46 @@
 #!/bin/bash
 # Social Network Development Container Setup
-# Creates and configures a container with Go 1.24+, Node.js 20+, and all dev tools
 
 set -e
 
 CONTAINER_NAME="social-network-dev"
-BASE_IMAGE="docker.io/library/fedora:40"
+BASE_IMAGE="fedora:40"
+PROJECT_DIR="$(pwd)"
 
 # Check prerequisites
-if ! command -v distrobox &>/dev/null; then
-    echo "❌ distrobox not found!"
+if ! command -v docker &>/dev/null; then
+    echo "❌ Docker not found!"
     echo ""
-    echo "Install distrobox on your system:"
-    echo "  Fedora/Bluefin: sudo dnf install distrobox"
-    echo "  Arch Linux:     sudo pacman -S distrobox"
-    echo "  Universal:      curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sudo sh"
-    echo ""
-    echo "Also ensure Podman or Docker is installed"
+    echo "Install Docker on Arch Linux:"
+    echo "  sudo pacman -S docker"
+    echo "  sudo systemctl enable --now docker"
+    echo "  sudo usermod -aG docker \$USER"
+    echo "  newgrp docker  (or re-login)"
     exit 1
 fi
 
-if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
-    echo "❌ Neither Podman nor Docker found!"
+if ! docker info &>/dev/null; then
+    echo "❌ Docker daemon is not running or you don't have permission!"
+    echo ""
+    echo "Try:"
+    echo "  sudo systemctl start docker"
+    echo "  sudo usermod -aG docker \$USER && newgrp docker"
     exit 1
 fi
 
 # Remove existing container if present
-if distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "⚠️  Removing existing container: $CONTAINER_NAME"
-    distrobox rm --force "$CONTAINER_NAME"
+    docker rm -f "$CONTAINER_NAME"
 fi
 
 echo "🐋 Creating development container: $CONTAINER_NAME"
 echo "   Base image: $BASE_IMAGE"
+echo "   Project dir: $PROJECT_DIR"
 echo ""
 
-# Create the container
-distrobox create \
-    --name "$CONTAINER_NAME" \
-    --image "$BASE_IMAGE" \
-    --yes
-
 # Setup script to run inside container
-SETUP_SCRIPT=$(mktemp /tmp/setup-XXXXXX.sh)
-trap "rm -f $SETUP_SCRIPT" EXIT
-
-cat > "$SETUP_SCRIPT" << 'INNER_SCRIPT'
+SETUP_SCRIPT=$(cat << 'INNER_SCRIPT'
 #!/bin/bash
 set -e
 
@@ -57,11 +52,11 @@ echo ""
 
 # Update system
 echo "📦 Updating system..."
-sudo dnf update -y -q
+dnf update -y -q
 
 # Install base packages
 echo "📦 Installing base packages..."
-sudo dnf install -y \
+dnf install -y \
     curl git make gcc glibc-devel \
     sqlite sqlite-devel \
     findutils procps-ng which wget tar vim \
@@ -71,32 +66,28 @@ sudo dnf install -y \
 echo "📦 Installing Go 1.24.2..."
 cd /tmp
 wget -q https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
 rm go1.24.2.linux-amd64.tar.gz
 
 # Add Go to PATH
-echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' | sudo tee /etc/profile.d/go.sh > /dev/null
-echo 'export GOPATH=$HOME/go' | sudo tee -a /etc/profile.d/go.sh > /dev/null
-export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
-export GOPATH=$HOME/go
-
-# Setup Go environment for user
-mkdir -p "$HOME/go/bin"
-echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
-echo 'export GOPATH=$HOME/go' >> ~/.bashrc
+echo 'export PATH=$PATH:/usr/local/go/bin:/root/go/bin' >> /etc/profile.d/go.sh
+echo 'export GOPATH=/root/go' >> /etc/profile.d/go.sh
+export PATH=$PATH:/usr/local/go/bin:/root/go/bin
+export GOPATH=/root/go
+mkdir -p /root/go/bin
 
 echo "   ✓ Go $(go version | awk '{print $3}') installed"
 
 # Install Node.js 20
 echo "📦 Installing Node.js 20..."
-curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - > /dev/null 2>&1
-sudo dnf install -y nodejs > /dev/null 2>&1
+curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
+dnf install -y nodejs > /dev/null 2>&1
 echo "   ✓ Node.js $(node --version) installed"
 
 # Install global Node tools
 echo "📦 Installing global Node tools..."
-sudo npm install -g typescript vite create-vite > /dev/null 2>&1
+npm install -g typescript vite create-vite > /dev/null 2>&1
 echo "   ✓ TypeScript, Vite, create-vite installed"
 
 # Install Go development tools
@@ -109,8 +100,7 @@ go install honnef.co/go/tools/cmd/staticcheck@latest > /dev/null 2>&1
 echo "   ✓ migrate, air, delve, goimports, staticcheck installed"
 
 # Create basic air configuration
-cat > ~/.air.toml << 'EOF'
-# Air configuration for hot reloading
+cat > /root/.air.toml << 'EOF'
 root = "."
 tmp_dir = "tmp"
 
@@ -132,23 +122,23 @@ tmp_dir = "tmp"
 EOF
 
 # Add helpful aliases
-cat >> ~/.bashrc << 'EOF'
+cat >> /root/.bashrc << 'EOF'
+source /etc/profile.d/go.sh
 
 # Development aliases
 alias serve="air"
-alias test="go test -v ./..."
+alias gotest="go test -v ./..."
 alias build="go build -o bin/social-network ./cmd/api"
 alias migrate-up="migrate -database sqlite3://data.db -path ./migrations up"
 alias migrate-down="migrate -database sqlite3://data.db -path ./migrations down"
 alias lint="staticcheck ./..."
 
-# Welcome message
 echo ""
 echo "🐋 Social Network Development Container"
 echo "   Go: $(go version | awk '{print $3}')"
 echo "   Node: $(node --version)"
 echo ""
-echo "   Aliases: serve, test, build, migrate-up, migrate-down, lint"
+echo "   Aliases: serve, gotest, build, migrate-up, migrate-down, lint"
 echo ""
 EOF
 
@@ -157,31 +147,57 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Development Environment Ready!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Go:        $(go version)"
-echo "Node:      $(node --version)"
-echo "npm:       v$(npm --version)"
+echo "Go:         $(go version)"
+echo "Node:       $(node --version)"
+echo "npm:        v$(npm --version)"
 echo "TypeScript: $(tsc --version)"
-echo "SQLite:    $(sqlite3 --version 2>&1 | head -n1)"
-echo "Migrate:   $(migrate -version 2>&1 | head -n1)"
-echo "Air:       $(air -version 2>&1 | head -n1 | cut -d' ' -f1-3)"
+echo "SQLite:     $(sqlite3 --version 2>&1 | head -n1)"
+echo "Migrate:    $(migrate -version 2>&1 | head -n1)"
+echo "Air:        $(air -version 2>&1 | head -n1)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
 INNER_SCRIPT
-
-chmod +x "$SETUP_SCRIPT"
+)
 
 echo "🔧 Running setup inside container (this will take 5-8 minutes)..."
-distrobox enter "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
+
+# Run container with project dir mounted, execute setup, keep it running
+docker run -it \
+    --name "$CONTAINER_NAME" \
+    --mount type=bind,source="$PROJECT_DIR",target=/workspace \
+    --workdir /workspace \
+    "$BASE_IMAGE" \
+    bash -c "$SETUP_SCRIPT"
+
+# Commit the configured container as an image so setup isn't lost
+echo ""
+echo "💾 Saving container state..."
+docker commit "$CONTAINER_NAME" "${CONTAINER_NAME}-image" > /dev/null
+docker rm "$CONTAINER_NAME"
+
+# Create a helper script to enter the container
+cat > enter-dev.sh << EOF
+#!/bin/bash
+# Enter the development container
+docker run -it --rm \\
+    --name "${CONTAINER_NAME}" \\
+    --mount type=bind,source="\$(pwd)",target=/workspace \\
+    --workdir /workspace \\
+    -p 8080:8080 \\
+    -p 5173:5173 \\
+    ${CONTAINER_NAME}-image \\
+    bash --login
+EOF
+chmod +x enter-dev.sh
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "To enter your development environment:"
-echo "  distrobox enter $CONTAINER_NAME"
+echo "  ./enter-dev.sh"
 echo ""
 echo "Inside the container:"
-echo "  - Navigate to your project (your home directory is mounted)"
+echo "  - Your project files are at /workspace"
 echo "  - Run 'go mod download' to install dependencies"
-echo "  - Run 'air' to start development server with hot reload"
+echo "  - Run 'air' (or 'serve') to start with hot reload"
+echo "  - Ports 8080 and 5173 are forwarded to your host"
 echo ""

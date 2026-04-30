@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 	//NOTE: The file names and structure is still in progress
-	//g "social-network/global"
+	g "social-network/backend/global"
 	//"social-network/persistence/database"
 	//"social-network/persistence/populate"
 	//"social-network/server/core/config"
