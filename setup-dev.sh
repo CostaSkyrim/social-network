@@ -136,7 +136,7 @@ cat >> ~/.bashrc << 'EOF'
 
 # Development aliases
 alias serve="air"
-alias test="go test -v ./..."
+alias gotest="go test -v ./..."
 alias build="go build -o bin/social-network ./cmd/api"
 alias migrate-up="migrate -database sqlite3://data.db -path ./migrations up"
 alias migrate-down="migrate -database sqlite3://data.db -path ./migrations down"
