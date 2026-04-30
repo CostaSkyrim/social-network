@@ -24,6 +24,8 @@ type User struct {
 	IsActive     bool      `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	LastSeen     time.Time `json:"last_seen,omitempty"`
+	IsOnline     bool      `json:"is_online,omitempty"`
 }
 
 type UserQueries struct {

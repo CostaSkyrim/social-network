@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"social-network/backend/db/queries"
 	"strings"
 	"sync"
@@ -21,17 +24,58 @@ type Executor interface {
 }
 
 type DBConfig struct {
-	Path              string
-	MigrationsPath    string
-	SessionCleanupInt time.Duration
-	MaxOpenConns      int
+	// Basic settings
+	Ctx                    context.Context `json:"-"`
+	Path                   []string        `json:"path"`
+	MigrationsPath         string          `json:"migrations_path"`
+	MaxOpenConns           int             `json:"max_open_conns"`
+	SessionCleanupInt      string          `json:"clean_up_sessions"`
+	SessionCleanupDuration time.Duration   `json:"-"`
+
+	// WAL
+	WAL WALConfig `json:"wal"`
+
+	// Cache configuration
+	UseCache   bool        `json:"use_cache"`
+	CacheSetup CacheConfig `json:"cache_setup"`
+
+	// Validation Limits
+	Limits LimitsConfig `json:"limits"`
+
+	// System Images
+	SystemImages map[string]struct{} `json:"system_images"`
+}
+
+type CacheConfig struct {
+	UsersCacheLimit  int `json:"users_cache_limit"`
+	PostsCacheLimit  int `json:"posts_cache_limit"`
+	GroupsCacheLimit int `json:"groups_cache_limit"`
+}
+
+type LimitsConfig struct {
+	RowsLimit      int `json:"rows_limit"`
+	MaxUserName    int `json:"max_username"`
+	MinUserName    int `json:"min_username"`
+	MaxPass        int `json:"max_pass"`
+	MinPass        int `json:"mins_pass"`
+	MaxBio         int `json:"max_bio"`
+	MaxFirstName   int `json:"max_first_name"`
+	MaxLastName    int `json:"max_last_name"`
+	MaxTitle       int `json:"max_title"`
+	MinTitle       int `json:"min_title"`
+	MaxCommentBody int `json:"max_comment_body"`
+	MaxPostBody    int `json:"max_post_body"`
+	MinBody        int `json:"min_body"`
+	MaxCategories  int `json:"max_categories"`
 }
 
 type DataBase struct {
-	conn    *sql.DB
-	mu      sync.RWMutex
-	cfg     *DBConfig
-	Queries *Queries
+	conn         *sql.DB
+	mu           sync.RWMutex
+	cfg          *DBConfig
+	Queries      *Queries
+	useCache     bool
+	SystemImages map[string]struct{}
 }
 
 type Queries struct {
@@ -48,25 +92,43 @@ type Queries struct {
 
 // New opens a connection to the SQLite database, applies migrations, and returns a DB instance
 func New(ctx context.Context, cfg *DBConfig) (*DataBase, error) {
-	conn, err := sql.Open("sqlite3", cfg.Path)
+	dbPath := strings.Join(cfg.Path, string([]rune{filepath.Separator}))
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("Failed to create database directory: %w", err)
+	}
+
+	conn, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
 
 	conn.SetMaxOpenConns(cfg.MaxOpenConns)
+	conn.SetMaxIdleConns(cfg.MaxOpenConns / 2)
 	conn.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := conn.PingContext(ctx); err != nil {
 		return nil, err
 	}
 
-	if err := applyMigrations(cfg.MigrationsPath, cfg.Path); err != nil {
+	if err := configurePragmas(conn, cfg); err != nil {
+		return nil, fmt.Errorf("Failed to configure SQLite pragmas: %w", err)
+	}
+
+	migrationsPath := cfg.MigrationsPath
+	if migrationsPath == "" {
+		migrationsPath = "file://backend/db/migrations/sqlite"
+	}
+
+	if err := applyMigrations(migrationsPath, dbPath); err != nil {
 		return nil, err
 	}
 
 	db := &DataBase{
-		conn: conn,
-		cfg:  cfg,
+		conn:         conn,
+		cfg:          cfg,
+		useCache:     cfg.UseCache,
+		SystemImages: cfg.SystemImages,
 	}
 
 	if err := db.prepareQueries(ctx); err != nil {
@@ -75,14 +137,59 @@ func New(ctx context.Context, cfg *DBConfig) (*DataBase, error) {
 
 	go db.sessionCleanupRoutine(ctx)
 
+	if cfg.WAL.AutoTruncate {
+		go db.walTruncateRoutine(ctx)
+	}
+
+	log.Printf("✅ Database initialized successfuly")
 	return db, nil
 }
 
-// Gracefuly closes the DB connection
-func (db *DataBase) Close() error {
-	return db.conn.Close()
+func configurePragmas(conn *sql.DB, cfg *DBConfig) error {
+	// Enable WAL
+	if _, err := conn.Exec("PRAGMA journal mode=WAL;"); err != nil {
+		return err
+	}
+
+	// set Cache size
+	if cfg.WAL.CacheSize != "" {
+		if _, err := conn.Exec("PRAGMA cache_size=" + cfg.WAL.CacheSize + ";"); err != nil {
+			return err
+		}
+	}
+
+	if _, err := conn.Exec("PRAGMA foreign_keys=ON;"); err != nil {
+		return err
+	}
+
+	if _, err := conn.Exec("PRAGMA busy_timeout=5000;"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
+func (db *DataBase) walTruncateRoutine(ctx context.Context) {
+	if db.cfg.WAL.TruncateIntervalDuration == 0 {
+		db.cfg.WAL.TruncateIntervalDuration = 5 * time.Minute
+	}
+
+	ticker := time.NewTicker(db.cfg.WAL.TruncateIntervalDuration)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := db.conn.Exec("Pragma wal_checkpoint(TRUNCATE);"); err != nil {
+				log.Printf("WAL truncate error: %v", err)
+			}
+		}
+	}
+}
+
+// applyMigrations runs database migrations
 func applyMigrations(migrationsPath, dbPath string) error {
 	if !strings.HasPrefix(migrationsPath, "file://") {
 		migrationsPath = "file://" + migrationsPath
@@ -100,14 +207,15 @@ func applyMigrations(migrationsPath, dbPath string) error {
 		return err
 	}
 
+	log.Println("✅ Migrations applied successfully")
 	return nil
 }
 
 func (db *DataBase) prepareQueries(ctx context.Context) error {
 	db.Queries = &Queries{}
+	var err error
 
 	// User queries
-	var err error
 	db.Queries.Users.Create, err = db.conn.PrepareContext(ctx, queries.CreateUser)
 	if err != nil {
 		return err
@@ -380,7 +488,7 @@ func (db *DataBase) prepareQueries(ctx context.Context) error {
 }
 
 func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
-	ticker := time.NewTicker(db.cfg.SessionCleanupInt)
+	ticker := time.NewTicker(db.cfg.SessionCleanupDuration)
 	defer ticker.Stop()
 
 	for {
@@ -393,4 +501,24 @@ func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// Gracefuly closes the DB connection
+func (db *DataBase) Close() error {
+	return db.conn.Close()
+}
+
+// GetDB returns the underlying sql.DB for advanced operations
+func (db *DataBase) GetDB() *sql.DB {
+	return db.conn
+}
+
+// IsSystemImage checks if an image is a system image (can't be deleted)
+func (db *DataBase) IsSystemImage(imagePath string) bool {
+	if db.SystemImages == nil {
+		return false
+	}
+
+	_, exists := db.SystemImages[imagePath]
+	return exists
 }

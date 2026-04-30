@@ -1,8 +1,9 @@
 {
     "database_configuration": {
         "path": [
-            "data",
-            "forum.db"
+            "backend",
+            "db",
+            "social-network.db"
         ],
         "wal": {
             "auto_truncate": true,
@@ -69,6 +70,7 @@
                 "image/gif"
             ],
             "path_prefix": [
+                "backend",
                 "data",
                 "images"
             ]

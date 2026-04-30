@@ -14,17 +14,17 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
 	//NOTE: The file names and structure is still in progress
-	//g "social-network/global"
-	//"social-network/persistence/database"
+	database "social-network/backend/db/sql"
+	"social-network/backend/global"
 	//"social-network/persistence/populate"
-	//"social-network/server/core/config"
 	//"social-network/server/core/handlers"
 )
 
 // server starting sequence
 func Start() {
-	err := g.Initialize()
+	err := global.Initialize()
 	if err != nil {
 		log.Fatal("Error with global config initialization:", err.Error())
 	}
@@ -39,9 +39,9 @@ func Start() {
 	}
 
 	// Assign configs to handlers
-	handlers.Configuration = g.Configs.Handlers
+	handlers.Configuration = global.Configs.Handlers
 
-	server := g.Configs.Server
+	server := global.Configs.Server
 	server.Handler = handlers.SetHandlers(db)
 
 	// Configure TLS
@@ -50,7 +50,7 @@ func Start() {
 		log.Fatal(err)
 	}
 
-	config.InitOAuthConfig(g.Configs.OAuth, useHTTPS)
+	cfg.InitOAuthConfig(global.Configs.OAuth, useHTTPS)
 
 	startServer(server, useHTTPS, certFile, certKey)
 
@@ -71,7 +71,7 @@ func setupDatabase() (*sql.DB, context.CancelFunc, error) {
 
 	log.Println("Starting social-network db")
 
-	db, err := database.Open(g.Configs.Database)
+	db, err := sql.Open(database.DataBase)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing database: %w", err)
 	}
@@ -81,9 +81,9 @@ func setupDatabase() (*sql.DB, context.CancelFunc, error) {
 
 // configureTLS validates certificates and configures TLS settings
 func configureTLS(server *http.Server) (bool, string, string, error) {
-	useHTTPS := g.Configs.Certifications.UseHTTPS
-	certFile := filepath.Join(g.Configs.Certifications.File...)
-	certKey := filepath.Join(g.Configs.Certifications.Key...)
+	useHTTPS := global.Configs.Certifications.UseHTTPS
+	certFile := filepath.Join(global.Configs.Certifications.File...)
+	certKey := filepath.Join(global.Configs.Certifications.Key...)
 
 	// Use HTTP if there's no SSL keys
 	_, err := os.Stat(certFile)
@@ -128,9 +128,9 @@ func startServer(server *http.Server, useHTTPS bool, certFile, certKey string) {
 // gracefulShutdown handles clean database and server shutdown
 func gracefulShutdown(db *sql.DB, server *http.Server, shutDownDb context.CancelFunc) {
 	shutDownDb()
-	if g.Configs.Database.Wal.AutoTruncate {
-		database.ManualTruncate <- struct{}{}
-		database.Wg.Wait()
+	if global.Configs.Database.WAL.AutoTruncate {
+		sql.ManualTruncate <- struct{}{}
+		sql.Wg.Wait()
 	}
 	db.Close()
 
