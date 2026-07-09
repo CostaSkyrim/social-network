@@ -7,7 +7,7 @@
 .env
 
 # Dependencies
-node_modules/
+frontend/node_modules/
 __pycache__/
 
 # OS
@@ -17,3 +17,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Frontend build
+frontend/dist/
+
+PLAN.md
