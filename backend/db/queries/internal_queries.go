@@ -80,6 +80,12 @@ const (
 		JOIN sessions s ON s.user_id = u.id
 		WHERE s.session_id = ? AND s.is_active = 1 AND s.expires_at > CURRENT_TIMESTAMP
 	`
+
+	DeleteAllUserSessions = ` 
+		UPDATE sessions
+		SET is_active = 0
+		WHERE user_id = ?
+	`
 )
 
 // Follow queries

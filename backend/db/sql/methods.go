@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"social-network/backend/db/queries"
 	"time"
 )
 
@@ -258,8 +259,7 @@ func (db *DataBase) CreateSession(ctx context.Context, session *Session) (int64,
 	defer cancel()
 
 	result, err := db.conn.ExecContext(dbCtx,
-		`INSERT INTO sessions (session_id, user_id, ip_address, user_agent, expires_at)
-		 VALUES (?, ?, ?, ?, ?)`,
+		queries.CreateSession,
 		session.SessionID,
 		session.UserID,
 		session.IPAddress,
@@ -287,8 +287,7 @@ func (db *DataBase) GetSession(ctx context.Context, sessionID string) (*Session,
 
 	session := &Session{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, session_id, user_id, expires_at, is_active
-		 FROM sessions WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP AND is_active = 1`,
+		queries.GetSession,
 		sessionID,
 	).Scan(
 		&session.ID,
@@ -318,12 +317,29 @@ func (db *DataBase) DeleteSession(ctx context.Context, sessionID string) error {
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE sessions SET is_active = 0 WHERE session_id = ?`,
+		queries.DeleteSession,
 		sessionID,
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	return nil
+}
+
+func (db *DataBase) DeleteAllUserSessions(ctx context.Context, userID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx, queries.DeleteAllUserSessions, userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}
 
 	return nil

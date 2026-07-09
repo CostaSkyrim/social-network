@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"path"
+	database "social-network/backend/db/sql"
 )
 
 type Config struct {
@@ -24,10 +24,10 @@ type endpoint struct {
 	rateLimitMaxRequests int
 	rateLimitInterval    float64
 	requireAuth          bool // this will be true if the endpoint needs you to be logged in
-	nextHandler          func(http.ResponseWriter, *http.Request, *sql.DB)
+	nextHandler          func(http.ResponseWriter, *http.Request, *database.DataBase)
 }
 
-func makeEndpoint(path string, rateLimitMaxRequests int, rateLimitInterval float64, requireAuth bool, nextHandler func(http.ResponseWriter, *http.Request, *sql.DB)) endpoint {
+func makeEndpoint(path string, rateLimitMaxRequests int, rateLimitInterval float64, requireAuth bool, nextHandler func(http.ResponseWriter, *http.Request, *database.DataBase)) endpoint {
 	return endpoint{
 		path:                 path,
 		rateLimitMaxRequests: rateLimitMaxRequests,
@@ -39,11 +39,11 @@ func makeEndpoint(path string, rateLimitMaxRequests int, rateLimitInterval float
 
 var Configuration *Config
 
-func SetHandlers(db *sql.DB) *http.ServeMux {
-	hub := GetWebSocketHub(db)
-	go hub.Run()
+func SetHandlers(db *database.DataBase) *http.ServeMux {
+	//hub := GetWebSocketHub(db)
+	//go hub.Run()
 
-	go syncMapCleaner()
+	//go syncMapCleaner()
 
 	mux := http.NewServeMux()
 
