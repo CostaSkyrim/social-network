@@ -81,3 +81,4 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	user.ID = userID
 	RespondSuccess(w, http.StatusCreated, "Registration successful", userToResponse(user))
+}
