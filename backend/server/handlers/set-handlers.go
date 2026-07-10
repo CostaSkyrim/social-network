@@ -5,20 +5,9 @@ import (
 	"net/http"
 	"path"
 
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
-
-type Config struct {
-	Images                *ImgConfig                `json:"image"`
-	MaxPostSize           int64                     `json:"max_post_size"`
-	CookieExpirationHours int                       `json:"cookie_expiration_hours"`
-	RateLimits            map[string]map[string]any `json:"rate_limits"`
-}
-
-type ImgConfig struct {
-	MaxSize     int64    `json:"max_size"`
-	AllowedExts []string `json:"allowed_extensions"`
-}
 
 type endpoint struct {
 	path                 string
@@ -28,23 +17,19 @@ type endpoint struct {
 	nextHandler          func(http.ResponseWriter, *http.Request, *database.DataBase)
 }
 
-func makeEndpoint(path string, rateLimitMaxRequests int, rateLimitInterval float64, requireAuth bool, nextHandler func(http.ResponseWriter, *http.Request, *database.DataBase)) endpoint {
+func makeEndpoint(path string, requireAuth bool, nextHandler func(http.ResponseWriter, *http.Request, *database.DataBase)) endpoint {
 	return endpoint{
-		path:                 path,
-		rateLimitMaxRequests: rateLimitMaxRequests,
-		rateLimitInterval:    rateLimitInterval,
-		requireAuth:          requireAuth,
-		nextHandler:          nextHandler,
+		path:        path,
+		requireAuth: requireAuth,
+		nextHandler: nextHandler,
 	}
 }
-
-var Configuration *Config
 
 func SetHandlers(db *database.DataBase) *http.ServeMux {
 	// hub := GetWebSocketHub(db)
 	// go hub.Run()
 
-	// go syncMapCleaner()
+	go syncMapCleaner()
 
 	mux := http.NewServeMux()
 
@@ -57,7 +42,11 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(staticDirJs))))
 
 	endpoints := []endpoint{
-		// This is where all our endpoints will go
+		// Authentication endpoints
+		makeEndpoint("/api/signup", false, SignupHandler),
+		makeEndpoint("/api/login", false, LoginHandler),
+		makeEndpoint("/api/logout", true, LogoutHandler),
+		makeEndpoint("/api/logout-all", true, LogoutAllHandler),
 	}
 
 	for _, ep := range endpoints {
@@ -70,6 +59,27 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 			)
 		})
 	}
+
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		RespondSuccess(w, http.StatusOK, "Server is running", map[string]string{
+			"version": "1.0.0",
+			"status":  "healthy",
+		})
+	})
+
+	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			frontendURL := config.GetFrontendURL()
+			w.Header().Set("Access-Control-Allow-Origin", frontendURL)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		RespondError(w, http.StatusNotFound, "Endpoint not found")
+	})
 
 	fmt.Println("✅ Routes registered successfully")
 	return mux
