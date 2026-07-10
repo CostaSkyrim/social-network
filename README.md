@@ -3,8 +3,8 @@
 A Facebook-like social network built with Go, TypeScript, React + Tanstack Query, and Redis.
 
 ## Authors
-    - **[Konstantinos Petroutsos](https://github.com/CostaSkyrim)**
-    - **Augoustinos Andris**
+- **[Konstantinos Petroutsos](https://github.com/CostaSkyrim)**
+- **[Augoustinos Andris]**
 
 ## Features
 
@@ -44,7 +44,7 @@ A Facebook-like social network built with Go, TypeScript, React + Tanstack Query
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
 │  Frontend   │      │   Backend    │      │    Redis    │
-│  :5173/:80  │────▶ │   :8080      │────▶ │   :6379     │
+│  :5173/:80  │────▶│   :8080      │────▶│   :6379     │
 │  React SPA  │      │   Go API     │      │ Sessions +  │
 │  nginx(prod)│      │   SQLite     │      │ WS pub/sub  │
 └─────────────┘      └──────────────┘      └─────────────┘
