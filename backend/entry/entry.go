@@ -19,8 +19,6 @@ import (
 	"social-network/backend/global"
 	"social-network/backend/populate"
 	"social-network/backend/server/handlers"
-	//"social-network/persistence/populate"
-	//"social-network/server/core/handlers"
 )
 
 // server starting sequence
@@ -44,11 +42,11 @@ func Start(reseed bool) error {
 
 	// Seed database with sample data on first run (or reseed if flag is set)
 	if reseed {
-		if err := populate.Reseed(db, populate.DefaultPath()); err != nil {
+		if err := populate.Reseed(db.GetDB(), populate.DefaultPath()); err != nil {
 			log.Printf("Warning: reseed failed: %v", err)
 		}
 	} else {
-		if _, err := populate.SeedFromJSON(db, populate.DefaultPath()); err != nil {
+		if _, err := populate.SeedFromJSON(db.GetDB(), populate.DefaultPath()); err != nil {
 			log.Printf("Warning: seed failed: %v", err)
 		}
 	}
