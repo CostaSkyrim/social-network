@@ -3,8 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	database "social-network/backend/db/sql"
 	"time"
+
+	database "social-network/backend/db/sql"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -22,60 +23,36 @@ type SignupRequest struct {
 
 func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Method not allowed",
-		})
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	var req SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid request body",
-		})
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Email == "" || req.Password == "" || req.FirstName == "" ||
 		req.LastName == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Email, password, first name, last name, and date of birth are required",
-		})
+		RespondError(w, http.StatusBadRequest, "Required fields must be filled in")
 		return
 	}
 
 	if len(req.Password) < 8 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Password must be at least 8 characters long",
-		})
+		RespondError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
 		return
 	}
 
 	_, err := db.GetUserByEmail(r.Context(), req.Email)
 	if err == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Email already registered",
-		})
+		RespondError(w, http.StatusConflict, "Email already registered")
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to process registration",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to process registration")
 		return
 	}
 
@@ -93,30 +70,14 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	userID, err := db.AddUser(r.Context(), user)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to create account",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to create account")
 		return
 	}
 
 	if err := CreateUserSession(w, r, db, userID); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Account created but failed to login",
-		})
+		RespondError(w, http.StatusInternalServerError, "Account created but failed to login")
 		return
 	}
 
 	user.ID = userID
-	response := LoginResponse{
-		Message: "Registration successful",
-		User:    userToResponse(user),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
-}
+	RespondSuccess(w, http.StatusCreated, "Registration successful", userToResponse(user))

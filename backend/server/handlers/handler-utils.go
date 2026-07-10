@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	database "social-network/backend/db/sql"
 	"time"
+
+	database "social-network/backend/db/sql"
 
 	"github.com/google/uuid"
 )
@@ -15,6 +17,33 @@ var (
 	ErrSessionNotFound = errors.New("session not found")
 	ErrNoCookie        = errors.New("no session cookie")
 )
+
+type JSONResponse struct {
+	Message string      `json:"message,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+func RespondJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if payload != nil {
+		json.NewEncoder(w).Encode(payload)
+	}
+}
+
+func RespondError(w http.ResponseWriter, statusCode int, errorMessage string) {
+	RespondJSON(w, statusCode, JSONResponse{
+		Error: errorMessage,
+	})
+}
+
+func RespondSuccess(w http.ResponseWriter, statusCode int, message string, data interface{}) {
+	RespondJSON(w, statusCode, JSONResponse{
+		Message: message,
+		Data:    data,
+	})
+}
 
 func GenerateSessionID() string {
 	return uuid.New().String()
