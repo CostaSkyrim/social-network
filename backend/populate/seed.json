@@ -1,0 +1,465 @@
+{
+  "users": [
+    {
+      "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "email": "alice@example.com",
+      "password": "password123",
+      "first_name": "Alice",
+      "last_name": "Johnson",
+      "nickname": "alicej",
+      "date_of_birth": "1995-03-15T00:00:00Z",
+      "about_me": "Full-stack developer and coffee enthusiast. I love hiking and photography.",
+      "avatar_path": null,
+      "is_public": true
+    },
+    {
+      "uuid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "email": "bob@example.com",
+      "password": "password123",
+      "first_name": "Bob",
+      "last_name": "Smith",
+      "nickname": "bobsmith",
+      "date_of_birth": "1992-07-22T00:00:00Z",
+      "about_me": "Private person who enjoys reading and chess. I keep to myself mostly.",
+      "avatar_path": null,
+      "is_public": false
+    },
+    {
+      "uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "email": "carol@example.com",
+      "password": "password123",
+      "first_name": "Carol",
+      "last_name": "Williams",
+      "nickname": "carolw",
+      "date_of_birth": "1998-11-08T00:00:00Z",
+      "about_me": "Community organizer and group enthusiast. I love bringing people together!",
+      "avatar_path": null,
+      "is_public": true
+    },
+    {
+      "uuid": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "email": "dave@example.com",
+      "password": "password123",
+      "first_name": "Dave",
+      "last_name": "Brown",
+      "nickname": "daveb",
+      "date_of_birth": "1990-05-30T00:00:00Z",
+      "about_me": "Backend engineer by day, musician by night. Ask me about Go or guitar.",
+      "avatar_path": null,
+      "is_public": true
+    },
+    {
+      "uuid": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "email": "eve@example.com",
+      "password": "password123",
+      "first_name": "Eve",
+      "last_name": "Davis",
+      "nickname": null,
+      "date_of_birth": "2000-01-14T00:00:00Z",
+      "about_me": null,
+      "avatar_path": null,
+      "is_public": false
+    },
+    {
+      "uuid": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "email": "frank@example.com",
+      "password": "password123",
+      "first_name": "Frank",
+      "last_name": "Miller",
+      "nickname": "frankm",
+      "date_of_birth": "1988-09-05T00:00:00Z",
+      "about_me": "Photographer and traveler. Currently learning Go for fun.",
+      "avatar_path": null,
+      "is_public": true
+    }
+  ],
+  "follows": [
+    { "follower_id": 1, "following_id": 2, "status": "pending" },
+    { "follower_id": 2, "following_id": 1, "status": "accepted" },
+    { "follower_id": 3, "following_id": 1, "status": "accepted" },
+    { "follower_id": 4, "following_id": 1, "status": "accepted" },
+    { "follower_id": 4, "following_id": 3, "status": "accepted" },
+    { "follower_id": 5, "following_id": 1, "status": "pending" },
+    { "follower_id": 6, "following_id": 1, "status": "accepted" },
+    { "follower_id": 6, "following_id": 3, "status": "accepted" },
+    { "follower_id": 6, "following_id": 4, "status": "accepted" }
+  ],
+  "groups": [
+    {
+      "uuid": "g0010000-0000-4000-8000-000000000001",
+      "creator_id": 3,
+      "title": "Golang Enthusiasts",
+      "description": "A group for Go programming lovers. Share tips, projects, and discuss the latest Go features."
+    },
+    {
+      "uuid": "g0020000-0000-4000-8000-000000000002",
+      "creator_id": 1,
+      "title": "Photography Club",
+      "description": "Share your best shots, discuss techniques, and organize photo walks."
+    }
+  ],
+  "group_members": [
+    { "group_id": 1, "user_id": 3, "status": "accepted", "invited_by": null },
+    { "group_id": 1, "user_id": 1, "status": "accepted", "invited_by": 3 },
+    { "group_id": 1, "user_id": 4, "status": "accepted", "invited_by": 3 },
+    { "group_id": 1, "user_id": 6, "status": "pending", "invited_by": null },
+    { "group_id": 2, "user_id": 1, "status": "accepted", "invited_by": null },
+    { "group_id": 2, "user_id": 6, "status": "accepted", "invited_by": 1 },
+    { "group_id": 2, "user_id": 4, "status": "invited", "invited_by": 1 }
+  ],
+  "posts": [
+    {
+      "uuid": "p0010000-0000-4000-8000-000000000001",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Just finished reading 'The Go Programming Language' and it's fantastic! Really helped me understand interfaces and goroutines better. Highly recommend it to anyone learning Go.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0020000-0000-4000-8000-000000000002",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Went hiking in the mountains today. The view was absolutely breathtaking! Nothing beats disconnecting from the digital world for a bit.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0030000-0000-4000-8000-000000000003",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Working on a new project using Go channels for the first time. The concurrency model is so elegant compared to traditional threading models.",
+      "image_path": null,
+      "privacy_level": "followers"
+    },
+    {
+      "uuid": "p0040000-0000-4000-8000-000000000004",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Private post just for my close followers. Thanks for sticking around!",
+      "image_path": null,
+      "privacy_level": "private"
+    },
+    {
+      "uuid": "p0050000-0000-4000-8000-000000000005",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Morning coffee and code. The best way to start the day! ☕",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0060000-0000-4000-8000-000000000006",
+      "author_id": 2,
+      "group_id": null,
+      "content": "Just finished setting up my home server. Running a few hobby projects and learning Kubernetes. Private profile means I can share freely here.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0070000-0000-4000-8000-000000000007",
+      "author_id": 2,
+      "group_id": null,
+      "content": "Chess rating just hit 1800! All those late-night practice sessions are finally paying off.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0080000-0000-4000-8000-000000000008",
+      "author_id": 3,
+      "group_id": null,
+      "content": "Organizing a community cleanup event next weekend. Who's in? Let's make our neighborhood cleaner together!",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0090000-0000-4000-8000-000000000009",
+      "author_id": 3,
+      "group_id": null,
+      "content": "Just created the Golang Enthusiasts group! If you're interested in Go programming, come join us!",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0100000-0000-4000-8000-000000000010",
+      "author_id": 3,
+      "group_id": null,
+      "content": "Book club recommendation for this month: 'Designing Data-Intensive Applications'. It's a game changer for understanding distributed systems.",
+      "image_path": null,
+      "privacy_level": "followers"
+    },
+    {
+      "uuid": "p0110000-0000-4000-8000-000000000011",
+      "author_id": 4,
+      "group_id": null,
+      "content": "New guitar arrived today! A Fender Stratocaster in sunburst finish. Time to learn some new riffs! 🎸",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0120000-0000-4000-8000-000000000012",
+      "author_id": 4,
+      "group_id": null,
+      "content": "Refactored a legacy codebase from 10k lines to 3k lines this week. The feeling when you delete more code than you add is unmatched.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0130000-0000-4000-8000-000000000013",
+      "author_id": 6,
+      "group_id": null,
+      "content": "Golden hour at the beach today. Captured some amazing shots with the new lens.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0140000-0000-4000-8000-000000000014",
+      "author_id": 6,
+      "group_id": null,
+      "content": "Started learning Go this week and I'm loving it! The simplicity is refreshing after years of Java.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0150000-0000-4000-8000-000000000015",
+      "author_id": 1,
+      "group_id": 1,
+      "content": "Has anyone tried the new structured logging package in Go 1.21? I'm thinking of migrating from logrus.",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0160000-0000-4000-8000-000000000016",
+      "author_id": 4,
+      "group_id": 1,
+      "content": "Just published a new package for middleware chaining in Go. Check it out and let me know what you think!",
+      "image_path": null,
+      "privacy_level": "public"
+    },
+    {
+      "uuid": "p0170000-0000-4000-8000-000000000017",
+      "author_id": 6,
+      "group_id": 2,
+      "content": "Shot this beautiful landscape at sunrise. Edited in Lightroom. What do you think?",
+      "image_path": null,
+      "privacy_level": "public"
+    }
+  ],
+  "post_visibility": [
+    { "post_id": 4, "user_id": 2 }
+  ],
+  "comments": [
+    {
+      "uuid": "c0010000-0000-4000-8000-000000000001",
+      "post_id": 1,
+      "author_id": 4,
+      "parent_comment_id": null,
+      "content": "Great book! The chapters on goroutines really clicked for me too."
+    },
+    {
+      "uuid": "c0020000-0000-4000-8000-000000000002",
+      "post_id": 1,
+      "author_id": 1,
+      "parent_comment_id": 1,
+      "content": "Right? I had to re-read the channels chapter twice but it was worth it!"
+    },
+    {
+      "uuid": "c0030000-0000-4000-8000-000000000003",
+      "post_id": 2,
+      "author_id": 3,
+      "content": "That looks amazing! Which trail did you take?"
+    },
+    {
+      "uuid": "c0040000-0000-4000-8000-000000000004",
+      "post_id": 5,
+      "author_id": 4,
+      "content": "Coffee and code is my ritual too! What are you working on?"
+    },
+    {
+      "uuid": "c0050000-0000-4000-8000-000000000005",
+      "post_id": 7,
+      "author_id": 1,
+      "content": "Congrats on 1800! What's your favorite opening?"
+    },
+    {
+      "uuid": "c0060000-0000-4000-8000-000000000006",
+      "post_id": 8,
+      "author_id": 4,
+      "content": "I'm in! What time and where should we meet?"
+    },
+    {
+      "uuid": "c0070000-0000-4000-8000-000000000007",
+      "post_id": 8,
+      "author_id": 6,
+      "content": "Count me in too. I'll bring some trash bags and gloves."
+    },
+    {
+      "uuid": "c0080000-0000-4000-8000-000000000008",
+      "post_id": 9,
+      "author_id": 1,
+      "content": "Joined! Looking forward to discussing Go with everyone."
+    },
+    {
+      "uuid": "c0090000-0000-4000-8000-000000000009",
+      "post_id": 11,
+      "author_id": 3,
+      "content": "Beautiful guitar! Nothing beats the sound of a Strat."
+    },
+    {
+      "uuid": "c0100000-0000-4000-8000-000000000010",
+      "post_id": 12,
+      "author_id": 1,
+      "content": "The best code is the code you don't write! Impressive refactor."
+    },
+    {
+      "uuid": "c0110000-0000-4000-8000-000000000011",
+      "post_id": 13,
+      "author_id": 4,
+      "content": "Stunning shot! What camera and lens did you use?"
+    },
+    {
+      "uuid": "c0120000-0000-4000-8000-000000000012",
+      "post_id": 14,
+      "author_id": 3,
+      "content": "Welcome to Go! You should join our Golang Enthusiasts group."
+    },
+    {
+      "uuid": "c0130000-0000-4000-8000-000000000013",
+      "post_id": 15,
+      "author_id": 4,
+      "content": "I migrated to slog recently and I'm happy with it. The structured logging is much cleaner."
+    },
+    {
+      "uuid": "c0140000-0000-4000-8000-000000000014",
+      "post_id": 16,
+      "author_id": 1,
+      "content": "Awesome, I'll check it out! Always good to see more Go packages."
+    },
+    {
+      "uuid": "c0150000-0000-4000-8000-000000000015",
+      "post_id": 17,
+      "author_id": 1,
+      "content": "The lighting is perfect. Great composition!"
+    },
+    {
+      "uuid": "c0160000-0000-4000-8000-000000000016",
+      "post_id": 3,
+      "author_id": 2,
+      "content": "Channels are powerful once you get the hang of them. Just be careful with deadlocks!"
+    }
+  ],
+  "events": [
+    {
+      "uuid": "e0010000-0000-4000-8000-000000000001",
+      "group_id": 1,
+      "creator_id": 3,
+      "title": "Go Meetup: Concurrency Patterns",
+      "description": "Monthly meetup where we discuss advanced concurrency patterns in Go. Bring your questions and examples!",
+      "event_datetime": "2026-08-15T18:00:00Z"
+    },
+    {
+      "uuid": "e0020000-0000-4000-8000-000000000002",
+      "group_id": 2,
+      "creator_id": 1,
+      "title": "Photo Walk: City Architecture",
+      "description": "Let's explore downtown and capture the best architectural shots. Meet at the central square.",
+      "event_datetime": "2026-07-20T08:00:00Z"
+    }
+  ],
+  "event_responses": [
+    { "event_id": 1, "user_id": 3, "response": "going" },
+    { "event_id": 1, "user_id": 1, "response": "going" },
+    { "event_id": 1, "user_id": 4, "response": "maybe" },
+    { "event_id": 2, "user_id": 1, "response": "going" },
+    { "event_id": 2, "user_id": 6, "response": "going" },
+    { "event_id": 2, "user_id": 4, "response": "not_going" }
+  ],
+  "messages": [
+    {
+      "uuid": "m0010000-0000-4000-8000-000000000001",
+      "sender_id": 1,
+      "direct_message_id": 1,
+      "group_id": null,
+      "content": "Hey Bob! How's it going?"
+    },
+    {
+      "uuid": "m0020000-0000-4000-8000-000000000002",
+      "sender_id": 2,
+      "direct_message_id": 1,
+      "group_id": null,
+      "content": "Hey Alice! Doing well, just working on my home server project. You?"
+    },
+    {
+      "uuid": "m0030000-0000-4000-8000-000000000003",
+      "sender_id": 1,
+      "direct_message_id": 1,
+      "group_id": null,
+      "content": "Same here, reading a lot about Go lately. Let me know if you want to collaborate on something!"
+    },
+    {
+      "uuid": "m0040000-0000-4000-8000-000000000004",
+      "sender_id": 3,
+      "direct_message_id": 2,
+      "group_id": null,
+      "content": "Hey Dave! Thanks for joining the Go group. Would you be interested in giving a talk at our next meetup?"
+    },
+    {
+      "uuid": "m0050000-0000-4000-8000-000000000005",
+      "sender_id": 4,
+      "direct_message_id": 2,
+      "group_id": null,
+      "content": "Hi Carol! Sure, I'd love to. I could talk about the middleware package I just published."
+    }
+  ],
+  "notifications": [
+    {
+      "user_id": 2,
+      "from_user_id": 1,
+      "type": "follow_request",
+      "content": "Alice Johnson wants to follow you",
+      "related_id": null
+    },
+    {
+      "user_id": 1,
+      "from_user_id": 5,
+      "type": "follow_request",
+      "content": "Eve Davis wants to follow you",
+      "related_id": null
+    },
+    {
+      "user_id": 1,
+      "from_user_id": 2,
+      "type": "follow_accepted",
+      "content": "Bob Smith accepted your follow request",
+      "related_id": null
+    },
+    {
+      "user_id": 4,
+      "from_user_id": 1,
+      "type": "group_invite",
+      "content": "You have been invited to join Photography Club",
+      "related_id": 2
+    },
+    {
+      "user_id": 3,
+      "from_user_id": 6,
+      "type": "group_join_request",
+      "content": "Frank Miller wants to join Golang Enthusiasts",
+      "related_id": 1
+    },
+    {
+      "user_id": 1,
+      "from_user_id": 3,
+      "type": "event_created",
+      "content": "New event 'Go Meetup: Concurrency Patterns' in Golang Enthusiasts",
+      "related_id": 1
+    },
+    {
+      "user_id": 6,
+      "from_user_id": 1,
+      "type": "event_created",
+      "content": "New event 'Photo Walk: City Architecture' in Photography Club",
+      "related_id": 2
+    }
+  ]
+}

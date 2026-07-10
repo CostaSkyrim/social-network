@@ -99,6 +99,11 @@ go run cmd/main.go
 ```
 Server starts on `http://localhost:8080`.
 
+> **Note:** On first run, the backend automatically populates the database with sample data (6 users, 17 posts, 16 comments, 2 groups, and more). Use `--reseed` to reset:
+> ```bash
+> go run cmd/main.go --reseed
+> ```
+
 **3. Start the frontend**
 ```bash
 cd frontend
@@ -124,6 +129,24 @@ docker compose up
 | `VITE_API_URL` | `http://localhost:8080` | API base URL (frontend) |
 | `REDIS_ADDR` | `localhost:6379` | Redis address (backend) |
 
+### Seed Data
+
+On first launch, 6 users are pre-loaded. All share the same password: `password123`
+
+| Email | Name | Profile |
+|-------|------|---------|
+| `alice@example.com` | Alice Johnson | Public, active poster |
+| `bob@example.com` | Bob Smith | Private profile |
+| `carol@example.com` | Carol Williams | Public, group creator |
+| `dave@example.com` | Dave Brown | Public, backend dev |
+| `eve@example.com` | Eve Davis | Private, lurker |
+| `frank@example.com` | Frank Miller | Public, photographer |
+
+The seed also includes 17 posts, 16 comments (with replies), 2 groups with events, direct messages, and notifications. To reset and re-seed:
+```bash
+go run cmd/main.go --reseed
+```
+
 ## Project Structure
 
 ```
@@ -145,13 +168,14 @@ social-network/
 │   ├── entry/            # Server startup sequence
 │   ├── config/           # OAuth configuration
 │   ├── global/           # Global config initialization
-│   ├── server/handlers/  # HTTP handlers + middleware + WebSocket hub
 │   ├── db/
 │   │   ├── migrations/   # SQL migration files (up/down)
 │   │   ├── queries/      # SQL query constants
 │   │   ├── sql/          # Models + methods + connection
 │   │   └── tables/       # Reference table schemas
-│   └── redis/            # Redis session store + pub/sub
+│   ├── server/handlers/  # HTTP handlers + middleware + WebSocket hub
+│   ├── redis/            # Redis session store + pub/sub
+│   └── populate/         # Seed data loader (seed.json + seed.go)
 ├── docker-compose.yml    # Backend + Frontend + Redis
 └── PLAN.md               # Detailed implementation plan
 ```

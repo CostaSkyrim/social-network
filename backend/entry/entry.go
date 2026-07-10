@@ -18,24 +18,33 @@ import (
 	//NOTE: The file names and structure is still in progress
 	database "social-network/backend/db/sql"
 	"social-network/backend/global"
+	"social-network/backend/populate"
 	//"social-network/persistence/populate"
 	//"social-network/server/core/handlers"
 )
 
 // server starting sequence
-func Start() {
+func Start(reseed bool) {
 	err := global.Initialize()
 	if err != nil {
 		log.Fatal("Error with global config initialization:", err.Error())
 	}
 
-	// Populate the db with mock data
-	//populate.StartProcedure()
-
 	// Setup database
 	db, shutDownDb, err := setupDatabase()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// Seed database with sample data on first run (or reseed if flag is set)
+	if reseed {
+		if err := populate.Reseed(db, populate.DefaultPath()); err != nil {
+			log.Printf("Warning: reseed failed: %v", err)
+		}
+	} else {
+		if _, err := populate.SeedFromJSON(db, populate.DefaultPath()); err != nil {
+			log.Printf("Warning: seed failed: %v", err)
+		}
 	}
 
 	// Assign configs to handlers
