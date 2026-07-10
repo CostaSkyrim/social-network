@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useUIStore } from '@/stores/uiStore'
+import { useUI } from '@/context/UIProvider'
 import { cn } from '@/lib/cn'
 
 const type_styles = {
@@ -9,8 +9,7 @@ const type_styles = {
 }
 
 export function ToastContainer() {
-  const toasts = useUIStore((s) => s.toasts)
-  const dismiss_toast = useUIStore((s) => s.dismiss_toast)
+  const { toasts, dismiss_toast } = useUI()
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">

@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/cn'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuth } from '@/context/AuthProvider'
 import { Avatar } from '@/components/ui/Avatar'
 
 const nav_items = [
@@ -13,7 +13,7 @@ const nav_items = [
 ]
 
 export function Sidebar() {
-  const user = useAuthStore((s) => s.user)
+  const { user, logout } = useAuth()
 
   return (
     <aside className="hidden w-64 border-r border-gray-200 bg-white md:flex md:flex-col">
@@ -50,7 +50,7 @@ export function Sidebar() {
       <div className="border-t border-gray-200 p-3">
         <NavLink
           to="/login"
-          onClick={() => useAuthStore.getState().logout()}
+          onClick={logout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
         >
           <span>🚪</span>

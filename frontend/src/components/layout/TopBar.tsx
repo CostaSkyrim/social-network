@@ -1,10 +1,10 @@
-import { useUIStore } from '@/stores/uiStore'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuth } from '@/context/AuthProvider'
+import { useUI } from '@/context/UIProvider'
 import { Avatar } from '@/components/ui/Avatar'
 
 export function TopBar() {
-  const toggle_sidebar = useUIStore((s) => s.toggle_sidebar)
-  const user = useAuthStore((s) => s.user)
+  const { toggle_sidebar } = useUI()
+  const { user } = useAuth()
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
