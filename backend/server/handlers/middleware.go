@@ -2,24 +2,26 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
-	database "social-network/backend/db/sql"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	database "social-network/backend/db/sql"
 )
 
 type contextKey string
 
 const userIDKey contextKey = "userID"
 
-type writer = http.ResponseWriter
-type request = *http.Request
+type (
+	writer  = http.ResponseWriter
+	request = *http.Request
+)
 
 func AuthMiddleware(
 	requireAuth bool,
@@ -32,11 +34,32 @@ func AuthMiddleware(
 	universalRateLimitRequests int,
 	universalRateLimitInterval float64,
 ) {
+	// CORS compliant headers
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	remoteAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
 	rateLimitTag := fmt.Sprint(remoteAddr, r.URL.Path)
 
+	// universal rate limit, applies to all requests from an IP
 	if BlockRequest(int64(universalRateLimitRequests), int64(universalRateLimitInterval*1000), remoteAddr) {
-		fmt.Println("blocking general: ", remoteAddr)
+		fmt.Println("blocking universal rate limit: ", remoteAddr)
+		RespondError(w, http.StatusTooManyRequests, "Too many requests")
+		return
+	}
+
+	// path specific rate limit
+	if BlockRequest(int64(rateLimitMaxRequests), int64(rateLimitIntervals*1000), rateLimitTag) {
+		fmt.Println("blocking endpoint rate limit: ", rateLimitTag)
+		RespondError(w, http.StatusTooManyRequests, "Too many requests to endpoint")
 		return
 	}
 
@@ -47,11 +70,7 @@ func AuthMiddleware(
 
 	if requireAuth && !isAuthenticated {
 		if isJSON {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{
-				"error": "Authentication required",
-			})
+			RespondError(w, http.StatusUnauthorized, "Authentication required")
 		} else {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 		}
@@ -68,11 +87,7 @@ func AuthMiddleware(
 	defer func() {
 		if rec := recover(); rec != nil {
 			if isJSON {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error": "Inernal server error",
-				})
+				RespondError(w, http.StatusInternalServerError, "Internal server error")
 			} else {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
