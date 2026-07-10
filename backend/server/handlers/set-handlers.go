@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+
 	database "social-network/backend/db/sql"
 )
 
@@ -40,10 +41,10 @@ func makeEndpoint(path string, rateLimitMaxRequests int, rateLimitInterval float
 var Configuration *Config
 
 func SetHandlers(db *database.DataBase) *http.ServeMux {
-	//hub := GetWebSocketHub(db)
-	//go hub.Run()
+	// hub := GetWebSocketHub(db)
+	// go hub.Run()
 
-	//go syncMapCleaner()
+	// go syncMapCleaner()
 
 	mux := http.NewServeMux()
 
@@ -60,42 +61,12 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 	}
 
 	for _, ep := range endpoints {
-		limitCount := ep.rateLimitMaxRequests
-		limitInterval := ep.rateLimitInterval
-
-		if Configuration != nil {
-			if limits, ok := Configuration.RateLimits[ep.path]; ok {
-				if lCount, ok1 := limits["rate_limit_count"].(float64); ok1 {
-					limitCount = int(lCount)
-				}
-				if lSeconds, ok2 := limits["rate_limit_second_interval"].(float64); ok2 {
-					limitInterval = lSeconds
-				}
-			}
-		}
-
-		universalCount := 30
-		universalSeconds := 2.0
-
-		if Configuration != nil {
-			if universal, ok := Configuration.RateLimits["universal"]; ok {
-				if lCount, ok1 := universal["rate_limit_count"].(float64); ok1 {
-					universalCount = int(lCount)
-				}
-				if lSeconds, ok2 := universal["rate_limit_second_interval"].(float64); ok2 {
-					universalSeconds = lSeconds
-				}
-			}
-		}
-
 		handler := ep.nextHandler
 		mux.HandleFunc(ep.path, func(w http.ResponseWriter, r *http.Request) {
 			AuthMiddleware(
 				ep.requireAuth,
 				w, r, db,
 				handler,
-				limitCount, limitInterval,
-				universalCount, universalSeconds,
 			)
 		})
 	}

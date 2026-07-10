@@ -6,14 +6,82 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+	"sync"
 	"time"
 )
+
+type Config struct {
+	DatabaseConfiguration DatabaseConfig `json:"database_configuration"`
+	Server                ServerConfig   `json:"server"`
+	Certifications        Certifications `json:"certifications"`
+	Handlers              HandlersConfig `json:"handlers"`
+	Frontend              FrontendConfig `json:"frontend"`
+}
+
+type FrontendConfig struct {
+	URL string `json:"url"`
+}
+
+type DatabaseConfig struct {
+	Path            []string            `json:"path"`
+	WAL             WALConfig           `json:"wal"`
+	CleanupSessions string              `json:"clean_up_sessions"`
+	Limits          LimitsConfig        `json:"limits"`
+	SystemImages    map[string]struct{} `json:"system_images"`
+}
+
+type WALConfig struct {
+	AutoTruncate     bool   `json:"auto_truncate"`
+	TruncateInterval string `json:"truncate_interval"`
+	CacheSize        string `json:"cache_size"`
+	Synchronous      string `json:"synchronous"`
+}
+
+type LimitsConfig struct {
+	RowsLimit      int `json:"rows_limit"`
+	MaxUsername    int `json:"max_username"`
+	MinUsername    int `json:"min_username"`
+	MaxPass        int `json:"max_pass"`
+	MinPass        int `json:"min_pass"`
+	MaxBio         int `json:"max_bio"`
+	MaxFirstName   int `json:"max_first_name"`
+	MinFirstName   int `json:"min_first_name"`
+	MaxTitle       int `json:"max_title"`
+	MinTitle       int `json:"min_title"`
+	MaxCommentBody int `json:"max_comment_body"`
+	MaxPostBody    int `json:"max_post_body"`
+	MinBody        int `json:"min_body"`
+	MaxCategories  int `json:"max_categories"`
+}
+
+type ServerConfig struct {
+	Addr string `json:"Addr"`
+}
 
 type Certifications struct {
 	UseHTTPS bool     `json:"use_https"`
 	File     []string `json:"file"`
 	Key      []string `json:"key"`
+}
+
+type HandlersConfig struct {
+	Image                 ImageConfig                `json:"image"`
+	MaxPostSize           string                     `json:"max_post_size"`
+	CookieExpirationHours string                     `json:"cookie_expiration_hours"`
+	RateLimits            map[string]RateLimitConfig `json:"rate_limits"`
+}
+
+type ImageConfig struct {
+	MaxSize    string   `json:"max_size"`
+	FileTypes  []string `json:"file_types"`
+	PathPrefix []string `json:"path_prefix"`
+}
+
+type RateLimitConfig struct {
+	RateLimitCount    int     `json:"rate_limit_count"`
+	RateLimitInterval float64 `json:"rate_limit_second_interval"`
 }
 
 type OAuthProvider struct {
@@ -31,9 +99,85 @@ type OAuthConfig struct {
 }
 
 var (
+	AppConfig   *Config
 	GoogleOAuth *OAuthProvider
 	GithubOAuth *OAuthProvider
+	configMutex sync.RWMutex
 )
+
+func LoadConfig(configPath string) (*Config, error) {
+	configMutex.Lock()
+	defer configMutex.Unlock()
+
+	file, err := os.Open(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed t open config file: %w", err)
+	}
+	defer file.Close()
+
+	var config Config
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode config: %w", err)
+	}
+
+	if config.Frontend.URL == "" {
+		config.Frontend.URL = "http://localhost:3000" // this is a default dev url
+	}
+
+	AppConfig = &config
+	return &config, nil
+}
+
+func GetConfig() *Config {
+	configMutex.RLock()
+	defer configMutex.RUnlock()
+	return AppConfig
+}
+
+func GetFrontendURL() string {
+	config := GetConfig()
+	if config != nil && config.Frontend.URL != "" {
+		return config.Frontend.URL
+	}
+	return "http://localhost:3000"
+}
+
+func GetRateLimit(path string) (int, float64) {
+	config := GetConfig()
+	if config == nil {
+		return 20, 20.0
+	}
+
+	if limit, exists := config.Handlers.RateLimits[path]; exists {
+		return limit.RateLimitCount, limit.RateLimitInterval
+	}
+
+	for configPath, limit := range config.Handlers.RateLimits {
+		if strings.HasPrefix(path, configPath) {
+			return limit.RateLimitCount, limit.RateLimitInterval
+		}
+	}
+
+	if universal, exists := config.Handlers.RateLimits["universal"]; exists {
+		return universal.RateLimitCount, universal.RateLimitInterval
+	}
+
+	return 20, 20.0
+}
+
+func GetUniversalRateLimit() (int, float64) {
+	config := GetConfig()
+	if config == nil {
+		return 40, 2.0
+	}
+
+	if universal, exists := config.Handlers.RateLimits["universal"]; exists {
+		return universal.RateLimitCount, universal.RateLimitInterval
+	}
+
+	return 40, 2.0
+}
 
 // InitOAuthConfig initializes the global OAuth configuration
 func InitOAuthConfig(oauthConfig *OAuthConfig, useHTTPS bool) {
@@ -123,4 +267,30 @@ func (c *OAuthProvider) getRedirectURL(useHTTPS bool) string {
 		protocol = "https"
 	}
 	return fmt.Sprintf("%s://%s", protocol, c.BaseRedirectURI)
+}
+
+func GetCookieExpiration() time.Duration {
+	config := GetConfig()
+	if config == nil {
+		return 24 * time.Hour
+	}
+
+	duration, err := time.ParseDuration(config.Handlers.CookieExpirationHours)
+	if err != nil {
+		return 24 * time.Hour
+	}
+	return duration
+}
+
+func GetSessionCleanupInterval() time.Duration {
+	config := GetConfig()
+	if config == nil {
+		return 10 * time.Minute
+	}
+
+	duration, err := time.ParseDuration(config.DatabaseConfiguration.CleanupSessions)
+	if err != nil {
+		return 10 * time.Minute
+	}
+	return duration
 }

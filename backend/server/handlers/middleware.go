@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
 
@@ -29,13 +30,10 @@ func AuthMiddleware(
 	r request,
 	db *database.DataBase,
 	nextHandler func(writer, request, *database.DataBase),
-	rateLimitMaxRequests int,
-	rateLimitIntervals float64,
-	universalRateLimitRequests int,
-	universalRateLimitInterval float64,
 ) {
 	// CORS compliant headers
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	frontendURL := config.GetFrontendURL()
+	w.Header().Set("Access-Control-Allow-Origin", frontendURL)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -49,15 +47,18 @@ func AuthMiddleware(
 	remoteAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
 	rateLimitTag := fmt.Sprint(remoteAddr, r.URL.Path)
 
+	universalCount, universalInterval := config.GetUniversalRateLimit()
+	pathCount, pathInterval := config.GetRateLimit(r.URL.Path)
+
 	// universal rate limit, applies to all requests from an IP
-	if BlockRequest(int64(universalRateLimitRequests), int64(universalRateLimitInterval*1000), remoteAddr) {
+	if BlockRequest(int64(universalCount), int64(universalInterval*1000), remoteAddr) {
 		fmt.Println("blocking universal rate limit: ", remoteAddr)
 		RespondError(w, http.StatusTooManyRequests, "Too many requests")
 		return
 	}
 
 	// path specific rate limit
-	if BlockRequest(int64(rateLimitMaxRequests), int64(rateLimitIntervals*1000), rateLimitTag) {
+	if BlockRequest(int64(pathCount), int64(pathInterval*1000), rateLimitTag) {
 		fmt.Println("blocking endpoint rate limit: ", rateLimitTag)
 		RespondError(w, http.StatusTooManyRequests, "Too many requests to endpoint")
 		return
