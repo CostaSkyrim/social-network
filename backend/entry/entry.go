@@ -5,36 +5,42 @@ package entry
 import (
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
-	//NOTE: The file names and structure is still in progress
+	// NOTE: The file names and structure is still in progress
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 	"social-network/backend/global"
 	"social-network/backend/populate"
+	"social-network/backend/server/handlers"
 	//"social-network/persistence/populate"
 	//"social-network/server/core/handlers"
 )
 
 // server starting sequence
-func Start(reseed bool) {
+func Start(reseed bool) error {
 	err := global.Initialize()
 	if err != nil {
 		log.Fatal("Error with global config initialization:", err.Error())
 	}
 
-	// Setup database
-	db, shutDownDb, err := setupDatabase()
+	cfg, err := config.LoadConfig("configs.json")
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
+
+	// Setup database
+	db, err := setupDatabase(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to setup database: %w", err)
+	}
+	defer db.Close()
 
 	// Seed database with sample data on first run (or reseed if flag is set)
 	if reseed {
@@ -47,107 +53,124 @@ func Start(reseed bool) {
 		}
 	}
 
-	// Assign configs to handlers
-	handlers.Configuration = global.Configs.Handlers
-
-	server := global.Configs.Server
-	server.Handler = handlers.SetHandlers(db)
+	server := setupServer(cfg, db)
 
 	// Configure TLS
-	useHTTPS, certFile, certKey, err := configureTLS(server)
-	if err != nil {
-		log.Fatal(err)
-	}
+	useHTTPS := global.IsHTTPSEnabled(
+		cfg.Certifications.UseHTTPS,
+		cfg.Certifications.File,
+		cfg.Certifications.Key,
+	)
 
-	cfg.InitOAuthConfig(global.Configs.OAuth, useHTTPS)
+	// cfg.InitOAuthConfig(global.Configs.OAuth, useHTTPS)
 
-	startServer(server, useHTTPS, certFile, certKey)
+	go startServer(server, useHTTPS, cfg)
 
-	// Wait here for process termination signal to initiate graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	<-quit
-
-	// Graceful shutdown
-	gracefulShutdown(db, server, shutDownDb)
+	return waitForShutdown(server, db)
 }
 
 // setupDatabase initializes the database and context
-func setupDatabase() (*sql.DB, context.CancelFunc, error) {
-	dbCtx, shutDownDb := context.WithCancel(context.Background())
-	g.Configs.Database.Ctx = dbCtx
+func setupDatabase(cfg *config.Config) (*database.DataBase, error) {
+	dbPath := global.GetDatabasePath(cfg.DatabaseConfiguration.Path)
 
-	log.Println("Starting social-network db")
+	sessionCleanupDuration := global.ParseDuration(
+		cfg.DatabaseConfiguration.CleanupSessions,
+		10*time.Minute,
+	)
 
-	db, err := sql.Open(database.DataBase)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing database: %w", err)
+	walTruncateDuration := global.ParseDuration(
+		cfg.DatabaseConfiguration.WAL.TruncateInterval,
+		5*time.Minute,
+	)
+
+	dbConfig := &database.DBConfig{
+		Path:                   cfg.DatabaseConfiguration.Path,
+		MaxOpenConns:           25,
+		SessionCleanupDuration: sessionCleanupDuration,
+		WAL: database.WALConfig{
+			AutoTruncate:             cfg.DatabaseConfiguration.WAL.AutoTruncate,
+			TruncateIntervalDuration: walTruncateDuration,
+			CacheSize:                cfg.DatabaseConfiguration.WAL.CacheSize,
+			Synchronous:              cfg.DatabaseConfiguration.WAL.Synchronous,
+		},
+		SystemImages: cfg.DatabaseConfiguration.SystemImages,
 	}
 
-	return db, shutDownDb, nil
+	log.Printf("Initializing database at: %s", dbPath)
+
+	db, err := database.New(global.ShutDownContext, dbConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing database: %w", err)
+	}
+
+	return db, nil
 }
 
-// configureTLS validates certificates and configures TLS settings
-func configureTLS(server *http.Server) (bool, string, string, error) {
-	useHTTPS := global.Configs.Certifications.UseHTTPS
-	certFile := filepath.Join(global.Configs.Certifications.File...)
-	certKey := filepath.Join(global.Configs.Certifications.Key...)
+func setupServer(cfg *config.Config, db *database.DataBase) *http.Server {
+	handler := handlers.SetHandlers(db)
 
-	// Use HTTP if there's no SSL keys
-	_, err := os.Stat(certFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Printf("SSL certs not found in %s. Running in HTTP.\n", certFile)
-			useHTTPS = false
-		} else {
-			return false, "", "", fmt.Errorf("error checking certificates: %w", err)
-		}
+	server := &http.Server{
+		Addr:              cfg.Server.Addr,
+		Handler:           handler,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
+	return server
+}
+
+// startServer launches the HTTP or HTTPS server
+func startServer(server *http.Server, useHTTPS bool, cfg *config.Config) {
+	var err error
+
 	if useHTTPS {
+		certFile := global.GetCertPath(cfg.Certifications.File)
+		keyFile := global.GetKeyPath(cfg.Certifications.Key)
+
 		server.TLSConfig = &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256},
 			PreferServerCipherSuites: true,
-			InsecureSkipVerify:       true,
 		}
+
+		log.Printf("🚀 Server starting on https://localhost%s", server.Addr)
+		err = server.ListenAndServeTLS(certFile, keyFile)
+	} else {
+		log.Printf("🚀 Server starting on http://localhost%s", server.Addr)
+
+		err = server.ListenAndServe()
 	}
 
-	return useHTTPS, certFile, certKey, nil
-}
-
-// startServer launches the HTTP or HTTPS server
-func startServer(server *http.Server, useHTTPS bool, certFile, certKey string) {
-	go func() {
-		if useHTTPS {
-			log.Printf("Server running on https://localhost%s\n", server.Addr)
-			if err := server.ListenAndServeTLS(certFile, certKey); err != nil && err != http.ErrServerClosed {
-				log.Fatalf("ListenAndServeTLS failed: %v", err)
-			}
-		} else {
-			log.Printf("Server running on http://localhost%s\n", server.Addr)
-			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatalf("ListenAndServe() failed: %v", err)
-			}
-		}
-	}()
-}
-
-// gracefulShutdown handles clean database and server shutdown
-func gracefulShutdown(db *sql.DB, server *http.Server, shutDownDb context.CancelFunc) {
-	shutDownDb()
-	if global.Configs.Database.WAL.AutoTruncate {
-		sql.ManualTruncate <- struct{}{}
-		sql.Wg.Wait()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Server failed to start: %v", err)
 	}
-	db.Close()
+}
 
-	log.Println("Shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+func waitForShutdown(server *http.Server, db *database.DataBase) error {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-quit
+	log.Printf("Received signal: %v. Starting graceful shutdown...", sig)
+
+	global.CancelShutdown()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Graceful server Shutdown Failed: %v", err)
+
+	log.Println("Shutting down HTTP server...")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("server shutdown failed: %w", err)
 	}
-	log.Println("Server stopped")
+
+	log.Println("Closing database connection...")
+	if err := db.Close(); err != nil {
+		return fmt.Errorf("database close failed: %w", err)
+	}
+
+	log.Println("Server shutdown complete")
+	return nil
 }

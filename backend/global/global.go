@@ -23,11 +23,11 @@ func Initialize() error {
 // Helper functions for commonly accessed configs
 
 // GetDatabasePath returns the full database path
-func GetDatabasePath(cfg DatabasePathConfig) string {
-	if len(cfg.Path) == 0 {
+func GetDatabasePath(pathParts []string) string {
+	if len(pathParts) == 0 {
 		return filepath.Join("backend", "db", "social-network.db")
 	}
-	return filepath.Join(cfg.Path...)
+	return filepath.Join(pathParts...)
 }
 
 // GetMigrationsPath returns the migrations path
@@ -134,11 +134,6 @@ func ParseSize(sizeStr string) (int64, error) {
 	default:
 		return 0, fmt.Errorf("unknown size unit: %s", unit)
 	}
-}
-
-// DatabasePathConfig interface for getting database path
-type DatabasePathConfig interface {
-	GetPath() []string
 }
 
 // hasPrefix checks if string starts with prefix (to avoid importing strings)

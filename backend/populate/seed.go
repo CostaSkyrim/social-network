@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"social-network/backend/db/queries"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -100,19 +101,18 @@ type seedNotification struct {
 }
 
 type seedData struct {
-	Users           []seedUser           `json:"users"`
-	Follows         []seedFollow         `json:"follows"`
-	Groups          []seedGroup          `json:"groups"`
-	GroupMembers    []seedGroupMember    `json:"group_members"`
-	Posts           []seedPost           `json:"posts"`
-	PostVisibility  []seedPostVisibility `json:"post_visibility"`
-	Comments        []seedComment        `json:"comments"`
-	Events          []seedEvent          `json:"events"`
-	EventResponses  []seedEventResponse  `json:"event_responses"`
-	Messages        []seedMessage        `json:"messages"`
-	Notifications   []seedNotification   `json:"notifications"`
+	Users          []seedUser           `json:"users"`
+	Follows        []seedFollow         `json:"follows"`
+	Groups         []seedGroup          `json:"groups"`
+	GroupMembers   []seedGroupMember    `json:"group_members"`
+	Posts          []seedPost           `json:"posts"`
+	PostVisibility []seedPostVisibility `json:"post_visibility"`
+	Comments       []seedComment        `json:"comments"`
+	Events         []seedEvent          `json:"events"`
+	EventResponses []seedEventResponse  `json:"event_responses"`
+	Messages       []seedMessage        `json:"messages"`
+	Notifications  []seedNotification   `json:"notifications"`
 }
-
 
 // if the users table is empty. Returns the number of users inserted.
 func SeedFromJSON(db *sql.DB, jsonPath string) (int, error) {
