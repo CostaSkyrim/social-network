@@ -1,9 +1,25 @@
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
+import { useAuth } from '@/context/AuthProvider'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { MobileNav } from './MobileNav'
+import { Spinner } from '@/components/ui/Spinner'
 
 export function MainLayout() {
+  const { is_authenticated, is_loading } = useAuth()
+
+  if (is_loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!is_authenticated) {
+    return <Navigate to="/login" replace />
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />

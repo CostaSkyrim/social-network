@@ -14,6 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type DataBase struct {
@@ -72,7 +73,7 @@ func New(ctx context.Context, cfg *DBConfig) (*DataBase, error) {
 
 	migrationsPath := cfg.MigrationsPath
 	if migrationsPath == "" {
-		migrationsPath = "file://backend/db/migrations/sqlite"
+		migrationsPath = "file://backend/db/migrations"
 	}
 
 	if err := applyMigrations(migrationsPath, dbPath); err != nil {
@@ -154,8 +155,7 @@ func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			// Use direct query since we removed prepared statements
-			if _, err := db.conn.ExecContext(ctx,
+					if _, err := db.conn.ExecContext(ctx,
 				`UPDATE sessions SET is_active = 0 WHERE expires_at < CURRENT_TIMESTAMP`); err != nil {
 				log.Printf("Session cleanup error: %v", err)
 			}

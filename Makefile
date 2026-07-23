@@ -1,6 +1,6 @@
 .PHONY: backend-run backend-run-reseed backend-vet-populate \
 	frontend-dev frontend-build frontend-check frontend-install \
-	check dev
+	check dev kill-ports
 
 # ── Backend ───────────────────────────────────────────
 backend-run:
@@ -39,7 +39,12 @@ check:
 	$(MAKE) frontend-check
 	@echo "All checks passed"
 
-dev:
+kill-ports:
+	@echo "==> Cleaning up stale ports..."
+	@fuser -k 5173/tcp 2>/dev/null; fuser -k 5174/tcp 2>/dev/null; fuser -k 5175/tcp 2>/dev/null
+	@fuser -k 8080/tcp 2>/dev/null; sleep 1
+
+dev: kill-ports
 	@echo "==> Starting frontend and backend..."
 	@trap 'kill 0' EXIT; \
 	cd frontend && npm run dev & \

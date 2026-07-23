@@ -28,7 +28,7 @@ func Start(reseed bool) error {
 		log.Fatal("Error with global config initialization:", err.Error())
 	}
 
-	cfg, err := config.LoadConfig("configs.json")
+	cfg, err := config.LoadConfig("backend/configs.json")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}

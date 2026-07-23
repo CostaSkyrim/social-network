@@ -15,10 +15,13 @@ import NotificationsPage from '@/pages/notifications/NotificationsPage'
 import FollowersPage from '@/pages/followers/FollowersPage'
 import FollowingPage from '@/pages/followers/FollowingPage'
 import SearchPage from '@/pages/search/SearchPage'
+import NotFoundPage from '@/pages/errors/NotFoundPage'
+import ErrorPage from '@/pages/errors/ErrorPage'
 
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
@@ -26,6 +29,7 @@ export const router = createBrowserRouter([
   },
   {
     element: <MainLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { index: true, element: <Navigate to="/home" replace /> },
       { path: '/home', element: <HomePage /> },
@@ -43,5 +47,6 @@ export const router = createBrowserRouter([
       { path: '/search', element: <SearchPage /> },
     ],
   },
-  { path: '*', element: <Navigate to="/home" replace /> },
+  { path: '/404', element: <NotFoundPage /> },
+  { path: '*', element: <NotFoundPage /> },
 ])

@@ -12,8 +12,9 @@ CREATE TABLE IF NOT EXISTS group_members (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL,
 
-    UNIQUE(group_id, user_id),
-    INDEX idx_group_members_group (group_id),
-    INDEX idx_group_members_user (user_id),
-    INDEX idx_group_members_status (status)
+    UNIQUE(group_id, user_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_status ON group_members(status);

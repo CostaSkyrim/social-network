@@ -84,6 +84,21 @@ func userToResponse(user *database.User) *UserResponse {
 	}
 }
 
+func CheckAuthHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	user, err := GetUserFromCookie(r, db)
+	if err != nil {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Authenticated", userToResponse(user))
+}
+
 func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")

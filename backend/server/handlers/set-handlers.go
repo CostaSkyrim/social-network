@@ -45,6 +45,7 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 		// Authentication endpoints
 		makeEndpoint("/api/signup", false, SignupHandler),
 		makeEndpoint("/api/login", false, LoginHandler),
+		makeEndpoint("/api/auth/check", false, CheckAuthHandler),
 		makeEndpoint("/api/logout", true, LogoutHandler),
 		makeEndpoint("/api/logout-all", true, LogoutAllHandler),
 	}

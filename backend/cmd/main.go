@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"social-network/backend/entry"
@@ -14,5 +15,7 @@ func main() {
 		}
 	}
 
-	entry.Start(reseed)
+	if err := entry.Start(reseed); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }

@@ -293,13 +293,18 @@ Implement the missing DB methods in `methods.go`:
 | Vite + React + TS + Tailwind scaffold | ✅ |
 | All TypeScript types (7 files) | ✅ |
 | Axios client with auth interceptor | ✅ |
-| Auth context (useAuth hook) | ✅ |
+| Auth context (useAuth hook — user, loading, auth guard) | ✅ |
 | UI context (useUI hook) | ✅ |
-| React Router with all routes | ✅ |
+| React Router with all routes + 404 catch-all | ✅ |
 | UI primitives (10 components) | ✅ |
 | Common components (6 components) | ✅ |
 | Layout components (5 components) | ✅ |
 | Page stubs (14 pages) | ✅ |
+| 404 page (NotFoundPage) | ✅ |
+| Error page (ErrorPage — route-level errors) | ✅ |
+| Error boundary (ErrorBoundary — render crash recovery) | ✅ |
+| Auth guard on MainLayout (redirects to /login) | ✅ |
+| Auth guard on AuthLayout (redirects to /home) | ✅ |
 
 ### Phase 2 — Wire Auth 🔜
 | Task | Files | Depends on |
