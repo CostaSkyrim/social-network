@@ -16,6 +16,12 @@ A Facebook-like social network built with Go, TypeScript, React + Tanstack Query
 - **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, and new events. Notifications appear across all pages.
 - **Chat** — Real-time private messaging between users who follow each other. Group chat rooms for group members. Emoji support. WebSocket-powered instant delivery.
 
+## Current Status
+
+The backend auth system is fully functional (signup, login, logout with session cookies + CORS + rate limiting). Seed data auto-populates 6 users on first run. The rest of the features (profiles, posts, groups, chat, WebSocket) are implemented in the DB layer with query constants and need handler wiring.
+
+See [PLAN.md](./PLAN.md) for the full implementation roadmap.
+
 ## Tech Stack
 
 ### Frontend
@@ -42,12 +48,13 @@ A Facebook-like social network built with Go, TypeScript, React + Tanstack Query
 ## Architecture
 
 ```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│  Frontend   │      │   Backend    │      │    Redis    │
-│  :5173/:80  │────▶│   :8080      │────▶│   :6379     │
-│  React SPA  │      │   Go API     │      │ Sessions +  │
-│  nginx(prod)│      │   SQLite     │      │ WS pub/sub  │
-└─────────────┘      └──────────────┘      └─────────────┘
+┌─────────────┐     ┌──────────────┐
+│  Frontend   │     │   Backend    │
+│  :5173      │────▶│   :8080      │
+│  React SPA  │     │   Go API     │
+│  Vite(HMR)  │     │   SQLite     │
+│  nginx(prod)│     │   Redis(opt) │
+└─────────────┘     └──────────────┘
 ```
 
 - Frontend serves static files via nginx in production, Vite dev server in development
@@ -87,40 +94,36 @@ A Facebook-like social network built with Go, TypeScript, React + Tanstack Query
 
 ### Development (without Docker)
 
-**1. Start Redis**
+**1. Start Redis** (optional — only needed for Redis integration)
 ```bash
 docker run -d -p 6379:6379 redis:7-alpine
 ```
 
-**2. Start the backend**
+**2. Start the backend** (from project root)
 ```bash
-cd backend
-go run cmd/main.go
+make backend-run
 ```
 Server starts on `http://localhost:8080`.
 
 > **Note:** On first run, the backend automatically populates the database with sample data (6 users, 17 posts, 16 comments, 2 groups, and more). Use `--reseed` to reset:
 > ```bash
-> go run cmd/main.go --reseed
+> make backend-run-reseed
 > ```
 
-**3. Start the frontend**
+**3. Start the frontend** (from project root)
 ```bash
-cd frontend
-npm install
-npm run dev
+make frontend-dev
 ```
-App opens on `http://localhost:5173`.
-
-### Development (with Docker Compose)
-
+Or start both together:
 ```bash
-docker compose up
+make dev
 ```
 
-- Frontend: `http://localhost:80`
-- Backend: `http://localhost:8080`
-- Redis: `localhost:6379`
+### Quick Start (from project root)
+```bash
+make dev
+```
+This starts the backend (`:8080`) and frontend (`:5173`) simultaneously.
 
 ### Environment Variables
 
@@ -142,9 +145,9 @@ On first launch, 6 users are pre-loaded. All share the same password: `password1
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
 
-The seed also includes 17 posts, 16 comments (with replies), 2 groups with events, direct messages, and notifications. To reset and re-seed:
+The seed also includes 17 posts, 16 comments (with replies), 2 groups with events, DMs, and notifications. To reset:
 ```bash
-go run cmd/main.go --reseed
+make backend-run-reseed
 ```
 
 ## Project Structure
@@ -156,26 +159,29 @@ social-network/
 │   │   ├── api/          # API client + endpoint functions
 │   │   ├── components/   # UI primitives + feature components
 │   │   ├── context/      # Auth + UI providers
-│   │   ├── hooks/        # TanStack Query hooks
+│   │   ├── hooks/        # TanStack Query hooks (planned)
 │   │   ├── lib/          # Utilities (cn, format, validators)
 │   │   ├── pages/        # Route-level page components
 │   │   ├── types/        # TypeScript interfaces
-│   │   └── ws/           # WebSocket connection manager
-│   ├── Dockerfile
-│   └── nginx.conf
+│   │   └── ws/           # WebSocket connection manager (planned)
+│   ├── Dockerfile        # planned
+│   └── nginx.conf        # planned
 ├── backend/
 │   ├── cmd/main.go       # Entry point
 │   ├── entry/            # Server startup sequence
-│   ├── config/           # OAuth configuration
-│   ├── global/           # Global config initialization
+│   ├── config/           # Config structs + rate limit helpers
+│   ├── configs.json      # All configuration
+│   ├── global/           # Path/duration helper functions
 │   ├── db/
 │   │   ├── migrations/   # SQL migration files (up/down)
 │   │   ├── queries/      # SQL query constants
 │   │   ├── sql/          # Models + methods + connection
 │   │   └── tables/       # Reference table schemas
-│   ├── server/handlers/  # HTTP handlers + middleware + WebSocket hub
-│   ├── redis/            # Redis session store + pub/sub
-│   └── populate/         # Seed data loader (seed.json + seed.go)
-├── docker-compose.yml    # Backend + Frontend + Redis
-└── PLAN.md               # Detailed implementation plan
+│   ├── server/handlers/  # HTTP handlers + middleware + CORS
+│   ├── populate/         # Seed data (seed.json + seed.go)
+│   └── redis/            # planned
+├── docker-compose.yml    # planned
+├── Makefile              # dev, check, build commands
+├── setup-dev.sh          # Distrobox container setup
+└── PLAN.md               # Full implementation plan
 ```
