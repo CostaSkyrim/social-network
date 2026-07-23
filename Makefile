@@ -41,6 +41,7 @@ check:
 
 dev:
 	@echo "==> Starting frontend and backend..."
-	cd frontend && npm run dev &
-	@echo "==> Starting backend..."
-	go run ./backend/cmd/main.go
+	@trap 'kill 0' EXIT; \
+	cd frontend && npm run dev & \
+	go run ./backend/cmd/main.go & \
+	wait

@@ -120,12 +120,12 @@ echo 'export GOPATH=$HOME/go' >> ~/.bashrc
 
 echo "   ✓ Go $(go version | awk '{print $3}') installed"
 
-# Install Node.js 20
-echo "📦 Installing Node.js 20..."
+# Install Node.js 22 (LTS)
+echo "📦 Installing Node.js 22..."
 if [ "$PM" = "pacman" ]; then
     $PM_INSTALL nodejs npm
 elif [ "$PM" = "dnf" ]; then
-    curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO bash -
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO bash -
     $SUDO dnf install -y nodejs
 fi
 echo "   ✓ Node.js $(node --version) installed"
