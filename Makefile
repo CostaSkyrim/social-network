@@ -5,15 +5,15 @@
 # ── Backend ───────────────────────────────────────────
 backend-run:
 	@echo "==> Starting backend server..."
-	cd backend && go run ./cmd/main.go
+	go run ./backend/cmd/main.go
 
 backend-run-reseed:
 	@echo "==> Starting backend server with fresh seed data..."
-	cd backend && go run ./cmd/main.go --reseed
+	go run ./backend/cmd/main.go --reseed
 
 backend-vet-populate:
 	@echo "==> Running go vet on populate package..."
-	cd backend && go vet ./populate/ && echo "go vet passed"
+	go vet ./backend/populate/ && echo "go vet passed"
 
 # ── Frontend ──────────────────────────────────────────
 frontend-install:
@@ -43,4 +43,4 @@ dev:
 	@echo "==> Starting frontend and backend..."
 	cd frontend && npm run dev &
 	@echo "==> Starting backend..."
-	cd backend && go run ./cmd/main.go
+	go run ./backend/cmd/main.go
