@@ -52,7 +52,7 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 		// Post endpoints
 		makeEndpoint("/api/posts", true, CreatePostHandler),
 		makeEndpoint("/api/posts/{id}", true, DeletePostHandler),
-		makeEndpoint("/api/posts/user/{id}", true, GetUserPostsHandler),
+		makeEndpoint("/api/user/posts", true, GetUserPostsHandler),
 
 		// Comment endpoints
 		makeEndpoint("/api/comments", true, CreateCommentHandler),

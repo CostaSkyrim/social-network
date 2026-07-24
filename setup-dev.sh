@@ -40,18 +40,19 @@ if command -v pacman &>/dev/null; then
     podman system migrate 2>/dev/null || true
 fi
 
-# Test if rootless actually works (create + start a container)
+# Test if rootless podman actually works
 ROOT_FLAGS=""
-TEST_NAME="distrobox-test-$$"
-echo "🧪 Testing rootless container support..."
-if distrobox create --name "$TEST_NAME" --image "$BASE_IMAGE" --yes 2>/dev/null && \
-   timeout 10 distrobox enter "$TEST_NAME" -- echo "ok" 2>/dev/null | grep -q "ok"; then
+echo "🧪 Testing rootless podman support..."
+ROOTLESS_OK=false
+if timeout 30 podman run --rm docker.io/library/alpine:latest echo ok 2>/dev/null | grep -q "ok"; then
+    ROOTLESS_OK=true
+fi
+
+if [ "$ROOTLESS_OK" = true ]; then
     echo "   ✓ Rootless available"
-    distrobox rm --force "$TEST_NAME" 2>/dev/null || true
 else
     echo "   ⚠️  Rootless not available — will use --root mode"
     ROOT_FLAGS="--root"
-    distrobox rm --force "$TEST_NAME" 2>/dev/null || true
 fi
 
 # Remove existing container if present
