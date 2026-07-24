@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from '@/types/user'
 import { checkSession as apiCheckSession } from '@/api/auth'
 
@@ -16,12 +16,21 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, set_user] = useState<User | null>(null)
   const [is_loading, set_loading] = useState(true)
+  const check_ref = useRef<Promise<void> | null>(null)
 
   const check_session = async () => {
+    if (check_ref.current) return check_ref.current
     set_loading(true)
-    const u = await apiCheckSession()
-    set_user(u)
-    set_loading(false)
+    check_ref.current = apiCheckSession().then((u) => {
+      set_user(u)
+      set_loading(false)
+      check_ref.current = null
+    }).catch(() => {
+      set_user(null)
+      set_loading(false)
+      check_ref.current = null
+    })
+    return check_ref.current
   }
 
   useEffect(() => {
