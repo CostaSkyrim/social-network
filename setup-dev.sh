@@ -25,24 +25,40 @@ if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
     exit 1
 fi
 
-# Use rootful mode to avoid cgroup v2 permission issues on Arch
-ROOT_FLAGS="--root"
+# Try rootless first; fall back to rootful only if rootless container creation fails.
+# Rootful mode is needed on some Arch systems with cgroup v2 issues,
+# but it requires /etc/subuid + /etc/subgid entries and matching enter/create flags.
+ROOT_FLAGS=""
 
-# Remove existing container if present
-if distrobox list $ROOT_FLAGS 2>/dev/null | grep -q "$CONTAINER_NAME"; then
-    echo "⚠️  Removing existing container: $CONTAINER_NAME"
-    distrobox rm $ROOT_FLAGS --force "$CONTAINER_NAME"
+# Remove existing container if present (check both modes)
+if distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
+    echo "⚠️  Removing existing rootless container: $CONTAINER_NAME"
+    distrobox rm --force "$CONTAINER_NAME"
+elif distrobox list --root 2>/dev/null | grep -q "$CONTAINER_NAME"; then
+    echo "⚠️  Removing existing rootful container: $CONTAINER_NAME"
+    distrobox rm --root --force "$CONTAINER_NAME"
 fi
 
 echo "🐋 Creating development container: $CONTAINER_NAME"
 echo "   Base image: $BASE_IMAGE"
 echo ""
 
-# Create the container (rootful)
-distrobox create $ROOT_FLAGS \
+# Create the container — try rootless first, fall back to rootful
+echo "🔧 Creating container (rootless)..."
+if distrobox create \
     --name "$CONTAINER_NAME" \
     --image "$BASE_IMAGE" \
-    --yes
+    --yes 2>/dev/null; then
+    echo "   ✓ Rootless container created"
+else
+    echo "   ⚠️  Rootless failed, trying rootful..."
+    ROOT_FLAGS="--root"
+    distrobox create $ROOT_FLAGS \
+        --name "$CONTAINER_NAME" \
+        --image "$BASE_IMAGE" \
+        --yes
+    echo "   ✓ Rootful container created"
+fi
 
 # Setup script to run inside container
 SETUP_SCRIPT=$(mktemp /tmp/setup-XXXXXX.sh)
@@ -214,13 +230,23 @@ INNER_SCRIPT
 chmod +x "$SETUP_SCRIPT"
 
 echo "🔧 Running setup inside container (this will take 5-8 minutes)..."
-distrobox enter $ROOT_FLAGS "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
+
+# Use enter without --root for rootless, with --root for rootful
+if [ -z "$ROOT_FLAGS" ]; then
+    distrobox enter "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
+else
+    distrobox enter --root "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
+fi
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "To enter your development environment:"
-echo "  distrobox enter --root $CONTAINER_NAME"
+if [ -z "$ROOT_FLAGS" ]; then
+    echo "  distrobox enter $CONTAINER_NAME"
+else
+    echo "  distrobox enter --root $CONTAINER_NAME"
+fi
 echo ""
 echo "Inside the container, from the project directory:"
 echo "  make dev        # Start backend + frontend"
