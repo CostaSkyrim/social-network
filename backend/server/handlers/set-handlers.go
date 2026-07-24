@@ -48,6 +48,16 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 		makeEndpoint("/api/auth/check", false, CheckAuthHandler),
 		makeEndpoint("/api/logout", true, LogoutHandler),
 		makeEndpoint("/api/logout-all", true, LogoutAllHandler),
+
+		// Post endpoints
+		makeEndpoint("/api/posts", true, CreatePostHandler),
+		makeEndpoint("/api/posts/{id}", true, DeletePostHandler),
+		makeEndpoint("/api/posts/user/{id}", true, GetUserPostsHandler),
+
+		// Comment endpoints
+		makeEndpoint("/api/comments", true, CreateCommentHandler),
+		makeEndpoint("/api/posts/{id}/comments", false, GetPostCommentsHandler),
+		makeEndpoint("/api/comments/{id}", true, DeleteCommentHandler),
 	}
 
 	for _, ep := range endpoints {

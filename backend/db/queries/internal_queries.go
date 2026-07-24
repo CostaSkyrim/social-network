@@ -396,6 +396,12 @@ const (
 		SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
 		WHERE id = ? AND author_id = ?
 	`
+
+	GetCommentByID = `
+		SELECT id, uuid, post_id, author_id, parent_comment_id, content, image_path, created_at, updated_at
+		FROM comments
+		WHERE id = ? AND is_deleted = 0
+	`
 )
 
 // Notification queries

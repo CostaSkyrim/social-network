@@ -449,6 +449,146 @@ func (db *DataBase) DeletePost(ctx context.Context, postID, userID int64) error 
 }
 
 //====================================
+// COMMENT METHODS
+//====================================
+
+// CreateComment creates a new comment
+func (db *DataBase) CreateComment(ctx context.Context, comment *Comment) (int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.CreateComment,
+		comment.UUID,
+		comment.PostID,
+		comment.AuthorID,
+		comment.ParentCommentID,
+		comment.Content,
+		comment.ImagePath,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create comment: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get comment id: %w", err)
+	}
+
+	return id, nil
+}
+
+// GetPostComments retrieves all comments for a post (flat list)
+func (db *DataBase) GetPostComments(ctx context.Context, postID int64) ([]*Comment, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetPostComments,
+		postID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query comments: %w", err)
+	}
+	defer rows.Close()
+
+	var comments []*Comment
+	for rows.Next() {
+		c := &Comment{}
+		var firstName, lastName, nickname, avatarPath string
+
+		err := rows.Scan(
+			&c.ID,
+			&c.UUID,
+			&c.PostID,
+			&c.AuthorID,
+			&c.ParentCommentID,
+			&c.Content,
+			&c.ImagePath,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&firstName,
+			&lastName,
+			&nickname,
+			&avatarPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan comment: %w", err)
+		}
+		c.Author = &User{
+			FirstName:  firstName,
+			LastName:   lastName,
+			AvatarPath: &avatarPath,
+		}
+		if nickname != "" {
+			c.Author.Nickname = &nickname
+		}
+		comments = append(comments, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return comments, nil
+}
+
+// DeleteComment soft-deletes a comment (preserves the post id)
+func (db *DataBase) DeleteComment(ctx context.Context, commentID, authorID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.DeleteComment,
+		commentID, authorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete comment: %w", err)
+	}
+
+	return nil
+}
+
+// GetComment retrieves a single comment by ID
+func (db *DataBase) GetComment(ctx context.Context, commentID int64) (*Comment, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	c := &Comment{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetCommentByID,
+		commentID,
+	).Scan(
+		&c.ID,
+		&c.UUID,
+		&c.PostID,
+		&c.AuthorID,
+		&c.ParentCommentID,
+		&c.Content,
+		&c.ImagePath,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("comment not found")
+		}
+		return nil, fmt.Errorf("failed to query comment: %w", err)
+	}
+
+	return c, nil
+}
+
+//====================================
 // GROUP METHODS
 //====================================
 
