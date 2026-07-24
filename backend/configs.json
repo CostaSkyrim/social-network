@@ -1,4 +1,7 @@
 {
+    "frontend": {
+        "url": "http://localhost:5173"
+    },
     "database_configuration": {
         "path": [
             "backend",

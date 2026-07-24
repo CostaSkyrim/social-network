@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS comments (
 
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE,
-
-    INDEX idx_comments_post_id (post_id),
-    INDEX idx_comments_author_id (author_id),
-    INDEX idx_comments_parent_id (parent_comment_id),
-    INDEX idx_comments_created_at (created_at)
+    FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_author_id ON comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);

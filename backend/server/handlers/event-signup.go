@@ -2,9 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	database "social-network/backend/db/sql"
+	"regexp"
+	"strings"
 	"time"
+
+	"social-network/backend/config"
+	database "social-network/backend/db/sql"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -22,60 +27,93 @@ type SignupRequest struct {
 
 func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Method not allowed",
-		})
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	var req SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid request body",
-		})
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
+
+	cfg := config.GetConfig()
+	if cfg == nil {
+		RespondError(w, http.StatusInternalServerError, "Server configuration error")
+		return
+	}
+	limits := cfg.DatabaseConfiguration.Limits
 
 	if req.Email == "" || req.Password == "" || req.FirstName == "" ||
 		req.LastName == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Email, password, first name, last name, and date of birth are required",
-		})
+		RespondError(w, http.StatusBadRequest, "Required fields must be filled in")
 		return
 	}
 
-	if len(req.Password) < 8 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Password must be at least 8 characters long",
-		})
+	if !isValidEmail(req.Email) {
+		RespondError(w, http.StatusBadRequest, "Invalid email format")
 		return
+	}
+
+	if len(req.Password) < limits.MinPass {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("Password must be at least %d characters long", limits.MaxPass))
+		return
+	}
+
+	firstName := strings.TrimSpace(req.FirstName)
+	if len(firstName) < limits.MinFirstName {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("First name must be at least %d characters long", limits.MinFirstName))
+		return
+	}
+	if len(firstName) > limits.MaxFirstName {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("First name must be at most %d characters long", limits.MaxFirstName))
+		return
+	}
+
+	if req.Nickname != nil && *req.Nickname != "" {
+		nickname := strings.TrimSpace(*req.Nickname)
+		if len(nickname) < limits.MinUsername {
+			RespondError(w, http.StatusBadRequest,
+				fmt.Sprintf("Username must be at least %d characters long", limits.MinUsername))
+			return
+		}
+		if len(nickname) > limits.MaxUsername {
+			RespondError(w, http.StatusBadRequest,
+				fmt.Sprintf("Username must be at most %d characters long", limits.MaxUsername))
+			return
+		}
+	}
+
+	if req.AboutMe != nil && len(*req.AboutMe) > limits.MaxBio {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("About me must be at most %d characters long", limits.MaxBio))
+		return
+	}
+
+	if !req.DateOfBirth.IsZero() {
+		age := calculateAge(req.DateOfBirth)
+		if age < 13 {
+			RespondError(w, http.StatusBadRequest, "You must be at least 13 years old to register")
+			return
+		}
+		if age > 120 {
+			RespondError(w, http.StatusBadRequest, "Invalid date of birth")
+			return
+		}
 	}
 
 	_, err := db.GetUserByEmail(r.Context(), req.Email)
 	if err == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Email already registered",
-		})
+		RespondError(w, http.StatusConflict, "Email already registered")
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to process registration",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to process registration")
 		return
 	}
 
@@ -93,30 +131,43 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	userID, err := db.AddUser(r.Context(), user)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to create account",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to create account")
 		return
 	}
 
 	if err := CreateUserSession(w, r, db, userID); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Account created but failed to login",
-		})
+		RespondError(w, http.StatusInternalServerError, "Account created but failed to login")
 		return
 	}
 
 	user.ID = userID
-	response := LoginResponse{
-		Message: "Registration successful",
-		User:    userToResponse(user),
+	RespondSuccess(w, http.StatusCreated, "Registration successful", userToResponse(user))
+}
+
+func isValidEmail(email string) bool {
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	if !emailRegex.MatchString(email) {
+		return false
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	if len(email) > 254 {
+		return false
+	}
+
+	if strings.Contains(email, "..") {
+		return false
+	}
+
+	return true
+}
+
+func calculateAge(dob time.Time) int {
+	now := time.Now()
+	age := now.Year() - dob.Year()
+
+	if now.Month() < dob.Month() || (now.Month() == dob.Month() && now.Day() < dob.Day()) {
+		age--
+	}
+
+	return age
 }

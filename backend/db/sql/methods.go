@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"social-network/backend/db/queries"
 	"time"
+
+	"social-network/backend/db/queries"
 )
 
 //====================================
@@ -32,9 +33,7 @@ func (db *DataBase) AddUser(ctx context.Context, user *User) (int64, error) {
 	}
 
 	result, err := tx.ExecContext(dbCtx,
-		`INSERT INTO users (uuid, email, password_hash, first_name, last_name, 
-		 nickname, date_of_birth, about_me, avatar_path, is_public)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		queries.CreateUser,
 		user.UUID,
 		user.Email,
 		user.PasswordHash,
@@ -46,7 +45,6 @@ func (db *DataBase) AddUser(ctx context.Context, user *User) (int64, error) {
 		user.AvatarPath,
 		user.IsPublic,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert user: %w", err)
 	}
@@ -71,9 +69,7 @@ func (db *DataBase) GetUserByEmail(ctx context.Context, email string) (*User, er
 
 	user := &User{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, uuid, email, password_hash, first_name, last_name, nickname,
-		 date_of_birth, about_me, avatar_path, is_public, is_active, created_at, updated_at
-		 FROM users WHERE email = ? AND is_active = 1`,
+		queries.GetUserByEmail,
 		email,
 	).Scan(
 		&user.ID,
@@ -91,7 +87,6 @@ func (db *DataBase) GetUserByEmail(ctx context.Context, email string) (*User, er
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -110,9 +105,7 @@ func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error
 
 	user := &User{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, uuid, email, first_name, last_name, nickname,
-		 date_of_birth, about_me, avatar_path, is_public, created_at
-		 FROM users WHERE id = ? AND is_active = 1`,
+		queries.GetUserByID,
 		userID,
 	).Scan(
 		&user.ID,
@@ -127,7 +120,6 @@ func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error
 		&user.IsPublic,
 		&user.CreatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -146,9 +138,7 @@ func (db *DataBase) GetUserByUUID(ctx context.Context, uuid string) (*User, erro
 
 	user := &User{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, uuid, email, first_name, last_name, nickname,
-		 date_of_birth, about_me, avatar_path, is_public, created_at
-		 FROM users WHERE uuid = ? AND is_active = 1`,
+		queries.GetUserByUUID,
 		uuid,
 	).Scan(
 		&user.ID,
@@ -163,7 +153,6 @@ func (db *DataBase) GetUserByUUID(ctx context.Context, uuid string) (*User, erro
 		&user.IsPublic,
 		&user.CreatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -184,17 +173,12 @@ func (db *DataBase) UpdateUserProfile(ctx context.Context, userID int64, user *U
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE users SET nickname = COALESCE(?, nickname),
-		 about_me = COALESCE(?, about_me),
-		 avatar_path = COALESCE(?, avatar_path),
-		 updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
+		queries.UpdateUserProfile,
 		user.Nickname,
 		user.AboutMe,
 		user.AvatarPath,
 		userID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to update user profile: %w", err)
 	}
@@ -212,11 +196,10 @@ func (db *DataBase) UpdateUserPrivacy(ctx context.Context, userID int64, isPubli
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE users SET is_public = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		queries.UpdateUserPrivacy,
 		isPublic,
 		userID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to update user privacy: %w", err)
 	}
@@ -234,10 +217,9 @@ func (db *DataBase) DeleteUser(ctx context.Context, userID int64) error {
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		queries.DeleteUser,
 		userID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -266,7 +248,6 @@ func (db *DataBase) CreateSession(ctx context.Context, session *Session) (int64,
 		session.UserAgent,
 		session.ExpiresAt,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create session: %w", err)
 	}
@@ -296,7 +277,6 @@ func (db *DataBase) GetSession(ctx context.Context, sessionID string) (*Session,
 		&session.ExpiresAt,
 		&session.IsActive,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("session not found")
@@ -320,7 +300,6 @@ func (db *DataBase) DeleteSession(ctx context.Context, sessionID string) error {
 		queries.DeleteSession,
 		sessionID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
@@ -337,7 +316,6 @@ func (db *DataBase) DeleteAllUserSessions(ctx context.Context, userID int64) err
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx, queries.DeleteAllUserSessions, userID)
-
 	if err != nil {
 		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}
@@ -359,8 +337,7 @@ func (db *DataBase) CreatePost(ctx context.Context, post *Post) (int64, error) {
 	defer cancel()
 
 	result, err := db.conn.ExecContext(dbCtx,
-		`INSERT INTO posts (uuid, author_id, group_id, content, image_path, privacy_level)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
+		queries.CreatePost,
 		post.UUID,
 		post.AuthorID,
 		post.GroupID,
@@ -368,7 +345,6 @@ func (db *DataBase) CreatePost(ctx context.Context, post *Post) (int64, error) {
 		post.ImagePath,
 		post.PrivacyLevel,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create post: %w", err)
 	}
@@ -389,10 +365,7 @@ func (db *DataBase) GetPost(ctx context.Context, postID, userID int64) (*Post, e
 
 	post := &Post{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, uuid, author_id, group_id, content, image_path,
-		 privacy_level, created_at, updated_at
-		 FROM posts WHERE id = ? AND (group_id IS NULL OR group_id IN (SELECT group_id 
-			FROM group_members WHERE user_id = ? AND status = 'accepted'))`,
+		queries.GetPostByID,
 		postID, userID,
 	).Scan(
 		&post.ID,
@@ -405,7 +378,6 @@ func (db *DataBase) GetPost(ctx context.Context, postID, userID int64) (*Post, e
 		&post.CreatedAt,
 		&post.UpdatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("post not found")
@@ -423,12 +395,9 @@ func (db *DataBase) GetUserPosts(ctx context.Context, userID int64, limit, offse
 	}
 
 	rows, err := db.conn.QueryContext(ctx,
-		`SELECT id, uuid, content, image_path, privacy_level, created_at, updated_at
-		 FROM posts WHERE author_id = ? AND group_id IS NULL
-		 ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		queries.GetUserPosts,
 		userID, limit, offset,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user posts: %w", err)
 	}
@@ -469,11 +438,9 @@ func (db *DataBase) DeletePost(ctx context.Context, postID, userID int64) error 
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE posts SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
-		 WHERE id = ? AND author_id = ?`,
+		queries.DeletePost,
 		postID, userID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to delete post: %w", err)
 	}
@@ -495,15 +462,13 @@ func (db *DataBase) CreateGroup(ctx context.Context, group *Group) (int64, error
 	defer cancel()
 
 	result, err := db.conn.ExecContext(dbCtx,
-		`INSERT INTO groups (uuid, creator_id, title, description, avatar_path)
-		 VALUES (?, ?, ?, ?, ?)`,
+		queries.CreateGroup,
 		group.UUID,
 		group.CreatorID,
 		group.Title,
 		group.Description,
 		group.AvatarPath,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create group: %w", err)
 	}
@@ -524,9 +489,7 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 
 	group := &Group{}
 	err := db.conn.QueryRowContext(ctx,
-		`SELECT id, uuid, creator_id, title, description, avatar_path,
-		 created_at, updated_at, last_message_at
-		 FROM groups WHERE id = ?`,
+		queries.GetGroupByID,
 		groupID,
 	).Scan(
 		&group.ID,
@@ -539,7 +502,6 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 		&group.UpdatedAt,
 		&group.LastMessageAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("group not found")
@@ -557,14 +519,9 @@ func (db *DataBase) GetUserGroups(ctx context.Context, userID int64) ([]*Group, 
 	}
 
 	rows, err := db.conn.QueryContext(ctx,
-		`SELECT g.id, g.uuid, g.title, g.description, g.avatar_path, g.last_message_at
-		 FROM groups g
-		 JOIN group_members gm ON gm.group_id = g.id
-		 WHERE gm.user_id = ? AND gm.status = 'accepted'
-		 ORDER BY g.last_message_at DESC`,
+		queries.GetUserGroups,
 		userID,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user groups: %w", err)
 	}
@@ -608,15 +565,13 @@ func (db *DataBase) CreateMessage(ctx context.Context, message *Message) (int64,
 	defer cancel()
 
 	result, err := db.conn.ExecContext(dbCtx,
-		`INSERT INTO messages (uuid, sender_id, direct_message_id, group_id, content)
-		 VALUES (?, ?, ?, ?, ?)`,
+		queries.CreateMessage,
 		message.UUID,
 		message.SenderID,
 		message.DirectMessageID,
 		message.GroupID,
 		message.Content,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create message: %w", err)
 	}
@@ -641,8 +596,7 @@ func (db *DataBase) CreateOrGetDirectMessage(ctx context.Context, dm *DirectMess
 	// First try to get existing DM
 	var dmID int64
 	err := db.conn.QueryRowContext(dbCtx,
-		`SELECT id FROM direct_messages
-		 WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`,
+		queries.GetOrCreateDM,
 		dm.User1ID, dm.User2ID, dm.User2ID, dm.User1ID,
 	).Scan(&dmID)
 
@@ -653,11 +607,9 @@ func (db *DataBase) CreateOrGetDirectMessage(ctx context.Context, dm *DirectMess
 	if err == sql.ErrNoRows {
 		// Create new DM
 		result, err := db.conn.ExecContext(dbCtx,
-			`INSERT INTO direct_messages (user1_id, user2_id)
-			 VALUES (?, ?)`,
+			queries.GetOrCreateDM,
 			dm.User1ID, dm.User2ID,
 		)
-
 		if err != nil {
 			return 0, fmt.Errorf("failed to create direct message: %w", err)
 		}
@@ -685,15 +637,13 @@ func (db *DataBase) CreateNotification(ctx context.Context, notification *Notifi
 	defer cancel()
 
 	result, err := db.conn.ExecContext(dbCtx,
-		`INSERT INTO notifications (user_id, from_user_id, type, content, related_id)
-		 VALUES (?, ?, ?, ?, ?)`,
+		queries.CreateNotification,
 		notification.UserID,
 		notification.FromUserID,
 		notification.Type,
 		notification.Content,
 		notification.RelatedID,
 	)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create notification: %w", err)
 	}
@@ -713,12 +663,9 @@ func (db *DataBase) GetUserNotifications(ctx context.Context, userID int64, limi
 	}
 
 	rows, err := db.conn.QueryContext(ctx,
-		`SELECT id, from_user_id, type, content, is_read, related_id, created_at
-		 FROM notifications WHERE user_id = ?
-		 ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		queries.GetUserNotifications,
 		userID, limit, offset,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to query notifications: %w", err)
 	}
@@ -759,11 +706,9 @@ func (db *DataBase) MarkNotificationAsRead(ctx context.Context, notificationID, 
 	defer cancel()
 
 	_, err := db.conn.ExecContext(dbCtx,
-		`UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP
-		 WHERE id = ? AND user_id = ?`,
+		queries.MarkNotificationsAsRead,
 		notificationID, userID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to mark notification as read: %w", err)
 	}

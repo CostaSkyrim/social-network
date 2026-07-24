@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS post_visibility (
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    UNIQUE(post_id, user_id),
-    INDEX idx_post_visibility_post (post_id),
-    INDEX idx_post_visibility_user (user_id)
+    UNIQUE(post_id, user_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_post_visibility_post ON post_visibility(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_visibility_user ON post_visibility(user_id);

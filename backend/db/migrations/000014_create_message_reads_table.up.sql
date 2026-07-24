@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS message_reads (
     FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    UNIQUE(message_id, user_id),
-    INDEX idx_message_reads_message (message_id),
-    INDEX idx_message_reads_user (user_id)
+    UNIQUE(message_id, user_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_message_reads_message ON message_reads(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_reads_user ON message_reads(user_id);

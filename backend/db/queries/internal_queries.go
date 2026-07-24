@@ -45,6 +45,13 @@ const (
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
+
+	DeleteUser = `
+		UPDATE users 
+		SET is_active = 0,
+			updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`
 )
 
 // Session queries

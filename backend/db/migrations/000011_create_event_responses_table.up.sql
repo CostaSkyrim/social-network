@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS event_responses (
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    UNIQUE(event_id, user_id),
-    INDEX idx_event_responses_event (event_id),
-    INDEX idx_event_responses_user (user_id)
+    UNIQUE(event_id, user_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_event_responses_event ON event_responses(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_responses_user ON event_responses(user_id);

@@ -3,8 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	database "social-network/backend/db/sql"
 	"time"
+
+	database "social-network/backend/db/sql"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -34,69 +35,38 @@ type UserResponse struct {
 
 func LoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid request body",
-		})
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid request body",
-		})
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Email == "" || req.Password == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid email or password",
-		})
+		RespondError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
 
 	user, err := db.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid email or password",
-		})
+		RespondError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid email or password",
-		})
+		RespondError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
 
 	if err := CreateUserSession(w, r, db, user.ID); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to create session",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
 
-	response := LoginResponse{
-		Message: "Login successful",
-		User:    userToResponse(user),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	RespondSuccess(w, http.StatusOK, "Login successful", userToResponse(user))
 }
 
 func userToResponse(user *database.User) *UserResponse {
@@ -114,13 +84,24 @@ func userToResponse(user *database.User) *UserResponse {
 	}
 }
 
+func CheckAuthHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	user, err := GetUserFromCookie(r, db)
+	if err != nil {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Authenticated", userToResponse(user))
+}
+
 func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Method not allowed",
-		})
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -131,47 +112,27 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	ClearSessionCookie(w)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Logged out successfully",
-	})
+	RespondSuccess(w, http.StatusOK, "Logged out successfuly", nil)
 }
 
 func LogoutAllHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Method not allowed",
-		})
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	userID, authenticated := GetUserIDFromContext(r)
 	if !authenticated {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Not authenticated",
-		})
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
 	if err := db.DeleteAllUserSessions(r.Context(), userID); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to logout",
-		})
+		RespondError(w, http.StatusInternalServerError, "Failed to logout")
 		return
 	}
 
 	ClearSessionCookie(w)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Logged out from all devices successfully",
-	})
+	RespondSuccess(w, http.StatusOK, "Logged out from all devices successfuly", nil)
 }

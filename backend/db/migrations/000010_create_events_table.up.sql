@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
-
-    INDEX idx_events_group_id (group_id),
-    INDEX idx_events_creator_id (creator_id),
-    INDEX idx_events_datetime (event_datetime)
+    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_events_group_id ON events(group_id);
+CREATE INDEX IF NOT EXISTS idx_events_creator_id ON events(creator_id);
+CREATE INDEX IF NOT EXISTS idx_events_datetime ON events(event_datetime);

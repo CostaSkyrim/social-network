@@ -13,11 +13,11 @@ CREATE TABLE IF NOT EXISTS messages (
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
 
     CHECK ((direct_message_id IS NOT NULL AND group_id IS NULL) OR
-           (direct_message_id IS NULL AND group_id IS NOT NULL)),
-
-    INDEX idx_messages_direct_message (direct_message_id),
-    INDEX idx_messages_group (group_id),
-    INDEX idx_messages_sender (sender_id),
-    INDEX idx_messages_created_at (created_at),
-    INDEX idx_messages_is_read (is_read)
+           (direct_message_id IS NULL AND group_id IS NOT NULL))
 );
+
+CREATE INDEX IF NOT EXISTS idx_messages_direct_message ON messages(direct_message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_group ON messages(group_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(is_read);

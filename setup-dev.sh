@@ -5,7 +5,7 @@
 set -e
 
 CONTAINER_NAME="social-network-dev"
-BASE_IMAGE="docker.io/library/fedora:40"
+BASE_IMAGE="${1:-docker.io/library/fedora:40}"
 
 # Check prerequisites
 if ! command -v distrobox &>/dev/null; then
@@ -25,18 +25,21 @@ if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
     exit 1
 fi
 
+# Use rootful mode to avoid cgroup v2 permission issues on Arch
+ROOT_FLAGS="--root"
+
 # Remove existing container if present
-if distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
+if distrobox list $ROOT_FLAGS 2>/dev/null | grep -q "$CONTAINER_NAME"; then
     echo "⚠️  Removing existing container: $CONTAINER_NAME"
-    distrobox rm --force "$CONTAINER_NAME"
+    distrobox rm $ROOT_FLAGS --force "$CONTAINER_NAME"
 fi
 
 echo "🐋 Creating development container: $CONTAINER_NAME"
 echo "   Base image: $BASE_IMAGE"
 echo ""
 
-# Create the container
-distrobox create \
+# Create the container (rootful)
+distrobox create $ROOT_FLAGS \
     --name "$CONTAINER_NAME" \
     --image "$BASE_IMAGE" \
     --yes
@@ -55,29 +58,58 @@ echo "   Setting up Social Network Development Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+fi
+
+# Detect package manager
+if command -v pacman &>/dev/null; then
+    PM="pacman"
+    PM_INSTALL="$SUDO pacman -S --noconfirm"
+    PM_UPDATE="$SUDO pacman -Syu --noconfirm"
+elif command -v dnf &>/dev/null; then
+    PM="dnf"
+    PM_INSTALL="$SUDO dnf install -y"
+    PM_UPDATE="$SUDO dnf update -y -q"
+else
+    echo "❌ No supported package manager found (pacman or dnf)"
+    exit 1
+fi
+echo "   Detected package manager: $PM"
+
 # Update system
 echo "📦 Updating system..."
-sudo dnf update -y -q
+$PM_UPDATE
 
 # Install base packages
 echo "📦 Installing base packages..."
-sudo dnf install -y \
-    curl git make gcc glibc-devel \
-    sqlite sqlite-devel \
-    findutils procps-ng which wget tar vim \
-    dnf-plugins-core > /dev/null 2>&1
+if [ "$PM" = "pacman" ]; then
+    $PM_INSTALL \
+        curl git make gcc \
+        sqlite sqlite3 \
+        findutils procps-ng which wget tar vim \
+        redis
+elif [ "$PM" = "dnf" ]; then
+    $PM_INSTALL \
+        curl git make gcc glibc-devel \
+        sqlite sqlite-devel \
+        findutils procps-ng which wget tar vim \
+        dnf-plugins-core \
+        redis
+fi
 
 # Install Go 1.24
 echo "📦 Installing Go 1.24.2..."
 cd /tmp
 wget -q https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
+$SUDO rm -rf /usr/local/go
+$SUDO tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
 rm go1.24.2.linux-amd64.tar.gz
 
 # Add Go to PATH
-echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' | sudo tee /etc/profile.d/go.sh > /dev/null
-echo 'export GOPATH=$HOME/go' | sudo tee -a /etc/profile.d/go.sh > /dev/null
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' | $SUDO tee /etc/profile.d/go.sh > /dev/null
+echo 'export GOPATH=$HOME/go' | $SUDO tee -a /etc/profile.d/go.sh > /dev/null
 export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
 export GOPATH=$HOME/go
 
@@ -88,29 +120,32 @@ echo 'export GOPATH=$HOME/go' >> ~/.bashrc
 
 echo "   ✓ Go $(go version | awk '{print $3}') installed"
 
-# Install Node.js 20
-echo "📦 Installing Node.js 20..."
-curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - > /dev/null 2>&1
-sudo dnf install -y nodejs > /dev/null 2>&1
+# Install Node.js 22 (LTS)
+echo "📦 Installing Node.js 22..."
+if [ "$PM" = "pacman" ]; then
+    $PM_INSTALL nodejs npm
+elif [ "$PM" = "dnf" ]; then
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO bash -
+    $SUDO dnf install -y nodejs
+fi
 echo "   ✓ Node.js $(node --version) installed"
 
 # Install global Node tools
 echo "📦 Installing global Node tools..."
-sudo npm install -g typescript vite create-vite > /dev/null 2>&1
+$SUDO npm install -g typescript vite create-vite
 echo "   ✓ TypeScript, Vite, create-vite installed"
 
 # Install Go development tools
 echo "📦 Installing Go development tools..."
-go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest > /dev/null 2>&1
-go install github.com/air-verse/air@latest > /dev/null 2>&1
-go install github.com/go-delve/delve/cmd/dlv@latest > /dev/null 2>&1
-go install golang.org/x/tools/cmd/goimports@latest > /dev/null 2>&1
-go install honnef.co/go/tools/cmd/staticcheck@latest > /dev/null 2>&1
+go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+go install github.com/air-verse/air@latest
+go install github.com/go-delve/delve/cmd/dlv@latest
+go install golang.org/x/tools/cmd/goimports@latest
+go install honnef.co/go/tools/cmd/staticcheck@latest
 echo "   ✓ migrate, air, delve, goimports, staticcheck installed"
 
 # Create basic air configuration
 cat > ~/.air.toml << 'EOF'
-# Air configuration for hot reloading
 root = "."
 tmp_dir = "tmp"
 
@@ -131,6 +166,14 @@ tmp_dir = "tmp"
   watcher = "cyan"
 EOF
 
+# Install frontend dependencies
+echo "📦 Installing frontend npm dependencies..."
+if [ -d "$(find / -maxdepth 4 -name 'frontend' -type d 2>/dev/null | head -1)" ]; then
+    cd "$(find / -maxdepth 4 -name 'frontend' -type d 2>/dev/null | head -1)"
+    npm install
+    echo "   ✓ Frontend dependencies installed"
+fi
+
 # Add helpful aliases
 cat >> ~/.bashrc << 'EOF'
 
@@ -138,8 +181,6 @@ cat >> ~/.bashrc << 'EOF'
 alias serve="air"
 alias gotest="go test -v ./..."
 alias build="go build -o bin/social-network ./cmd/api"
-alias migrate-up="migrate -database sqlite3://data.db -path ./migrations up"
-alias migrate-down="migrate -database sqlite3://data.db -path ./migrations down"
 alias lint="staticcheck ./..."
 
 # Welcome message
@@ -147,8 +188,9 @@ echo ""
 echo "🐋 Social Network Development Container"
 echo "   Go: $(go version | awk '{print $3}')"
 echo "   Node: $(node --version)"
+echo "   Make: $(make --version 2>&1 | head -1)"
 echo ""
-echo "   Aliases: serve, test, build, migrate-up, migrate-down, lint"
+echo "   Commands: make dev, make check, make frontend-dev, make backend-run"
 echo ""
 EOF
 
@@ -160,10 +202,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Go:        $(go version)"
 echo "Node:      $(node --version)"
 echo "npm:       v$(npm --version)"
+echo "Make:      $(make --version 2>&1 | head -1)"
 echo "TypeScript: $(tsc --version)"
 echo "SQLite:    $(sqlite3 --version 2>&1 | head -n1)"
-echo "Migrate:   $(migrate -version 2>&1 | head -n1)"
-echo "Air:       $(air -version 2>&1 | head -n1 | cut -d' ' -f1-3)"
+echo "Redis:     $(redis-cli --version 2>&1 | head -n1 || echo 'not found')"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -172,16 +214,17 @@ INNER_SCRIPT
 chmod +x "$SETUP_SCRIPT"
 
 echo "🔧 Running setup inside container (this will take 5-8 minutes)..."
-distrobox enter "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
+distrobox enter $ROOT_FLAGS "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "To enter your development environment:"
-echo "  distrobox enter $CONTAINER_NAME"
+echo "  distrobox enter --root $CONTAINER_NAME"
 echo ""
-echo "Inside the container:"
-echo "  - Navigate to your project (your home directory is mounted)"
-echo "  - Run 'go mod download' to install dependencies"
-echo "  - Run 'air' to start development server with hot reload"
+echo "Inside the container, from the project directory:"
+echo "  make dev        # Start backend + frontend"
+echo "  make check      # Run all checks"
+echo "  make frontend-dev  # Start frontend only"
+echo "  make backend-run   # Start backend only"
 echo ""
