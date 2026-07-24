@@ -4,6 +4,14 @@
 
 set -e
 
+# Refuse to run as root — distrobox handles privilege escalation on its own
+if [ "$EUID" -eq 0 ]; then
+    echo "❌ Do not run this script with sudo!"
+    echo "   Run it as your normal user: ./setup-dev.sh"
+    echo "   If rootful mode is needed, the script will prompt for elevation."
+    exit 1
+fi
+
 CONTAINER_NAME="social-network-dev"
 BASE_IMAGE="${1:-docker.io/library/fedora:40}"
 
@@ -25,40 +33,43 @@ if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
     exit 1
 fi
 
-# Try rootless first; fall back to rootful only if rootless container creation fails.
-# Rootful mode is needed on some Arch systems with cgroup v2 issues,
-# but it requires /etc/subuid + /etc/subgid entries and matching enter/create flags.
-ROOT_FLAGS=""
+# On Arch, rootless podman may need cgroup v2 delegation
+if command -v pacman &>/dev/null; then
+    echo "🔧 Ensuring rootless podman is set up on Arch..."
+    loginctl enable-linger "$(whoami)" 2>/dev/null || true
+    podman system migrate 2>/dev/null || true
+fi
 
-# Remove existing container if present (check both modes)
-if distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
-    echo "⚠️  Removing existing rootless container: $CONTAINER_NAME"
-    distrobox rm --force "$CONTAINER_NAME"
-elif distrobox list --root 2>/dev/null | grep -q "$CONTAINER_NAME"; then
-    echo "⚠️  Removing existing rootful container: $CONTAINER_NAME"
-    distrobox rm --root --force "$CONTAINER_NAME"
+# Test if rootless actually works (create + start a container)
+ROOT_FLAGS=""
+TEST_NAME="distrobox-test-$$"
+echo "🧪 Testing rootless container support..."
+if distrobox create --name "$TEST_NAME" --image "$BASE_IMAGE" --yes 2>/dev/null && \
+   timeout 10 distrobox enter "$TEST_NAME" -- echo "ok" 2>/dev/null | grep -q "ok"; then
+    echo "   ✓ Rootless available"
+    distrobox rm --force "$TEST_NAME" 2>/dev/null || true
+else
+    echo "   ⚠️  Rootless not available — will use --root mode"
+    ROOT_FLAGS="--root"
+    distrobox rm --force "$TEST_NAME" 2>/dev/null || true
+fi
+
+# Remove existing container if present
+if [ -z "$ROOT_FLAGS" ]; then
+    distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME" && distrobox rm --force "$CONTAINER_NAME"
+else
+    distrobox list --root 2>/dev/null | grep -q "$CONTAINER_NAME" && distrobox rm --root --force "$CONTAINER_NAME"
 fi
 
 echo "🐋 Creating development container: $CONTAINER_NAME"
 echo "   Base image: $BASE_IMAGE"
 echo ""
 
-# Create the container — try rootless first, fall back to rootful
-echo "🔧 Creating container (rootless)..."
-if distrobox create \
+# Create the container
+distrobox create $ROOT_FLAGS \
     --name "$CONTAINER_NAME" \
     --image "$BASE_IMAGE" \
-    --yes 2>/dev/null; then
-    echo "   ✓ Rootless container created"
-else
-    echo "   ⚠️  Rootless failed, trying rootful..."
-    ROOT_FLAGS="--root"
-    distrobox create $ROOT_FLAGS \
-        --name "$CONTAINER_NAME" \
-        --image "$BASE_IMAGE" \
-        --yes
-    echo "   ✓ Rootful container created"
-fi
+    --yes
 
 # Setup script to run inside container
 SETUP_SCRIPT=$(mktemp /tmp/setup-XXXXXX.sh)
@@ -230,23 +241,13 @@ INNER_SCRIPT
 chmod +x "$SETUP_SCRIPT"
 
 echo "🔧 Running setup inside container (this will take 5-8 minutes)..."
-
-# Use enter without --root for rootless, with --root for rootful
-if [ -z "$ROOT_FLAGS" ]; then
-    distrobox enter "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
-else
-    distrobox enter --root "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
-fi
+distrobox enter $ROOT_FLAGS "$CONTAINER_NAME" -- bash "$SETUP_SCRIPT"
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "To enter your development environment:"
-if [ -z "$ROOT_FLAGS" ]; then
-    echo "  distrobox enter $CONTAINER_NAME"
-else
-    echo "  distrobox enter --root $CONTAINER_NAME"
-fi
+echo "  distrobox enter $ROOT_FLAGS $CONTAINER_NAME"
 echo ""
 echo "Inside the container, from the project directory:"
 echo "  make dev        # Start backend + frontend"
