@@ -23,7 +23,12 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Frontend build
+# Frontend build (Vite)
 frontend/dist/
+
+# Frontend build (Next.js)
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo
 
 AGENTS.md

@@ -21,7 +21,7 @@ frontend-install:
 	cd frontend && npm install
 
 frontend-dev:
-	@echo "==> Starting Vite dev server..."
+	@echo "==> Starting Next.js dev server..."
 	cd frontend && npm run dev
 
 frontend-build:
@@ -30,7 +30,7 @@ frontend-build:
 
 frontend-check:
 	@echo "==> Running TypeScript type check..."
-	cd frontend && npx tsc --noEmit && echo "TypeScript check passed"
+	cd frontend && npm run check && echo "TypeScript check passed"
 
 # ── Fullstack ──────────────────────────────────────────
 check:
@@ -41,8 +41,12 @@ check:
 
 kill-ports:
 	@echo "==> Cleaning up stale ports..."
-	@fuser -k 5173/tcp 2>/dev/null; fuser -k 5174/tcp 2>/dev/null; fuser -k 5175/tcp 2>/dev/null
-	@fuser -k 8080/tcp 2>/dev/null; sleep 1
+	-fuser -k 5173/tcp 2>/dev/null
+	-fuser -k 5174/tcp 2>/dev/null
+	-fuser -k 5175/tcp 2>/dev/null
+	-fuser -k 3000/tcp 2>/dev/null
+	-fuser -k 8080/tcp 2>/dev/null
+	@sleep 1
 
 dev: kill-ports
 	@echo "==> Starting frontend and backend..."

@@ -1,4 +1,6 @@
-import { NavLink } from 'react-router-dom'
+'use client'
+
+import { NavLink } from '@/lib/nav-link'
 import { cn } from '@/lib/cn'
 
 const items = [
@@ -14,7 +16,7 @@ export function MobileNav() {
       {items.map((item) => (
         <NavLink
           key={item.to}
-          to={item.to}
+          href={item.to}
           className={({ isActive }) =>
             cn(
               'flex flex-1 flex-col items-center gap-0.5 py-2 text-xs',

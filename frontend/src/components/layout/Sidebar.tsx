@@ -1,5 +1,9 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/cn'
+import { NavLink } from '@/lib/nav-link'
 import { useAuth } from '@/context/AuthProvider'
 import { useLogout } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
@@ -16,11 +20,11 @@ const nav_items = [
 export function Sidebar() {
   const { user } = useAuth()
   const logout_mutation = useLogout()
-  const navigate = useNavigate()
+  const router = useRouter()
 
   async function handle_logout() {
     await logout_mutation.mutateAsync()
-    navigate('/login')
+    router.push('/login')
   }
 
   return (
@@ -39,13 +43,11 @@ export function Sidebar() {
         {nav_items.map((item) => (
           <NavLink
             key={item.to}
-            to={item.to}
+            href={item.to}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100',
+                isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100',
               )
             }
           >
