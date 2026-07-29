@@ -182,6 +182,11 @@ func waitForShutdown(server *http.Server, db *database.DataBase) error {
 		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 
+	if handlers.GlobalHub != nil {
+		log.Println("Shutting down WebSocket hub...")
+		handlers.GlobalHub.Shutdown()
+	}
+
 	log.Println("Closing database connection...")
 	if err := db.Close(); err != nil {
 		return fmt.Errorf("database close failed: %w", err)

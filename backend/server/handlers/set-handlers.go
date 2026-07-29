@@ -8,7 +8,10 @@ import (
 	"social-network/backend/cache"
 	"social-network/backend/config"
 	database "social-network/backend/db/sql"
+	ws "social-network/backend/server/websocket"
 )
+
+var GlobalHub *ws.Hub
 
 type endpoint struct {
 	path                 string
@@ -28,8 +31,10 @@ func makeEndpoint(path string, requireAuth bool, nextHandler func(http.ResponseW
 
 func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.ServeMux {
 	setGlobalRedis(redisClient)
-	// hub := GetWebSocketHub(db)
-	// go hub.Run()
+
+	hub := ws.NewHub(db, redisClient)
+	GlobalHub = hub
+	go hub.Run()
 
 	go syncMapCleaner()
 
@@ -103,6 +108,22 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 			"version": "1.0.0",
 			"status":  "healthy",
 		})
+	})
+
+	// WebSocket endpoint
+	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		AuthMiddleware(
+			true,
+			w, r, db, redisClient,
+			func(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+				userID, ok := GetUserIDFromContext(r)
+				if !ok {
+					RespondError(w, http.StatusUnauthorized, "Authentication required")
+					return
+				}
+				ws.ServeWS(GlobalHub, w, r, userID)
+			},
+		)
 	})
 
 	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
