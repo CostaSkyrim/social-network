@@ -472,6 +472,6 @@ On first launch, 6 users are pre-loaded. All share password: `password123`
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
 
-Plus 17 posts, 16 comments (with replies), 2 groups with events, DMs, and notifications.
+Plus 27 posts, 33 comments (with replies), 2 groups with events, DMs, and notifications.
 
 To reset: `go run ./backend/cmd/main.go --reseed` or `make backend-run-reseed`

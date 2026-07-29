@@ -48,12 +48,13 @@ type seedGroupMember struct {
 }
 
 type seedPost struct {
-	UUID         string `json:"uuid"`
-	AuthorID     int64  `json:"author_id"`
-	GroupID      *int64 `json:"group_id"`
-	Content      string `json:"content"`
-	ImagePath    string `json:"image_path"`
-	PrivacyLevel string `json:"privacy_level"`
+	UUID         string  `json:"uuid"`
+	AuthorID     int64   `json:"author_id"`
+	GroupID      *int64  `json:"group_id"`
+	Content      string  `json:"content"`
+	ImagePath    string  `json:"image_path"`
+	PrivacyLevel string  `json:"privacy_level"`
+	CreatedAt    *string `json:"created_at"`
 }
 
 type seedPostVisibility struct {
@@ -282,8 +283,18 @@ func insertGroupMembers(db *sql.DB, members []seedGroupMember) error {
 
 func insertPosts(db *sql.DB, posts []seedPost) error {
 	for _, p := range posts {
-		_, err := db.Exec(queries.CreatePost,
-			p.UUID, p.AuthorID, p.GroupID, p.Content, p.ImagePath, p.PrivacyLevel)
+		var createdAt string
+		if p.CreatedAt != nil {
+			createdAt = *p.CreatedAt
+		} else {
+			createdAt = time.Now().Format("2006-01-02 15:04:05")
+		}
+
+		_, err := db.Exec(`
+			INSERT INTO posts (uuid, author_id, group_id, content, image_path,
+			 privacy_level, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`, p.UUID, p.AuthorID, p.GroupID, p.Content, p.ImagePath, p.PrivacyLevel, createdAt, createdAt)
 		if err != nil {
 			return fmt.Errorf("insert post %s: %w", p.UUID, err)
 		}

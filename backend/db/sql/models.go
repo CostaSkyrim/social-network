@@ -74,7 +74,7 @@ type FollowQueries struct {
 }
 
 type Post struct {
-	ID           int64   `json:"-"`
+	ID           int64   `json:"db_id"`
 	UUID         string  `json:"id"`
 	AuthorID     int64   `json:"author_id"`
 	Author       *User   `json:"author,omitempty"`

@@ -180,7 +180,8 @@ const (
 	GetFeed = `
 		SELECT DISTINCT p.id, p.uuid, p.author_id, p.content, p.image_path,
 				 p.privacy_level, p.created_at, u.first_name, u.last_name,
-				 u.nickname, u.avatar_path
+				 u.nickname, u.avatar_path,
+				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_deleted = 0) as comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN followers f ON f.following_id = p.author_id

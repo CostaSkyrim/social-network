@@ -105,7 +105,7 @@ make backend-run
 ```
 Server starts on `http://localhost:8080`.
 
-> **Note:** On first run, the backend automatically populates the database with sample data (6 users, 17 posts, 16 comments, 2 groups, and more). Use `--reseed` to reset:
+> **Note:** On first run, the backend automatically populates the database with sample data (6 users, 27 posts, 33 comments, 2 groups, and more). Use `--reseed` to reset:
 > ```bash
 > make backend-run-reseed
 > ```
@@ -145,7 +145,7 @@ On first launch, 6 users are pre-loaded. All share the same password: `password1
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
 
-The seed also includes 17 posts, 16 comments (with replies), 2 groups with events, DMs, and notifications. To reset:
+The seed also includes 27 posts, 33 comments (with replies), 2 groups with events, DMs, and notifications. To reset:
 ```bash
 make backend-run-reseed
 ```
