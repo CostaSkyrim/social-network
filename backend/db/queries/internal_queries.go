@@ -189,7 +189,8 @@ const (
 		WHERE p.group_id IS NULL
 			AND p.is_deleted = 0
 			AND (
-				p.privacy_level = 'public'
+				p.author_id = ?
+				OR p.privacy_level = 'public'
 				OR (p.privacy_level = 'followers' AND f.follower_id IS NOT NULL)
 				OR (p.privacy_level = 'private' AND p.id IN (
 					SELECT post_id FROM post_visibility WHERE user_id = ?
