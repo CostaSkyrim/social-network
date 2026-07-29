@@ -144,3 +144,51 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 
 	RespondSuccess(w, http.StatusOK, "Post deleted", nil)
 }
+
+type EditPostRequest struct {
+	Content      string  `json:"content"`
+	ImagePath    *string `json:"image_path,omitempty"`
+	PrivacyLevel string  `json:"privacy_level"`
+}
+
+func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPut {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	postIDstr := r.PathValue("id")
+	postID, err := strconv.ParseInt(postIDstr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+		return
+	}
+
+	var req EditPostRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if strings.TrimSpace(req.Content) == "" {
+		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
+		return
+	}
+
+	if req.PrivacyLevel == "" {
+		req.PrivacyLevel = "public"
+	}
+
+	if err := db.UpdatePost(r.Context(), postID, userID, req.Content, req.ImagePath, req.PrivacyLevel); err != nil {
+		RespondError(w, http.StatusNotFound, "Post not found or not authorized")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Post updated", nil)
+}

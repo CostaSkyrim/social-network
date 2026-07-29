@@ -1,7 +1,7 @@
 'use client'
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getFeed, getPost, createPost as apiCreatePost, deletePost as apiDeletePost } from '@/api/posts'
+import { getFeed, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
 import { useUI } from '@/context/UIProvider'
 
 const FEED_PAGE_SIZE = 10
@@ -60,6 +60,27 @@ export function useDeletePost() {
     onError: (err: any) => {
       show_toast({
         message: err?.response?.data?.error || 'Failed to delete post',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useEditPost() {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: ({ id, content, image_path, privacy_level }: { id: number; content: string; image_path?: string; privacy_level: string }) =>
+      apiEditPost(id, { content, image_path, privacy_level }),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['feed'] })
+      query_client.invalidateQueries({ queryKey: ['post'] })
+      show_toast({ message: 'Post updated', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to update post',
         type: 'error',
       })
     },

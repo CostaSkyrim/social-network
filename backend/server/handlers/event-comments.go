@@ -112,3 +112,46 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 	RespondSuccess(w, http.StatusOK, "Comment deleted", nil)
 }
+
+type EditCommentRequest struct {
+	Content   string  `json:"content"`
+	ImagePath *string `json:"image_path,omitempty"`
+}
+
+func EditCommentHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPut {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	commentIDstr := r.PathValue("id")
+	commentID, err := strconv.ParseInt(commentIDstr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid comment ID")
+		return
+	}
+
+	var req EditCommentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if strings.TrimSpace(req.Content) == "" {
+		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
+		return
+	}
+
+	if err := db.UpdateComment(r.Context(), commentID, userID, req.Content, req.ImagePath); err != nil {
+		RespondError(w, http.StatusNotFound, "Comment not found or not authorized")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Comment updated", nil)
+}

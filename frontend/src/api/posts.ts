@@ -36,3 +36,7 @@ export async function createPost(data: CreatePostData): Promise<void> {
 export async function deletePost(id: number): Promise<void> {
   await client.delete(`/api/posts/${id}`)
 }
+
+export async function editPost(id: number, data: { content: string; image_path?: string; privacy_level: string }): Promise<void> {
+  await client.put(`/api/posts/${id}/edit`, data)
+}
