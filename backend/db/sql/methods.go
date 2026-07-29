@@ -650,7 +650,7 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 
 	rows, err := db.conn.QueryContext(ctx,
 		queries.GetFeed,
-		userID, userID, limit, offset,
+		userID, userID, userID, limit, offset,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query feed: %w", err)
