@@ -14,6 +14,7 @@ import (
 	"time"
 
 	// NOTE: The file names and structure is still in progress
+	"social-network/backend/cache"
 	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 	"social-network/backend/global"
@@ -40,6 +41,14 @@ func Start(reseed bool) error {
 	}
 	defer db.Close()
 
+	// Setup Redis
+	redisClient, err := setupRedis(cfg)
+	if err != nil {
+		log.Printf("Warning: Redis not available, continuing without cache: %v", err)
+	} else {
+		defer redisClient.Close()
+	}
+
 	// Seed database with sample data on first run (or reseed if flag is set)
 	if reseed {
 		if err := populate.Reseed(db.GetDB(), populate.DefaultPath()); err != nil {
@@ -51,7 +60,7 @@ func Start(reseed bool) error {
 		}
 	}
 
-	server := setupServer(cfg, db)
+	server := setupServer(cfg, db, redisClient)
 
 	// Configure TLS
 	useHTTPS := global.IsHTTPSEnabled(
@@ -104,8 +113,17 @@ func setupDatabase(cfg *config.Config) (*database.DataBase, error) {
 	return db, nil
 }
 
-func setupServer(cfg *config.Config, db *database.DataBase) *http.Server {
-	handler := handlers.SetHandlers(db)
+// setupRedis initializes the Redis client
+func setupRedis(cfg *config.Config) (*cache.RedisClient, error) {
+	redisClient, err := cache.NewRedisClient(global.ShutDownContext, &cfg.Redis)
+	if err != nil {
+		return nil, fmt.Errorf("redis initialization failed: %w", err)
+	}
+	return redisClient, nil
+}
+
+func setupServer(cfg *config.Config, db *database.DataBase, redisClient *cache.RedisClient) *http.Server {
+	handler := handlers.SetHandlers(db, redisClient)
 
 	server := &http.Server{
 		Addr:              cfg.Server.Addr,

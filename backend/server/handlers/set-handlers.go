@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path"
 
+	"social-network/backend/cache"
 	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
@@ -25,7 +26,8 @@ func makeEndpoint(path string, requireAuth bool, nextHandler func(http.ResponseW
 	}
 }
 
-func SetHandlers(db *database.DataBase) *http.ServeMux {
+func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.ServeMux {
+	setGlobalRedis(redisClient)
 	// hub := GetWebSocketHub(db)
 	// go hub.Run()
 
@@ -65,7 +67,7 @@ func SetHandlers(db *database.DataBase) *http.ServeMux {
 		mux.HandleFunc(ep.path, func(w http.ResponseWriter, r *http.Request) {
 			AuthMiddleware(
 				ep.requireAuth,
-				w, r, db,
+				w, r, db, redisClient,
 				handler,
 			)
 		})

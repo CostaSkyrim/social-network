@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"social-network/backend/cache"
 	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
@@ -29,6 +30,7 @@ func AuthMiddleware(
 	w writer,
 	r request,
 	db *database.DataBase,
+	redisClient *cache.RedisClient,
 	nextHandler func(writer, request, *database.DataBase),
 ) {
 	// CORS compliant headers
@@ -50,21 +52,28 @@ func AuthMiddleware(
 	universalCount, universalInterval := config.GetUniversalRateLimit()
 	pathCount, pathInterval := config.GetRateLimit(r.URL.Path)
 
-	// universal rate limit, applies to all requests from an IP
-	if BlockRequest(int64(universalCount), int64(universalInterval*1000), remoteAddr) {
-		fmt.Println("blocking universal rate limit: ", remoteAddr)
+	blocked := false
+
+	if redisClient != nil {
+		if isBlocked, err := redisClient.CheckRateLimit(r.Context(), remoteAddr, int64(universalCount), universalInterval); err == nil && isBlocked {
+			blocked = true
+		} else if isBlocked, err := redisClient.CheckRateLimit(r.Context(), rateLimitTag, int64(pathCount), pathInterval); err == nil && isBlocked {
+			blocked = true
+		}
+	} else {
+		if BlockRequest(int64(universalCount), int64(universalInterval*1000), remoteAddr) {
+			blocked = true
+		} else if BlockRequest(int64(pathCount), int64(pathInterval*1000), rateLimitTag) {
+			blocked = true
+		}
+	}
+
+	if blocked {
 		RespondError(w, http.StatusTooManyRequests, "Too many requests")
 		return
 	}
 
-	// path specific rate limit
-	if BlockRequest(int64(pathCount), int64(pathInterval*1000), rateLimitTag) {
-		fmt.Println("blocking endpoint rate limit: ", rateLimitTag)
-		RespondError(w, http.StatusTooManyRequests, "Too many requests to endpoint")
-		return
-	}
-
-	user, err := GetUserFromCookie(r, db)
+	user, err := GetUserFromCookie(r, db, redisClient)
 	isAuthenticated := err == nil && user != nil
 
 	isJSON := r.Header.Get("Content-Type") == "application/json" || (len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api")

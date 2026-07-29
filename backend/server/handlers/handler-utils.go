@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
 
 	"github.com/google/uuid"
@@ -16,7 +17,17 @@ import (
 var (
 	ErrSessionNotFound = errors.New("session not found")
 	ErrNoCookie        = errors.New("no session cookie")
+
+	globalRedis *cache.RedisClient
 )
+
+func setGlobalRedis(rc *cache.RedisClient) {
+	globalRedis = rc
+}
+
+func getRedis() *cache.RedisClient {
+	return globalRedis
+}
 
 type JSONResponse struct {
 	Message string      `json:"message,omitempty"`
@@ -72,7 +83,7 @@ func ClearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.DataBase, userID int64) error {
+func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.DataBase, redisClient *cache.RedisClient, userID int64) error {
 	sessionID := GenerateSessionID()
 
 	session := &database.Session{
@@ -88,11 +99,17 @@ func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.Data
 		return fmt.Errorf("failed to create session: %w", err)
 	}
 
+	if redisClient != nil {
+		if cacheErr := redisClient.CacheSession(r.Context(), cache.SessionKey(sessionID), userID, cache.SessionTTL); cacheErr != nil {
+			fmt.Printf("Warning: failed to cache session in Redis: %v\n", cacheErr)
+		}
+	}
+
 	SetSessionCookie(w, sessionID, session.ExpiresAt)
 	return nil
 }
 
-func GetUserFromCookie(r *http.Request, db *database.DataBase) (*database.User, error) {
+func GetUserFromCookie(r *http.Request, db *database.DataBase, redisClient *cache.RedisClient) (*database.User, error) {
 	cookie, err := r.Cookie("session_token")
 	if err != nil {
 		if err == http.ErrNoCookie {
@@ -105,19 +122,40 @@ func GetUserFromCookie(r *http.Request, db *database.DataBase) (*database.User, 
 		return nil, ErrSessionNotFound
 	}
 
-	session, err := db.GetSession(r.Context(), cookie.Value)
-	if err != nil {
-		if err == sql.ErrNoRows {
+	sessionKey := cache.SessionKey(cookie.Value)
+	var userID int64
+	cacheHit := false
+
+	if redisClient != nil {
+		if uid, cacheErr := redisClient.GetSession(r.Context(), sessionKey); cacheErr == nil {
+			userID = uid
+			cacheHit = true
+		}
+	}
+
+	if !cacheHit {
+		session, err := db.GetSession(r.Context(), cookie.Value)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrSessionNotFound
+			}
+			return nil, fmt.Errorf("error getting session: %w", err)
+		}
+
+		if session == nil || !session.IsActive {
 			return nil, ErrSessionNotFound
 		}
-		return nil, fmt.Errorf("error getting session: %w", err)
+
+		userID = session.UserID
+
+		if redisClient != nil {
+			if cacheErr := redisClient.CacheSession(r.Context(), sessionKey, userID, cache.SessionTTL); cacheErr != nil {
+				fmt.Printf("Warning: failed to cache session in Redis: %v\n", cacheErr)
+			}
+		}
 	}
 
-	if session == nil || !session.IsActive {
-		return nil, ErrSessionNotFound
-	}
-
-	user, err := db.GetUserByID(r.Context(), session.UserID)
+	user, err := db.GetUserByID(r.Context(), userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting user: %w", err)
 	}

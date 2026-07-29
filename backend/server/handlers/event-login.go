@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
 
 	"golang.org/x/crypto/bcrypt"
@@ -61,7 +62,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase)
 		return
 	}
 
-	if err := CreateUserSession(w, r, db, user.ID); err != nil {
+	if err := CreateUserSession(w, r, db, getRedis(), user.ID); err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
@@ -90,7 +91,7 @@ func CheckAuthHandler(w http.ResponseWriter, r *http.Request, db *database.DataB
 		return
 	}
 
-	user, err := GetUserFromCookie(r, db)
+	user, err := GetUserFromCookie(r, db, getRedis())
 	if err != nil {
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
@@ -108,6 +109,9 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 	cookie, err := r.Cookie("session_token")
 	if err == nil {
 		db.DeleteSession(r.Context(), cookie.Value)
+		if rc := getRedis(); rc != nil {
+			rc.Delete(r.Context(), cache.SessionKey(cookie.Value))
+		}
 	}
 
 	ClearSessionCookie(w)

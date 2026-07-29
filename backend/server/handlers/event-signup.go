@@ -135,7 +135,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return
 	}
 
-	if err := CreateUserSession(w, r, db, userID); err != nil {
+	if err := CreateUserSession(w, r, db, getRedis(), userID); err != nil {
 		RespondError(w, http.StatusInternalServerError, "Account created but failed to login")
 		return
 	}

@@ -202,6 +202,25 @@ if [ -d "$(find / -maxdepth 4 -name 'frontend' -type d 2>/dev/null | head -1)" ]
     echo "   ✓ Frontend dependencies installed"
 fi
 
+# Download Go module dependencies
+echo "📦 Downloading Go module dependencies..."
+PROJECT_DIR="$(find / -maxdepth 4 -name 'go.mod' -type f 2>/dev/null | head -1 | xargs dirname)"
+if [ -n "$PROJECT_DIR" ]; then
+    cd "$PROJECT_DIR"
+    go mod download
+    echo "   ✓ Go module dependencies downloaded"
+fi
+
+# Enable and start Redis
+echo "📦 Starting Redis..."
+if command -v redis-server &>/dev/null; then
+    $SUDO systemctl enable redis 2>/dev/null || true
+    $SUDO systemctl start redis 2>/dev/null || redis-server --daemonize yes 2>/dev/null || true
+    echo "   ✓ Redis started"
+else
+    echo "   ⚠️  Redis server not found"
+fi
+
 # Add helpful aliases
 cat >> ~/.bashrc << 'EOF'
 
@@ -217,6 +236,7 @@ echo "🐋 Social Network Development Container"
 echo "   Go: $(go version | awk '{print $3}')"
 echo "   Node: $(node --version)"
 echo "   Make: $(make --version 2>&1 | head -1)"
+echo "   Redis: $(redis-cli ping 2>/dev/null || echo 'not running')"
 echo ""
 echo "   Commands: make dev, make check, make frontend-dev, make backend-run"
 echo ""

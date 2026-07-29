@@ -2,6 +2,17 @@
     "frontend": {
         "url": "http://localhost:3000"
     },
+    "redis": {
+        "addr": "localhost:6379",
+        "password": "",
+        "db": 0,
+        "pool_size": 10,
+        "min_idle_conns": 5,
+        "max_retries": 3,
+        "dial_timeout": "5s",
+        "read_timeout": "3s",
+        "write_timeout": "3s"
+    },
     "database_configuration": {
         "path": [
             "backend",

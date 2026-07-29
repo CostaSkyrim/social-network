@@ -1,6 +1,31 @@
 .PHONY: backend-run backend-run-reseed backend-vet-populate \
 	frontend-dev frontend-build frontend-check frontend-install \
-	check dev kill-ports
+	check dev kill-ports redis-start redis-stop
+
+# ── Redis ───────────────────────────────────────────────
+redis-start:
+	@echo "==> Starting Redis..."
+	@if command -v redis-server >/dev/null 2>&1; then \
+		redis-server --daemonize yes 2>/dev/null || true; \
+		echo "   Redis started via redis-server"; \
+	elif command -v podman >/dev/null 2>&1; then \
+		podman run -d --name social-redis -p 6379:6379 docker.io/library/redis:7-alpine 2>/dev/null || true; \
+		echo "   Redis started via podman"; \
+	elif command -v docker >/dev/null 2>&1; then \
+		docker run -d --name social-redis -p 6379:6379 docker.io/library/redis:7-alpine 2>/dev/null || true; \
+		echo "   Redis started via docker"; \
+	else \
+		echo "   ⚠️  No Redis found — install redis-server, podman, or docker"; \
+	fi
+
+redis-stop:
+	@echo "==> Stopping Redis..."
+	@redis-cli shutdown 2>/dev/null || true
+	@podman stop social-redis 2>/dev/null || true
+	@podman rm social-redis 2>/dev/null || true
+	@docker stop social-redis 2>/dev/null || true
+	@docker rm social-redis 2>/dev/null || true
+	@echo "   Redis stopped"
 
 # ── Backend ───────────────────────────────────────────
 backend-run:
@@ -48,7 +73,7 @@ kill-ports:
 	-fuser -k 8080/tcp 2>/dev/null
 	@sleep 1
 
-dev: kill-ports
+dev: kill-ports redis-start
 	@echo "==> Starting frontend and backend..."
 	@trap 'kill 0' EXIT; \
 	cd frontend && npm run dev & \
