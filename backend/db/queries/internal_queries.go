@@ -205,6 +205,12 @@ const (
 		WHERE id = ? AND author_id = ?
 	`
 
+	UpdatePost = `
+		UPDATE posts
+		SET content = ?, image_path = ?, privacy_level = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND author_id = ? AND is_deleted = 0
+	`
+
 	AddPostVisibility = `
 		INSERT INTO post_visibility (post_id, user_id)
 		VALUES (?, ?)
@@ -396,6 +402,12 @@ const (
 		UPDATE comments
 		SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
 		WHERE id = ? AND author_id = ?
+	`
+
+	UpdateComment = `
+		UPDATE comments
+		SET content = ?, image_path = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND author_id = ? AND is_deleted = 0
 	`
 
 	GetCommentByID = `

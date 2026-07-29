@@ -766,6 +766,31 @@ func (db *DataBase) DeletePost(ctx context.Context, postID, userID int64) error 
 	return nil
 }
 
+// UpdatePost updates a post's content and privacy
+func (db *DataBase) UpdatePost(ctx context.Context, postID, authorID int64, content string, imagePath *string, privacyLevel string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.UpdatePost,
+		content, imagePath, privacyLevel, postID, authorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update post: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("post not found or not authorized")
+	}
+
+	return nil
+}
+
 //====================================
 // COMMENT METHODS
 //====================================
@@ -874,6 +899,31 @@ func (db *DataBase) DeleteComment(ctx context.Context, commentID, authorID int64
 	)
 	if err != nil {
 		return fmt.Errorf("failed to delete comment: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateComment updates a comment's content
+func (db *DataBase) UpdateComment(ctx context.Context, commentID, authorID int64, content string, imagePath *string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateComment,
+		content, imagePath, commentID, authorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update comment: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("comment not found or not authorized")
 	}
 
 	return nil
