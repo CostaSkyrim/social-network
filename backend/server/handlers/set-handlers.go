@@ -79,6 +79,10 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/following", false, GetFollowingHandler),
 		makeEndpoint("/api/follow/pending", true, GetPendingFollowsHandler),
 
+		// User profile endpoints
+		makeEndpoint("/api/users/{id}", false, GetUserProfileHandler),
+		makeEndpoint("/api/users/{id}/edit", true, UpdateUserProfileHandler),
+
 		// Group endpoints
 		makeEndpoint("/api/groups", true, CreateGroupHandler),
 		makeEndpoint("/api/groups/{id}", true, GetGroupHandler),
