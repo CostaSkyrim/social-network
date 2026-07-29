@@ -74,7 +74,7 @@
     }
   ],
   "follows": [
-    { "follower_id": 1, "following_id": 2, "status": "pending" },
+    { "follower_id": 1, "following_id": 2, "status": "accepted" },
     { "follower_id": 2, "following_id": 1, "status": "accepted" },
     { "follower_id": 3, "following_id": 1, "status": "accepted" },
     { "follower_id": 4, "following_id": 1, "status": "accepted" },
@@ -114,7 +114,8 @@
       "group_id": null,
       "content": "Just finished reading 'The Go Programming Language' and it's fantastic! Really helped me understand interfaces and goroutines better. Highly recommend it to anyone learning Go.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-16 18:30:00"
     },
     {
       "uuid": "p0020000-0000-4000-8000-000000000002",
@@ -122,7 +123,8 @@
       "group_id": null,
       "content": "Went hiking in the mountains today. The view was absolutely breathtaking! Nothing beats disconnecting from the digital world for a bit.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-17 14:00:00"
     },
     {
       "uuid": "p0030000-0000-4000-8000-000000000003",
@@ -130,7 +132,8 @@
       "group_id": null,
       "content": "Working on a new project using Go channels for the first time. The concurrency model is so elegant compared to traditional threading models.",
       "image_path": null,
-      "privacy_level": "followers"
+      "privacy_level": "followers",
+      "created_at": "2026-07-18 09:15:00"
     },
     {
       "uuid": "p0040000-0000-4000-8000-000000000004",
@@ -138,7 +141,8 @@
       "group_id": null,
       "content": "Private post just for my close followers. Thanks for sticking around!",
       "image_path": null,
-      "privacy_level": "private"
+      "privacy_level": "private",
+      "created_at": "2026-07-19 20:45:00"
     },
     {
       "uuid": "p0050000-0000-4000-8000-000000000005",
@@ -146,7 +150,8 @@
       "group_id": null,
       "content": "Morning coffee and code. The best way to start the day! ☕",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-20 07:30:00"
     },
     {
       "uuid": "p0060000-0000-4000-8000-000000000006",
@@ -154,7 +159,8 @@
       "group_id": null,
       "content": "Just finished setting up my home server. Running a few hobby projects and learning Kubernetes. Private profile means I can share freely here.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-18 22:10:00"
     },
     {
       "uuid": "p0070000-0000-4000-8000-000000000007",
@@ -162,7 +168,8 @@
       "group_id": null,
       "content": "Chess rating just hit 1800! All those late-night practice sessions are finally paying off.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-21 23:30:00"
     },
     {
       "uuid": "p0080000-0000-4000-8000-000000000008",
@@ -170,7 +177,8 @@
       "group_id": null,
       "content": "Organizing a community cleanup event next weekend. Who's in? Let's make our neighborhood cleaner together!",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-19 10:00:00"
     },
     {
       "uuid": "p0090000-0000-4000-8000-000000000009",
@@ -178,7 +186,8 @@
       "group_id": null,
       "content": "Just created the Golang Enthusiasts group! If you're interested in Go programming, come join us!",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-20 16:20:00"
     },
     {
       "uuid": "p0100000-0000-4000-8000-000000000010",
@@ -186,7 +195,8 @@
       "group_id": null,
       "content": "Book club recommendation for this month: 'Designing Data-Intensive Applications'. It's a game changer for understanding distributed systems.",
       "image_path": null,
-      "privacy_level": "followers"
+      "privacy_level": "followers",
+      "created_at": "2026-07-22 12:00:00"
     },
     {
       "uuid": "p0110000-0000-4000-8000-000000000011",
@@ -194,7 +204,8 @@
       "group_id": null,
       "content": "New guitar arrived today! A Fender Stratocaster in sunburst finish. Time to learn some new riffs! 🎸",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-20 19:45:00"
     },
     {
       "uuid": "p0120000-0000-4000-8000-000000000012",
@@ -202,7 +213,8 @@
       "group_id": null,
       "content": "Refactored a legacy codebase from 10k lines to 3k lines this week. The feeling when you delete more code than you add is unmatched.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-23 15:30:00"
     },
     {
       "uuid": "p0130000-0000-4000-8000-000000000013",
@@ -210,7 +222,8 @@
       "group_id": null,
       "content": "Golden hour at the beach today. Captured some amazing shots with the new lens.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-22 18:15:00"
     },
     {
       "uuid": "p0140000-0000-4000-8000-000000000014",
@@ -218,7 +231,8 @@
       "group_id": null,
       "content": "Started learning Go this week and I'm loving it! The simplicity is refreshing after years of Java.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-24 11:00:00"
     },
     {
       "uuid": "p0150000-0000-4000-8000-000000000015",
@@ -226,7 +240,8 @@
       "group_id": 1,
       "content": "Has anyone tried the new structured logging package in Go 1.21? I'm thinking of migrating from logrus.",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-17 11:00:00"
     },
     {
       "uuid": "p0160000-0000-4000-8000-000000000016",
@@ -234,7 +249,8 @@
       "group_id": 1,
       "content": "Just published a new package for middleware chaining in Go. Check it out and let me know what you think!",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-21 14:30:00"
     },
     {
       "uuid": "p0170000-0000-4000-8000-000000000017",
@@ -242,7 +258,98 @@
       "group_id": 2,
       "content": "Shot this beautiful landscape at sunrise. Edited in Lightroom. What do you think?",
       "image_path": null,
-      "privacy_level": "public"
+      "privacy_level": "public",
+      "created_at": "2026-07-25 06:45:00"
+    },
+    {
+      "uuid": "p0180000-0000-4000-8000-000000000018",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Anyone else excited about Go 1.24? The new iterators and unique package look incredible. Can't wait to refactor some old code.",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-26 14:00:00"
+    },
+    {
+      "uuid": "p0190000-0000-4000-8000-000000000019",
+      "author_id": 1,
+      "group_id": null,
+      "content": "Just adopted a rescue cat! Meet Whiskers 🐱 He's already claimed my keyboard as his sleeping spot. Say goodbye to productivity!",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-27 09:30:00"
+    },
+    {
+      "uuid": "p0200000-0000-4000-8000-000000000020",
+      "author_id": 2,
+      "group_id": null,
+      "content": "New blog post just went live: 'Setting up a home Kubernetes cluster on a budget'. Links to a full guide covering k3s, MetalLB, and longhorn storage.",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-25 20:00:00"
+    },
+    {
+      "uuid": "p0210000-0000-4000-8000-000000000021",
+      "author_id": 2,
+      "group_id": null,
+      "content": "Thinking about switching careers after 10 years in finance. The tech world seems exciting and I've been learning a ton. Anyone else made a similar jump?",
+      "image_path": null,
+      "privacy_level": "followers",
+      "created_at": "2026-07-27 22:15:00"
+    },
+    {
+      "uuid": "p0220000-0000-4000-8000-000000000022",
+      "author_id": 2,
+      "group_id": null,
+      "content": "Just beat my personal record on LeetCode! 3 hard problems in under 2 hours. All that practice on data structures is paying off.",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-28 16:00:00"
+    },
+    {
+      "uuid": "p0230000-0000-4000-8000-000000000023",
+      "author_id": 3,
+      "group_id": null,
+      "content": "Volunteer opportunity at the local animal shelter this Saturday. We need 10 more people for the adoption event. Who's in?",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-28 10:30:00"
+    },
+    {
+      "uuid": "p0240000-0000-4000-8000-000000000024",
+      "author_id": 3,
+      "group_id": null,
+      "content": "Anyone planning to attend GopherCon this year? Would be great to organize a group trip from our local Go meetup!",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-29 08:00:00"
+    },
+    {
+      "uuid": "p0250000-0000-4000-8000-000000000025",
+      "author_id": 4,
+      "group_id": null,
+      "content": "Learning Rust on the side and I have to say — the borrow checker is painful at first but the safety guarantees are incredible. Go is still my favorite though!",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-26 21:00:00"
+    },
+    {
+      "uuid": "p0260000-0000-4000-8000-000000000026",
+      "author_id": 6,
+      "group_id": null,
+      "content": "New Canon RF 70-200mm f/2.8 lens arrived today! The bokeh on this thing is unreal. Time to shoot some portraits this weekend.",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-28 20:30:00"
+    },
+    {
+      "uuid": "p0270000-0000-4000-8000-000000000027",
+      "author_id": 6,
+      "group_id": null,
+      "content": "My summer photo collection is coming along nicely. Over 500 shots from three different states so far. Thinking of putting together a print portfolio.",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-28 22:00:00"
     }
   ],
   "post_visibility": [
@@ -346,6 +453,125 @@
       "post_id": 3,
       "author_id": 2,
       "content": "Channels are powerful once you get the hang of them. Just be careful with deadlocks!"
+    },
+    {
+      "uuid": "c0170000-0000-4000-8000-000000000017",
+      "post_id": 18,
+      "author_id": 4,
+      "parent_comment_id": null,
+      "content": "The new unique package is going to be a game changer for memory optimization!"
+    },
+    {
+      "uuid": "c0180000-0000-4000-8000-000000000018",
+      "post_id": 19,
+      "author_id": 3,
+      "parent_comment_id": null,
+      "content": "Whiskers is adorable! My cat does the same thing with my laptop 😄"
+    },
+    {
+      "uuid": "c0190000-0000-4000-8000-000000000019",
+      "post_id": 20,
+      "author_id": 1,
+      "parent_comment_id": null,
+      "content": "Great article! I've been wanting to try k3s at home. How's the power consumption?"
+    },
+    {
+      "uuid": "c0200000-0000-4000-8000-000000000020",
+      "post_id": 23,
+      "author_id": 4,
+      "parent_comment_id": null,
+      "content": "I'll be there! I can bring some pet supplies too."
+    },
+    {
+      "uuid": "c0210000-0000-4000-8000-000000000021",
+      "post_id": 25,
+      "author_id": 3,
+      "parent_comment_id": null,
+      "content": "Rust is great but Go's simplicity keeps me coming back. Different tools for different jobs!"
+    },
+    {
+      "uuid": "c0220000-0000-4000-8000-000000000022",
+      "post_id": 26,
+      "author_id": 1,
+      "parent_comment_id": null,
+      "content": "That lens is amazing! Can't wait to see what you capture with it."
+    },
+    {
+      "uuid": "c0230000-0000-4000-8000-000000000023",
+      "post_id": 18,
+      "author_id": 4,
+      "parent_comment_id": 17,
+      "content": "Exactly! The memory savings alone make it worth upgrading. I've been testing it on a side project."
+    },
+    {
+      "uuid": "c0240000-0000-4000-8000-000000000024",
+      "post_id": 18,
+      "author_id": 3,
+      "parent_comment_id": null,
+      "content": "Have you looked at the new crypto/tls improvements too? They're rolling out some nice QoL changes alongside the big features."
+    },
+    {
+      "uuid": "c0250000-0000-4000-8000-000000000025",
+      "post_id": 18,
+      "author_id": 1,
+      "parent_comment_id": 24,
+      "content": "Not yet! Thanks for the tip — I'll check that out. The TLS handshake optimizations sound really useful for API servers."
+    },
+    {
+      "uuid": "c0260000-0000-4000-8000-000000000026",
+      "post_id": 19,
+      "author_id": 3,
+      "parent_comment_id": 18,
+      "content": "Pro tip: get him a cardboard box. Cats ignore expensive beds and play with the box instead. Saved me a fortune! 😂"
+    },
+    {
+      "uuid": "c0270000-0000-4000-8000-000000000027",
+      "post_id": 19,
+      "author_id": 6,
+      "parent_comment_id": null,
+      "content": "Whiskers is adorable! I've got two cats and they run my life. Worth every moment though."
+    },
+    {
+      "uuid": "c0280000-0000-4000-8000-000000000028",
+      "post_id": 22,
+      "author_id": 1,
+      "parent_comment_id": null,
+      "content": "That's impressive! 3 hard problems in 2 hours is no joke. Which topics did you focus on?"
+    },
+    {
+      "uuid": "c0290000-0000-4000-8000-000000000029",
+      "post_id": 22,
+      "author_id": 4,
+      "parent_comment_id": 28,
+      "content": "Yeah, I'm curious too. I've been stuck on dynamic programming problems lately. Any resources you'd recommend?"
+    },
+    {
+      "uuid": "c0300000-0000-4000-8000-000000000030",
+      "post_id": 22,
+      "author_id": 3,
+      "parent_comment_id": null,
+      "content": "Consistency is key! I do one medium problem every morning with my coffee. It adds up fast."
+    },
+    {
+      "uuid": "c0310000-0000-4000-8000-000000000031",
+      "post_id": 24,
+      "author_id": 4,
+      "parent_comment_id": null,
+      "content": "I went last year and it was amazing! The workshops were the highlight for me. Definitely going again this year."
+    },
+    {
+      "uuid": "c0320000-0000-4000-8000-000000000032",
+      "post_id": 24,
+      "author_id": 1,
+      "parent_comment_id": 31,
+      "content": "Oh nice! Which workshop was your favorite? I'm trying to decide between the systems programming and the web assembly tracks."
+    },
+    {
+      "uuid": "c0330000-0000-4000-8000-000000000033",
+      "post_id": 24,
+      "author_id": 6,
+      "parent_comment_id": 31,
+      "content": "I went to the web assembly one last year — it was fantastic. The speakers really knew their stuff and the hands-on exercises were well designed."
     }
   ],
   "events": [

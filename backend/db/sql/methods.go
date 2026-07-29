@@ -428,6 +428,106 @@ func (db *DataBase) GetUserPosts(ctx context.Context, userID int64, limit, offse
 	return posts, nil
 }
 
+// GetFeed retrieves the paginated news feed for a user
+func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetFeed,
+		userID, userID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query feed: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []*Post
+	for rows.Next() {
+		post := &Post{Author: &User{}}
+		var nickname, avatarPath sql.NullString
+
+		err := rows.Scan(
+			&post.ID,
+			&post.UUID,
+			&post.AuthorID,
+			&post.Content,
+			&post.ImagePath,
+			&post.PrivacyLevel,
+			&post.CreatedAt,
+			&post.Author.FirstName,
+			&post.Author.LastName,
+			&nickname,
+			&avatarPath,
+			&post.CommentCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan post: %w", err)
+		}
+		if nickname.Valid {
+			post.Author.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			post.Author.AvatarPath = &avatarPath.String
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return posts, nil
+}
+
+// GetPostWithAuthor retrieves a single post with author info
+func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64) (*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	post := &Post{Author: &User{}}
+	var nickname, avatarPath sql.NullString
+	err := db.conn.QueryRowContext(ctx, `
+		SELECT p.id, p.uuid, p.author_id, p.content, p.image_path,
+		 p.privacy_level, p.created_at, p.updated_at,
+		 u.first_name, u.last_name, u.nickname, u.avatar_path,
+		 (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_deleted = 0) as comment_count
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE p.id = ? AND p.is_deleted = 0
+	`, postID).Scan(
+		&post.ID,
+		&post.UUID,
+		&post.AuthorID,
+		&post.Content,
+		&post.ImagePath,
+		&post.PrivacyLevel,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+		&post.Author.FirstName,
+		&post.Author.LastName,
+		&nickname,
+		&avatarPath,
+		&post.CommentCount,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("post not found")
+		}
+		return nil, fmt.Errorf("failed to query post: %w", err)
+	}
+	if nickname.Valid {
+		post.Author.Nickname = &nickname.String
+	}
+	if avatarPath.Valid {
+		post.Author.AvatarPath = &avatarPath.String
+	}
+
+	return post, nil
+}
+
 // DeletePost soft deletes a post
 func (db *DataBase) DeletePost(ctx context.Context, postID, userID int64) error {
 	if ctx == nil {
@@ -500,7 +600,8 @@ func (db *DataBase) GetPostComments(ctx context.Context, postID int64) ([]*Comme
 	var comments []*Comment
 	for rows.Next() {
 		c := &Comment{}
-		var firstName, lastName, nickname, avatarPath string
+		var firstName, lastName string
+		var nickname, avatarPath sql.NullString
 
 		err := rows.Scan(
 			&c.ID,
@@ -521,12 +622,14 @@ func (db *DataBase) GetPostComments(ctx context.Context, postID int64) ([]*Comme
 			return nil, fmt.Errorf("failed to scan comment: %w", err)
 		}
 		c.Author = &User{
-			FirstName:  firstName,
-			LastName:   lastName,
-			AvatarPath: &avatarPath,
+			FirstName: firstName,
+			LastName:  lastName,
 		}
-		if nickname != "" {
-			c.Author.Nickname = &nickname
+		if nickname.Valid {
+			c.Author.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			c.Author.AvatarPath = &avatarPath.String
 		}
 		comments = append(comments, c)
 	}

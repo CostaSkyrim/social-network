@@ -64,13 +64,20 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		PrivacyLevel: req.PrivacyLevel,
 	}
 
-	_, err := db.CreatePost(r.Context(), post)
+	id, err := db.CreatePost(r.Context(), post)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to create post")
 		return
 	}
 
-	RespondSuccess(w, http.StatusCreated, "Post created", nil)
+	RespondSuccess(w, http.StatusCreated, "Post created", map[string]any{
+		"id":            id,
+		"uuid":          post.UUID,
+		"content":       post.Content,
+		"image_path":    post.ImagePath,
+		"privacy_level": post.PrivacyLevel,
+		"group_id":      post.GroupID,
+	})
 }
 
 func GetUserPostsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
