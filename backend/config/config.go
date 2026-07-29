@@ -10,14 +10,17 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"social-network/backend/cache"
 )
 
 type Config struct {
-	DatabaseConfiguration DatabaseConfig `json:"database_configuration"`
-	Server                ServerConfig   `json:"server"`
-	Certifications        Certifications `json:"certifications"`
-	Handlers              HandlersConfig `json:"handlers"`
-	Frontend              FrontendConfig `json:"frontend"`
+	DatabaseConfiguration DatabaseConfig      `json:"database_configuration"`
+	Server                ServerConfig        `json:"server"`
+	Certifications        Certifications      `json:"certifications"`
+	Handlers              HandlersConfig      `json:"handlers"`
+	Frontend              FrontendConfig      `json:"frontend"`
+	Redis                 cache.RedisConfig   `json:"redis"`
 }
 
 type FrontendConfig struct {
