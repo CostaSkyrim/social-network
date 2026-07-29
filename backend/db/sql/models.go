@@ -82,7 +82,7 @@ type Post struct {
 	Content      string  `json:"content"`
 	ImagePath    *string `json:"image_path,omitempty"`
 	PrivacyLevel string  `json:"privacy_level"`
-	IsDeleted    bool
+	IsDeleted    bool   `json:"is_deleted"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Comments     []Comment `json:"comments,omitempty"`
@@ -100,6 +100,7 @@ type Comment struct {
 	ImagePath       *string   `json:"image_path,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	IsDeleted       bool      `json:"is_deleted"`
 }
 
 type CommentQueries struct {

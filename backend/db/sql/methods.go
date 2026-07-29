@@ -591,6 +591,7 @@ func (db *DataBase) GetPost(ctx context.Context, postID, userID int64) (*Post, e
 		&post.PrivacyLevel,
 		&post.CreatedAt,
 		&post.UpdatedAt,
+		&post.IsDeleted,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -674,6 +675,7 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 			&post.Author.LastName,
 			&nickname,
 			&avatarPath,
+			&post.IsDeleted,
 			&post.CommentCount,
 		)
 		if err != nil {
@@ -707,10 +709,11 @@ func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64)
 		SELECT p.id, p.uuid, p.author_id, p.content, p.image_path,
 		 p.privacy_level, p.created_at, p.updated_at,
 		 u.first_name, u.last_name, u.nickname, u.avatar_path,
-		 (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_deleted = 0) as comment_count
+		 p.is_deleted,
+		 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
-		WHERE p.id = ? AND p.is_deleted = 0
+		WHERE p.id = ?
 	`, postID).Scan(
 		&post.ID,
 		&post.UUID,
@@ -724,6 +727,7 @@ func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64)
 		&post.Author.LastName,
 		&nickname,
 		&avatarPath,
+		&post.IsDeleted,
 		&post.CommentCount,
 	)
 	if err != nil {
@@ -831,6 +835,7 @@ func (db *DataBase) GetPostComments(ctx context.Context, postID int64) ([]*Comme
 			&lastName,
 			&nickname,
 			&avatarPath,
+			&c.IsDeleted,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan comment: %w", err)

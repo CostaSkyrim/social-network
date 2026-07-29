@@ -15,6 +15,8 @@ export function PostCard({ post }: PostCardProps) {
     ? `${post.author.first_name} ${post.author.last_name}`
     : 'Unknown'
 
+  const is_deleted = post.is_deleted
+
   return (
     <Card>
       <CardContent className="space-y-3">
@@ -35,18 +37,24 @@ export function PostCard({ post }: PostCardProps) {
             </Link>
             <p className="text-xs text-gray-500">{format_date(post.created_at)}</p>
           </div>
-          {post.privacy_level !== 'public' && (
+          {is_deleted ? (
+            <span className="text-xs text-red-400 font-medium">deleted</span>
+          ) : post.privacy_level !== 'public' ? (
             <span className="text-xs text-gray-400">
               {post.privacy_level === 'followers' ? '🫂' : '🔒'}
             </span>
-          )}
+          ) : null}
         </div>
 
         <Link href={`/posts/${post.db_id}`}>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
+          {is_deleted ? (
+            <p className="text-sm text-gray-400 italic">[deleted]</p>
+          ) : (
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
+          )}
         </Link>
 
-        {post.image_path && (
+        {!is_deleted && post.image_path && (
           <img
             src={post.image_path}
             alt="Post image"
@@ -54,9 +62,9 @@ export function PostCard({ post }: PostCardProps) {
           />
         )}
 
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <Link href={`/posts/${post.db_id}`} className="flex items-center gap-4 text-sm text-gray-500 hover:text-gray-700">
           <span>{post.comment_count ?? 0} comments</span>
-        </div>
+        </Link>
       </CardContent>
     </Card>
   )

@@ -9,6 +9,7 @@ export interface Comment {
   parent_comment_id?: number
   content: string
   image_path?: string
+  is_deleted?: boolean
   created_at: string
   updated_at: string
 }

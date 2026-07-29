@@ -9,6 +9,7 @@ export interface Post {
   content?: string
   image_path?: string
   privacy_level: 'public' | 'followers' | 'private'
+  is_deleted?: boolean
   created_at: string
   updated_at: string
   comment_count?: number

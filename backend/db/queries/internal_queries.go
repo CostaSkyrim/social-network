@@ -162,7 +162,7 @@ const (
 
 	GetPostByID = `
 		SELECT id, uuid, author_id, group_id, content, image_path,
-		 privacy_level, created_at, updated_at
+		 privacy_level, created_at, updated_at, is_deleted
 		FROM posts
 		WHERE id = ? AND (group_id IS NULL OR group_id IN (SELECT group_id 
 			FROM group_members WHERE user_id = ? AND status = 'accepted'))
@@ -180,14 +180,13 @@ const (
 	GetFeed = `
 		SELECT DISTINCT p.id, p.uuid, p.author_id, p.content, p.image_path,
 				 p.privacy_level, p.created_at, u.first_name, u.last_name,
-				 u.nickname, u.avatar_path,
-				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_deleted = 0) as comment_count
+				 u.nickname, u.avatar_path, p.is_deleted,
+				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN followers f ON f.following_id = p.author_id
 			AND f.follower_id = ? AND f.status = 'accepted'
 		WHERE p.group_id IS NULL
-			AND p.is_deleted = 0
 			AND (
 				p.author_id = ?
 				OR p.privacy_level = 'public'
@@ -386,10 +385,10 @@ const (
 	GetPostComments = `
 		SELECT c.id, c.uuid, c.post_id, c.author_id, c.parent_comment_id,
 			 c.content, c.image_path, c.created_at, c.updated_at, u.first_name,
-			 u.last_name, u.nickname, u.avatar_path
+			 u.last_name, u.nickname, u.avatar_path, c.is_deleted
 		FROM comments c
 		JOIN users u ON u.id = c.author_id
-		WHERE c.post_id = ? AND c.is_deleted = 0
+		WHERE c.post_id = ?
 		ORDER BY c.created_at ASC
 	`
 

@@ -115,7 +115,8 @@
       "content": "Just finished reading 'The Go Programming Language' and it's fantastic! Really helped me understand interfaces and goroutines better. Highly recommend it to anyone learning Go.",
       "image_path": null,
       "privacy_level": "public",
-      "created_at": "2026-07-16 18:30:00"
+      "created_at": "2026-07-16 18:30:00",
+      "is_deleted": true
     },
     {
       "uuid": "p0020000-0000-4000-8000-000000000002",
@@ -350,6 +351,16 @@
       "image_path": null,
       "privacy_level": "public",
       "created_at": "2026-07-28 22:00:00"
+    },
+    {
+      "uuid": "p0280000-0000-4000-8000-000000000028",
+      "author_id": 2,
+      "group_id": null,
+      "content": "This was an old post that I've since deleted. The home server project is going great though!",
+      "image_path": null,
+      "privacy_level": "public",
+      "created_at": "2026-07-15 10:00:00",
+      "is_deleted": true
     }
   ],
   "post_visibility": [
@@ -374,7 +385,8 @@
       "uuid": "c0030000-0000-4000-8000-000000000003",
       "post_id": 2,
       "author_id": 3,
-      "content": "That looks amazing! Which trail did you take?"
+      "content": "That looks amazing! Which trail did you take?",
+      "is_deleted": true
     },
     {
       "uuid": "c0040000-0000-4000-8000-000000000004",
@@ -572,6 +584,21 @@
       "author_id": 6,
       "parent_comment_id": 31,
       "content": "I went to the web assembly one last year — it was fantastic. The speakers really knew their stuff and the hands-on exercises were well designed."
+    },
+    {
+      "uuid": "c0340000-0000-4000-8000-000000000034",
+      "post_id": 1,
+      "author_id": 6,
+      "parent_comment_id": null,
+      "content": "This comment has been removed by the author.",
+      "is_deleted": true
+    },
+    {
+      "uuid": "c0350000-0000-4000-8000-000000000035",
+      "post_id": 1,
+      "author_id": 1,
+      "parent_comment_id": 34,
+      "content": "That's a shame, Frank's reply was really insightful! Hopefully he comes back."
     }
   ],
   "events": [

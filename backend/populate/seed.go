@@ -55,6 +55,7 @@ type seedPost struct {
 	ImagePath    string  `json:"image_path"`
 	PrivacyLevel string  `json:"privacy_level"`
 	CreatedAt    *string `json:"created_at"`
+	IsDeleted    *bool   `json:"is_deleted"`
 }
 
 type seedPostVisibility struct {
@@ -68,6 +69,7 @@ type seedComment struct {
 	AuthorID        int64  `json:"author_id"`
 	ParentCommentID *int64 `json:"parent_comment_id"`
 	Content         string `json:"content"`
+	IsDeleted       *bool  `json:"is_deleted"`
 }
 
 type seedEvent struct {
@@ -290,11 +292,16 @@ func insertPosts(db *sql.DB, posts []seedPost) error {
 			createdAt = time.Now().Format("2006-01-02 15:04:05")
 		}
 
+		isDeleted := 0
+		if p.IsDeleted != nil && *p.IsDeleted {
+			isDeleted = 1
+		}
+
 		_, err := db.Exec(`
 			INSERT INTO posts (uuid, author_id, group_id, content, image_path,
-			 privacy_level, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		`, p.UUID, p.AuthorID, p.GroupID, p.Content, p.ImagePath, p.PrivacyLevel, createdAt, createdAt)
+			 privacy_level, created_at, updated_at, is_deleted)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, p.UUID, p.AuthorID, p.GroupID, p.Content, p.ImagePath, p.PrivacyLevel, createdAt, createdAt, isDeleted)
 		if err != nil {
 			return fmt.Errorf("insert post %s: %w", p.UUID, err)
 		}
@@ -314,8 +321,16 @@ func insertPostVisibility(db *sql.DB, vis []seedPostVisibility) error {
 
 func insertComments(db *sql.DB, comments []seedComment) error {
 	for _, c := range comments {
-		_, err := db.Exec(queries.CreateComment,
-			c.UUID, c.PostID, c.AuthorID, c.ParentCommentID, c.Content, nil)
+		isDeleted := 0
+		if c.IsDeleted != nil && *c.IsDeleted {
+			isDeleted = 1
+		}
+
+		_, err := db.Exec(`
+			INSERT INTO comments (uuid, post_id, author_id, parent_comment_id, content,
+			 image_path, created_at, updated_at, is_deleted)
+			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+		`, c.UUID, c.PostID, c.AuthorID, c.ParentCommentID, c.Content, nil, isDeleted)
 		if err != nil {
 			return fmt.Errorf("insert comment %s: %w", c.UUID, err)
 		}

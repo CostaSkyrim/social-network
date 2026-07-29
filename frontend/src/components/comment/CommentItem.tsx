@@ -15,6 +15,8 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
     ? `${comment.author.first_name} ${comment.author.last_name}`
     : 'Unknown'
 
+  const is_deleted = comment.is_deleted
+
   return (
     <div className={`flex items-start gap-3 ${depth > 0 ? 'ml-8' : ''}`}>
       <Link href={`/profile/${comment.author_id}`}>
@@ -34,8 +36,15 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
               {author_name}
             </Link>
             <span className="text-xs text-gray-500">{format_date(comment.created_at)}</span>
+            {is_deleted && (
+              <span className="text-xs text-red-400 font-medium">deleted</span>
+            )}
           </div>
-          <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+          {is_deleted ? (
+            <p className="mt-0.5 text-sm text-gray-400 italic">[deleted]</p>
+          ) : (
+            <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+          )}
         </div>
       </div>
     </div>
