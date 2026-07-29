@@ -1,0 +1,543 @@
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+
+	database "social-network/backend/db/sql"
+)
+
+type CreateGroupRequest struct {
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	AvatarPath  *string `json:"avatar_path,omitempty"`
+}
+
+type GroupMemberRequest struct {
+	UserID int64 `json:"user_id"`
+}
+
+type GroupResponse struct {
+	ID          string  `json:"id"`
+	CreatorID   int64   `json:"creator_id"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	AvatarPath  *string `json:"avatar_path,omitempty"`
+	CreatedAt   string  `json:"created_at"`
+}
+
+func CreateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	var req CreateGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" {
+		RespondError(w, http.StatusBadRequest, "Title is required")
+		return
+	}
+
+	group := &database.Group{
+		UUID:        generateUUID(),
+		CreatorID:   userID,
+		Title:       req.Title,
+		Description: req.Description,
+		AvatarPath:  req.AvatarPath,
+	}
+
+	groupID, err := db.CreateGroup(r.Context(), group)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to create group")
+		return
+	}
+
+	if err := db.AddGroupMember(r.Context(), groupID, userID, userID, "accepted"); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to add creator as member")
+		return
+	}
+
+	RespondSuccess(w, http.StatusCreated, "Group created successfuly", map[string]interface{}{
+		"id":    group.UUID,
+		"db_id": groupID,
+	})
+}
+
+func GetGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	if groupIDStr == "" {
+		RespondError(w, http.StatusBadRequest, "Group ID required")
+		return
+	}
+
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	members, _ := db.GetGroupMembers(r.Context(), groupID)
+
+	RespondSuccess(w, http.StatusOK, "Group retrieved", map[string]interface{}{
+		"group":   group,
+		"members": members,
+	})
+}
+
+func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPut {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	if groupIDStr == "" {
+		RespondError(w, http.StatusBadRequest, "Group ID required")
+		return
+	}
+
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	if group.CreatorID != userID {
+		RespondError(w, http.StatusForbidden, "Only the creator can update the group")
+		return
+	}
+
+	var req CreateGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" {
+		req.Title = group.Title
+	}
+
+	if err := db.UpdateGroup(r.Context(), groupID, req.Title, req.Description, req.AvatarPath); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to update group")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Group updated successfuly", nil)
+}
+
+func DeleteGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodDelete {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	if groupIDStr == "" {
+		RespondError(w, http.StatusBadRequest, "Group ID required")
+		return
+	}
+
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	if err := db.DeleteGroup(r.Context(), groupID, userID); err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found or not authorized")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Group deleted successfuly", nil)
+}
+
+func BrowseGroupsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 20
+	offset := 0
+
+	if limitStr != "" {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 100 {
+			limit = v
+		}
+	}
+	if offsetStr != "" {
+		if v, err := strconv.Atoi(offsetStr); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	groups, err := db.GetAllGroups(r.Context(), limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to retrieve groups")
+		return
+	}
+
+	if groups == nil {
+		groups = []database.Group{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "Groups retrieved", groups)
+}
+
+func GetUserGroupsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		RespondError(w, http.StatusBadRequest, "user_id query parameter required")
+		return
+	}
+
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	groups, err := db.GetUserGroups(r.Context(), userID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to get user groups")
+		return
+	}
+
+	if groups == nil {
+		groups = []*database.Group{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "User groups retrieved", groups)
+}
+
+func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	members, _ := db.GetGroupMembers(r.Context(), groupID)
+	isMember := false
+	for _, m := range members {
+		if m.UserID == currentUserID && m.Status == "accepted" {
+			isMember = true
+			break
+		}
+	}
+	if !isMember && group.CreatorID != currentUserID {
+		RespondError(w, http.StatusForbidden, "Must be a group member to invite")
+		return
+	}
+
+	var req GroupMemberRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	for _, m := range members {
+		if m.UserID == req.UserID {
+			RespondError(w, http.StatusConflict, "User is already a member or has a pending invitation")
+			return
+		}
+	}
+
+	if err := db.AddGroupMember(r.Context(), groupID, req.UserID, currentUserID, "invited"); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to invite user")
+		return
+	}
+
+	db.CreateNotification(r.Context(), &database.Notification{
+		UserID:     req.UserID,
+		FromUserID: &currentUserID,
+		Type:       "group_invitation",
+		Content:    "invited you to join group: " + group.Title,
+		RelatedID:  &groupID,
+	})
+
+	RespondSuccess(w, http.StatusOK, "Invitation sent", nil)
+}
+
+func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	members, _ := db.GetGroupMembers(r.Context(), groupID)
+	for _, m := range members {
+		if m.UserID == currentUserID {
+			if m.Status == "accepted" {
+				RespondError(w, http.StatusConflict, "Already a member")
+			} else {
+				RespondError(w, http.StatusConflict, "Already has a pending request or invitation")
+			}
+			return
+		}
+	}
+
+	if err := db.AddGroupMember(r.Context(), groupID, currentUserID, 0, "pending"); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to send join request")
+		return
+	}
+
+	db.CreateNotification(r.Context(), &database.Notification{
+		UserID:     group.CreatorID,
+		FromUserID: &currentUserID,
+		Type:       "group_join_request",
+		Content:    "requested to join group: " + group.Title,
+		RelatedID:  &groupID,
+	})
+
+	RespondSuccess(w, http.StatusOK, "Join request sent", nil)
+}
+
+func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	if group.CreatorID != currentUserID {
+		RespondError(w, http.StatusForbidden, "Only the group creator can accept members")
+		return
+	}
+
+	var req GroupMemberRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := db.UpdateMemberStatus(r.Context(), groupID, req.UserID, "accepted"); err != nil {
+		RespondError(w, http.StatusNotFound, "Member not found")
+		return
+	}
+
+	db.CreateNotification(r.Context(), &database.Notification{
+		UserID:     req.UserID,
+		FromUserID: &currentUserID,
+		Type:       "group_accepted",
+		Content:    "accepted your request to join group: " + group.Title,
+		RelatedID:  &groupID,
+	})
+
+	RespondSuccess(w, http.StatusOK, "Member accepted", nil)
+}
+
+func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	if group.CreatorID != currentUserID {
+		RespondError(w, http.StatusForbidden, "Only the group creator can reject members")
+		return
+	}
+
+	var req GroupMemberRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := db.UpdateMemberStatus(r.Context(), groupID, req.UserID, "declined"); err != nil {
+		RespondError(w, http.StatusNotFound, "Member not found")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Member rejected", nil)
+}
+
+func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	if group.CreatorID == currentUserID {
+		RespondError(w, http.StatusBadRequest, "Creator cannot leave the group. Delete it instead.")
+		return
+	}
+
+	if err := db.UpdateMemberStatus(r.Context(), groupID, currentUserID, "declined"); err != nil {
+		RespondError(w, http.StatusNotFound, "Not a member of this group")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Left the group", nil)
+}
+
+func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	groupIDStr := r.PathValue("id")
+	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	members, err := db.GetGroupMembers(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to get members")
+		return
+	}
+
+	if members == nil {
+		members = []database.GroupMember{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "Members retrieved", members)
+}

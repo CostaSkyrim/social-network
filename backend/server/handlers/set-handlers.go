@@ -62,6 +62,29 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/comments", true, CreateCommentHandler),
 		makeEndpoint("/api/posts/{id}/comments", false, GetPostCommentsHandler),
 		makeEndpoint("/api/comments/{id}", true, DeleteCommentHandler),
+
+		// Follow endpoints
+		makeEndpoint("/api/follow/request", true, FollowRequestHandler),
+		makeEndpoint("/api/follow/accept", true, AcceptFollowHandler),
+		makeEndpoint("/api/follow/decline", true, DeclineFollowHandler),
+		makeEndpoint("/api/follow/remove", true, UnfollowHandler),
+		makeEndpoint("/api/followers", false, GetFollowersHandler),
+		makeEndpoint("/api/following", false, GetFollowingHandler),
+		makeEndpoint("/api/follow/pending", true, GetPendingFollowsHandler),
+
+		// Group endpoints
+		makeEndpoint("/api/groups", true, CreateGroupHandler),
+		makeEndpoint("/api/groups/{id}", true, GetGroupHandler),
+		makeEndpoint("/api/groups/{id}/update", true, UpdateGroupHandler),
+		makeEndpoint("/api/groups/{id}/delete", true, DeleteGroupHandler),
+		makeEndpoint("/api/groups/browse", false, BrowseGroupsHandler),
+		makeEndpoint("/api/user/groups", false, GetUserGroupsHandler),
+		makeEndpoint("/api/groups/{id}/invite", true, InviteToGroupHandler),
+		makeEndpoint("/api/groups/{id}/join", true, RequestJoinGroupHandler),
+		makeEndpoint("/api/groups/{id}/accept", true, AcceptGroupMemberHandler),
+		makeEndpoint("/api/groups/{id}/reject", true, RejectGroupMemberHandler),
+		makeEndpoint("/api/groups/{id}/leave", true, LeaveGroupHandler),
+		makeEndpoint("/api/groups/{id}/members", false, GetGroupMembersHandler),
 	}
 
 	for _, ep := range endpoints {

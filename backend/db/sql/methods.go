@@ -324,6 +324,220 @@ func (db *DataBase) DeleteAllUserSessions(ctx context.Context, userID int64) err
 }
 
 //====================================
+// FOLLOW METHODS
+//====================================
+
+// CreateFollowRequest sends a follow request
+func (db *DataBase) CreateFollowRequest(ctx context.Context, followerID, followingID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.CreateFollowRequest,
+		followerID, followingID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create follow request: %w", err)
+	}
+
+	return nil
+}
+
+// AcceptFollowRequest accepts a follow request
+func (db *DataBase) AcceptFollowRequest(ctx context.Context, followerID, followingID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateFollowStatus,
+		"accepted", followerID, followingID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to accept follow request: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("follow request not found")
+	}
+
+	return nil
+}
+
+// DeclineFollowRequest declines a follow request
+func (db *DataBase) DeclineFollowRequest(ctx context.Context, followerID, followingID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateFollowStatus,
+		"declined", followerID, followingID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to decline follow request: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("follow request not found")
+	}
+
+	return nil
+}
+
+// RemoveFollow removes a follow relationship
+func (db *DataBase) RemoveFollow(ctx context.Context, followerID, followingID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		`DELETE FROM followers WHERE follower_id = ? AND following_id = ?`,
+		followerID, followingID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove follow: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("follow relationship not found")
+	}
+
+	return nil
+}
+
+// GetFollowers retrieves the followers of a user
+func (db *DataBase) GetFollowers(ctx context.Context, userID int64) ([]User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowers, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query followers: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		err := rows.Scan(
+			&u.ID, &u.UUID, &u.Email, &u.FirstName, &u.LastName,
+			&u.Nickname, &u.AvatarPath, &u.IsPublic,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan follower: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return users, nil
+}
+
+// GetFollowing retrieves the users a user is following
+func (db *DataBase) GetFollowing(ctx context.Context, userID int64) ([]User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowing, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query following: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		err := rows.Scan(
+			&u.ID, &u.UUID, &u.Email, &u.FirstName, &u.LastName,
+			&u.Nickname, &u.AvatarPath, &u.IsPublic,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan following user: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return users, nil
+}
+
+// CheckFollowing checks if a user is following another user
+func (db *DataBase) CheckFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var exists bool
+	err := db.conn.QueryRowContext(ctx,
+		queries.CheckFollowing,
+		followerID, followingID,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check following: %w", err)
+	}
+
+	return exists, nil
+}
+
+// GetPendingFollowRequests retrieves pending follow requests for a user
+func (db *DataBase) GetPendingFollowRequests(ctx context.Context, userID int64) ([]User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetPendingFollowRequests, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending requests: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var requestID int64
+		err := rows.Scan(
+			&requestID, &u.ID, &u.UUID, &u.Email, &u.FirstName,
+			&u.LastName, &u.Nickname, &u.AvatarPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan pending request: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return users, nil
+}
+
+//====================================
 // POST METHODS
 //====================================
 
@@ -792,6 +1006,172 @@ func (db *DataBase) GetUserGroups(ctx context.Context, userID int64) ([]*Group, 
 	}
 
 	return groups, nil
+}
+
+// UpdateGroup updates a group's details
+func (db *DataBase) UpdateGroup(ctx context.Context, groupID int64, title, description string, avatarPath *string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		`UPDATE groups SET title = ?, description = ?, avatar_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		title, description, avatarPath, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update group: %w", err)
+	}
+
+	return nil
+}
+
+// AddGroupMember adds a user to a group
+func (db *DataBase) AddGroupMember(ctx context.Context, groupID, userID, invitedBy int64, status string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.AddGroupMember,
+		groupID, userID, status, invitedBy, invitedBy,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add group member: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateMemberStatus updates a group member's status
+func (db *DataBase) UpdateMemberStatus(ctx context.Context, groupID, userID int64, status string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateMemberStatus,
+		status, status, groupID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update member status: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("member not found")
+	}
+
+	return nil
+}
+
+// GetGroupMembers retrieves members of a group
+func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]GroupMember, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetGroupMembers, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group members: %w", err)
+	}
+	defer rows.Close()
+
+	var members []GroupMember
+	for rows.Next() {
+		var gm GroupMember
+		var u struct {
+			ID         int64
+			UUID       string
+			Email      string
+			FirstName  string
+			LastName   string
+			Nickname   *string
+			AvatarPath *string
+		}
+		err := rows.Scan(
+			&u.ID, &u.UUID, &u.Email, &u.FirstName, &u.LastName,
+			&u.Nickname, &u.AvatarPath, &gm.Status, &gm.JoinedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan group member: %w", err)
+		}
+		gm.GroupID = groupID
+		gm.UserID = u.ID
+		members = append(members, gm)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return members, nil
+}
+
+// GetAllGroups retrieves all groups with pagination for browsing
+func (db *DataBase) GetAllGroups(ctx context.Context, limit, offset int) ([]Group, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetAllGroups, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query all groups: %w", err)
+	}
+	defer rows.Close()
+
+	var groups []Group
+	for rows.Next() {
+		var g Group
+		var memberCount int
+		err := rows.Scan(
+			&g.ID, &g.UUID, &g.CreatorID, &g.Title, &g.Description,
+			&g.AvatarPath, &g.CreatedAt, &memberCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan group: %w", err)
+		}
+		groups = append(groups, g)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return groups, nil
+}
+
+// DeleteGroup removes a group (creator only)
+func (db *DataBase) DeleteGroup(ctx context.Context, groupID, creatorID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		`DELETE FROM groups WHERE id = ? AND creator_id = ?`,
+		groupID, creatorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete group: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("group not found or not authorized")
+	}
+
+	return nil
 }
 
 //====================================
