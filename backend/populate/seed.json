@@ -54,7 +54,7 @@
       "password": "password123",
       "first_name": "Eve",
       "last_name": "Davis",
-      "nickname": null,
+      "nickname": "eved",
       "date_of_birth": "2000-01-14T00:00:00Z",
       "about_me": null,
       "avatar_path": null,
