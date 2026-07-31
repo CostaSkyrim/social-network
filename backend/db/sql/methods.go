@@ -613,7 +613,43 @@ func (db *DataBase) GetPost(ctx context.Context, postID, userID int64) (*Post, e
 		&post.ID,
 		&post.UUID,
 		&post.AuthorID,
+		&post.AuthorUUID,
 		&post.GroupID,
+		&post.GroupUUID,
+		&post.Content,
+		&post.ImagePath,
+		&post.PrivacyLevel,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+		&post.IsDeleted,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("post not found")
+		}
+		return nil, fmt.Errorf("failed to query post: %w", err)
+	}
+
+	return post, nil
+}
+
+// GetPostByUUID retrieves a post by its UUID
+func (db *DataBase) GetPostByUUID(ctx context.Context, postUUID string) (*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	post := &Post{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetPostByUUID,
+		postUUID,
+	).Scan(
+		&post.ID,
+		&post.UUID,
+		&post.AuthorID,
+		&post.AuthorUUID,
+		&post.GroupID,
+		&post.GroupUUID,
 		&post.Content,
 		&post.ImagePath,
 		&post.PrivacyLevel,
@@ -652,11 +688,16 @@ func (db *DataBase) GetUserPosts(ctx context.Context, userID int64, limit, offse
 		err := rows.Scan(
 			&post.ID,
 			&post.UUID,
+			&post.AuthorID,
+			&post.AuthorUUID,
+			&post.GroupID,
+			&post.GroupUUID,
 			&post.Content,
 			&post.ImagePath,
 			&post.PrivacyLevel,
 			&post.CreatedAt,
 			&post.UpdatedAt,
+			&post.IsDeleted,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan post: %w", err)
@@ -695,6 +736,7 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 			&post.ID,
 			&post.UUID,
 			&post.AuthorID,
+			&post.AuthorUUID,
 			&post.Content,
 			&post.ImagePath,
 			&post.PrivacyLevel,
@@ -734,18 +776,22 @@ func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64)
 	post := &Post{Author: &User{}}
 	var nickname, avatarPath sql.NullString
 	err := db.conn.QueryRowContext(ctx, `
-		SELECT p.id, p.uuid, p.author_id, p.content, p.image_path,
-		 p.privacy_level, p.created_at, p.updated_at,
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at,
 		 u.first_name, u.last_name, u.nickname, u.avatar_path,
 		 p.is_deleted,
 		 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
 		WHERE p.id = ?
 	`, postID).Scan(
 		&post.ID,
 		&post.UUID,
 		&post.AuthorID,
+		&post.AuthorUUID,
+		&post.GroupID,
+		&post.GroupUUID,
 		&post.Content,
 		&post.ImagePath,
 		&post.PrivacyLevel,
@@ -878,8 +924,11 @@ func (db *DataBase) GetPostComments(ctx context.Context, postID int64) ([]*Comme
 			&c.ID,
 			&c.UUID,
 			&c.PostID,
+			&c.PostUUID,
 			&c.AuthorID,
+			&c.AuthorUUID,
 			&c.ParentCommentID,
+			&c.ParentCommentUUID,
 			&c.Content,
 			&c.ImagePath,
 			&c.CreatedAt,
@@ -971,12 +1020,50 @@ func (db *DataBase) GetComment(ctx context.Context, commentID int64) (*Comment, 
 		&c.ID,
 		&c.UUID,
 		&c.PostID,
+		&c.PostUUID,
 		&c.AuthorID,
+		&c.AuthorUUID,
 		&c.ParentCommentID,
+		&c.ParentCommentUUID,
 		&c.Content,
 		&c.ImagePath,
 		&c.CreatedAt,
 		&c.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("comment not found")
+		}
+		return nil, fmt.Errorf("failed to query comment: %w", err)
+	}
+
+	return c, nil
+}
+
+// GetCommentByUUID retrieves a single comment by its UUID
+func (db *DataBase) GetCommentByUUID(ctx context.Context, commentUUID string) (*Comment, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	c := &Comment{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetCommentByUUID,
+		commentUUID,
+	).Scan(
+		&c.ID,
+		&c.UUID,
+		&c.PostID,
+		&c.PostUUID,
+		&c.AuthorID,
+		&c.AuthorUUID,
+		&c.ParentCommentID,
+		&c.ParentCommentUUID,
+		&c.Content,
+		&c.ImagePath,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&c.IsDeleted,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

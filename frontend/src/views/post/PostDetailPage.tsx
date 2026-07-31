@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/Spinner'
 
 export default function PostDetailPage() {
   const params = useParams()
-  const id = Number(params?.uuid)
+  const id = (params?.uuid as string) || ''
   const { data: post, isLoading: post_loading, isError } = usePost(id)
   const { data: comments, isLoading: comments_loading } = useComments(id)
 

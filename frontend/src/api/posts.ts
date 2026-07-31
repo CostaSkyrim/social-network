@@ -14,7 +14,7 @@ interface PostResponse {
 interface CreatePostData {
   content: string
   privacy_level: string
-  group_id?: number
+  group_id?: string
 }
 
 export async function getFeed(page: number, limit: number = 10): Promise<Post[]> {
@@ -23,7 +23,7 @@ export async function getFeed(page: number, limit: number = 10): Promise<Post[]>
   return res.data.data ?? []
 }
 
-export async function getPost(id: number): Promise<Post> {
+export async function getPost(id: string): Promise<Post> {
   const res = await client.get<PostResponse>(`/api/post/${id}`)
   if (!res.data.data) throw new Error('Post not found')
   return res.data.data
@@ -33,10 +33,10 @@ export async function createPost(data: CreatePostData): Promise<void> {
   await client.post('/api/posts', data)
 }
 
-export async function deletePost(id: number): Promise<void> {
+export async function deletePost(id: string): Promise<void> {
   await client.delete(`/api/posts/${id}`)
 }
 
-export async function editPost(id: number, data: { content: string; image_path?: string; privacy_level: string }): Promise<void> {
+export async function editPost(id: string, data: { content: string; image_path?: string; privacy_level: string }): Promise<void> {
   await client.put(`/api/posts/${id}/edit`, data)
 }

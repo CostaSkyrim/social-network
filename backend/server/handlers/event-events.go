@@ -202,8 +202,7 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	RespondSuccess(w, http.StatusCreated, "Event created", map[string]interface{}{
-		"id":    event.UUID,
-		"db_id": eventID,
+		"id": event.UUID,
 	})
 }
 

@@ -19,7 +19,7 @@ export function useFeed() {
   })
 }
 
-export function usePost(id: number) {
+export function usePost(id: string) {
   return useQuery({
     queryKey: ['post', id],
     queryFn: () => getPost(id),
@@ -32,7 +32,7 @@ export function useCreatePost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: (data: { content: string; privacy_level: string; group_id?: number }) =>
+    mutationFn: (data: { content: string; privacy_level: string; group_id?: string }) =>
       apiCreatePost(data),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
@@ -52,7 +52,7 @@ export function useDeletePost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: (id: number) => apiDeletePost(id),
+    mutationFn: (id: string) => apiDeletePost(id),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
       show_toast({ message: 'Post deleted', type: 'success' })
@@ -71,7 +71,7 @@ export function useEditPost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: ({ id, content, image_path, privacy_level }: { id: number; content: string; image_path?: string; privacy_level: string }) =>
+    mutationFn: ({ id, content, image_path, privacy_level }: { id: string; content: string; image_path?: string; privacy_level: string }) =>
       apiEditPost(id, { content, image_path, privacy_level }),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })

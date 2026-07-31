@@ -167,24 +167,37 @@ const (
 	`
 
 	GetPostByID = `
-		SELECT id, uuid, author_id, group_id, content, image_path,
-		 privacy_level, created_at, updated_at, is_deleted
-		FROM posts
-		WHERE id = ? AND (group_id IS NULL OR group_id IN (SELECT group_id 
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
+		WHERE p.id = ? AND (p.group_id IS NULL OR p.group_id IN (SELECT group_id 
 			FROM group_members WHERE user_id = ? AND status = 'accepted'))
 	`
 
+	GetPostByUUID = `
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
+		WHERE p.uuid = ?
+	`
+
 	GetUserPosts = `
-		SELECT id, uuid, content, image_path, privacy_level, created_at,
-		 updated_at
-		FROM posts
-		WHERE author_id = ? AND group_id IS NULL
-		ORDER BY created_at DESC
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
+		WHERE p.author_id = ? AND p.group_id IS NULL
+		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`
 
 	GetFeed = `
-		SELECT DISTINCT p.id, p.uuid, p.author_id, p.content, p.image_path,
+		SELECT DISTINCT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.content, p.image_path,
 				 p.privacy_level, p.created_at, u.first_name, u.last_name,
 				 u.nickname, u.avatar_path, p.is_deleted,
 				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
@@ -402,11 +415,14 @@ const (
 	`
 
 	GetPostComments = `
-		SELECT c.id, c.uuid, c.post_id, c.author_id, c.parent_comment_id,
+		SELECT c.id, c.uuid, c.post_id, p.uuid as post_uuid, c.author_id, u.uuid as author_uuid,
+			 c.parent_comment_id, pc.uuid as parent_uuid,
 			 c.content, c.image_path, c.created_at, c.updated_at, u.first_name,
 			 u.last_name, u.nickname, u.avatar_path, c.is_deleted
 		FROM comments c
+		JOIN posts p ON p.id = c.post_id
 		JOIN users u ON u.id = c.author_id
+		LEFT JOIN comments pc ON pc.id = c.parent_comment_id
 		WHERE c.post_id = ?
 		ORDER BY c.created_at ASC
 	`
@@ -424,9 +440,25 @@ const (
 	`
 
 	GetCommentByID = `
-		SELECT id, uuid, post_id, author_id, parent_comment_id, content, image_path, created_at, updated_at
-		FROM comments
-		WHERE id = ? AND is_deleted = 0
+		SELECT c.id, c.uuid, c.post_id, p.uuid as post_uuid, c.author_id, u.uuid as author_uuid,
+			 c.parent_comment_id, pc.uuid as parent_uuid,
+			 c.content, c.image_path, c.created_at, c.updated_at
+		FROM comments c
+		JOIN posts p ON p.id = c.post_id
+		JOIN users u ON u.id = c.author_id
+		LEFT JOIN comments pc ON pc.id = c.parent_comment_id
+		WHERE c.id = ? AND c.is_deleted = 0
+	`
+
+	GetCommentByUUID = `
+		SELECT c.id, c.uuid, c.post_id, p.uuid as post_uuid, c.author_id, u.uuid as author_uuid,
+			 c.parent_comment_id, pc.uuid as parent_uuid,
+			 c.content, c.image_path, c.created_at, c.updated_at, c.is_deleted
+		FROM comments c
+		JOIN posts p ON p.id = c.post_id
+		JOIN users u ON u.id = c.author_id
+		LEFT JOIN comments pc ON pc.id = c.parent_comment_id
+		WHERE c.uuid = ?
 	`
 )
 

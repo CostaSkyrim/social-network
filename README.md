@@ -30,12 +30,14 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - User profiles (view + edit)
 - Group management (CRUD, browse, invite, join, accept, reject, leave, members)
 - Events (create, list with going/not_going counts, single event detail, RSVP upsert) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
+- Groups browse list + group detail page (header, member count, events)
 - Notifications (list, unread count, mark read / mark all) with real-time WebSocket push
 - Emoji picker + `:shortcode:` autocomplete in the post composer
 - WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive
 - Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels
+- All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
 
-**Planned:** GroupDetailPage wiring (events ready to display), Chat UI (WebSocket frontend), Redis session store migration, cross-instance pub/sub, Docker.
+**Planned:** CreateGroupPage, group member/join/invite UI, Chat UI (WebSocket frontend), Redis session store migration, cross-instance pub/sub, Docker.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 

@@ -4,17 +4,34 @@ import (
 	"encoding/json"
 	"net/http"
 	database "social-network/backend/db/sql"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 )
 
 type CreateCommentRequest struct {
-	PostID          int64   `json:"post_id"`
-	ParentCommentID *int64  `json:"parent_comment_id"`
+	PostID          string  `json:"post_id"`
+	ParentCommentID *string `json:"parent_comment_id"`
 	Content         string  `json:"content"`
 	ImagePath       *string `json:"image_path,omitempty"`
+}
+
+// resolveCommentID looks up a comment by its UUID (from the URL path) and
+// returns the numeric internal ID. Responds with an error and returns false on failure.
+func resolveCommentID(w http.ResponseWriter, r *http.Request, db *database.DataBase) (int64, bool) {
+	commentUUID := r.PathValue("id")
+	if commentUUID == "" {
+		RespondError(w, http.StatusBadRequest, "Comment ID required")
+		return 0, false
+	}
+
+	comment, err := db.GetCommentByUUID(r.Context(), commentUUID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Comment not found")
+		return 0, false
+	}
+
+	return comment.ID, true
 }
 
 func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -40,21 +57,32 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	if req.PostID <= 0 {
-		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+	post, err := db.GetPostByUUID(r.Context(), req.PostID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Post not found")
 		return
+	}
+
+	var parentCommentID *int64
+	if req.ParentCommentID != nil {
+		parent, err := db.GetCommentByUUID(r.Context(), *req.ParentCommentID)
+		if err != nil {
+			RespondError(w, http.StatusNotFound, "Parent comment not found")
+			return
+		}
+		parentCommentID = &parent.ID
 	}
 
 	comment := &database.Comment{
 		UUID:            uuid.New().String(),
-		PostID:          req.PostID,
+		PostID:          post.ID,
 		AuthorID:        userID,
-		ParentCommentID: req.ParentCommentID,
+		ParentCommentID: parentCommentID,
 		Content:         req.Content,
 		ImagePath:       req.ImagePath,
 	}
 
-	_, err := db.CreateComment(r.Context(), comment)
+	_, err = db.CreateComment(r.Context(), comment)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to create comment")
 		return
@@ -69,10 +97,8 @@ func GetPostCommentsHandler(w http.ResponseWriter, r *http.Request, db *database
 		return
 	}
 
-	postIDstr := r.PathValue("id")
-	postID, err := strconv.ParseInt(postIDstr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+	postID, ok := resolvePostID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -97,11 +123,8 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	commentIDstr := r.PathValue("id")
-	commentID, err := strconv.ParseInt(commentIDstr, 10, 64)
-
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid comment ID")
+	commentID, ok := resolveCommentID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -130,10 +153,8 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	commentIDstr := r.PathValue("id")
-	commentID, err := strconv.ParseInt(commentIDstr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid comment ID")
+	commentID, ok := resolveCommentID(w, r, db)
+	if !ok {
 		return
 	}
 

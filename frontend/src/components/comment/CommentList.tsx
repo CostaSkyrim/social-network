@@ -14,7 +14,7 @@ interface CommentListProps {
 }
 
 function buildCommentTree(comments: Comment[]): CommentNode[] {
-  const map = new Map<number, CommentNode>()
+  const map = new Map<string, CommentNode>()
   const roots: CommentNode[] = []
 
   for (const c of comments) {

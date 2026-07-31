@@ -61,10 +61,8 @@ func GetPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBas
 		return
 	}
 
-	postIDStr := r.PathValue("id")
-	postID, err := strconv.ParseInt(postIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+	postID, ok := resolvePostID(w, r, db)
+	if !ok {
 		return
 	}
 

@@ -33,7 +33,7 @@ export function PostCard({ post }: PostCardProps) {
 
   const handle_edit = async () => {
     await edit_mutation.mutateAsync({
-      id: post.db_id,
+      id: post.id,
       content: edit_content,
       privacy_level: edit_privacy,
     })
@@ -42,7 +42,7 @@ export function PostCard({ post }: PostCardProps) {
 
   const handle_delete = () => {
     if (confirm('Delete this post?')) {
-      delete_mutation.mutate(post.db_id)
+      delete_mutation.mutate(post.id)
     }
   }
 
@@ -98,7 +98,7 @@ export function PostCard({ post }: PostCardProps) {
         </div>
 
         {is_deleted ? (
-          <Link href={`/posts/${post.db_id}`}>
+          <Link href={`/posts/${post.id}`}>
             <p className="text-sm text-gray-400 italic">[deleted]</p>
           </Link>
         ) : is_editing ? (
@@ -132,7 +132,7 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
         ) : (
-          <Link href={`/posts/${post.db_id}`}>
+          <Link href={`/posts/${post.id}`}>
             <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
           </Link>
         )}
@@ -145,7 +145,7 @@ export function PostCard({ post }: PostCardProps) {
           />
         )}
 
-        <Link href={`/posts/${post.db_id}`} className="flex items-center gap-4 text-sm text-gray-500 hover:text-gray-700">
+        <Link href={`/posts/${post.id}`} className="flex items-center gap-4 text-sm text-gray-500 hover:text-gray-700">
           <span>{post.comment_count ?? 0} comments</span>
         </Link>
       </CardContent>

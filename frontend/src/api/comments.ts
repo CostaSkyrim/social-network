@@ -6,19 +6,19 @@ interface CommentsResponse {
   data?: Comment[]
 }
 
-export async function getComments(postId: number): Promise<Comment[]> {
+export async function getComments(postId: string): Promise<Comment[]> {
   const res = await client.get<CommentsResponse>(`/api/posts/${postId}/comments`)
   return res.data.data ?? []
 }
 
-export async function createComment(data: { post_id: number; content: string; image_path?: string }): Promise<void> {
+export async function createComment(data: { post_id: string; parent_comment_id?: string; content: string; image_path?: string }): Promise<void> {
   await client.post('/api/comments', data)
 }
 
-export async function deleteComment(id: number): Promise<void> {
+export async function deleteComment(id: string): Promise<void> {
   await client.delete(`/api/comments/${id}`)
 }
 
-export async function editComment(id: number, data: { content: string; image_path?: string }): Promise<void> {
+export async function editComment(id: string, data: { content: string; image_path?: string }): Promise<void> {
   await client.put(`/api/comments/${id}/edit`, data)
 }

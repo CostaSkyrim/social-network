@@ -16,7 +16,25 @@ type CreatePostRequest struct {
 	Content      string  `json:"content"`
 	ImagePath    *string `json:"image_path,omitempty"`
 	PrivacyLevel string  `json:"privacy_level"`
-	GroupID      *int64  `json:"group_id,omitempty"`
+	GroupID      *string `json:"group_id,omitempty"`
+}
+
+// resolvePostID looks up a post by its UUID (from the URL path) and returns
+// the numeric internal ID. Responds with an error and returns false on failure.
+func resolvePostID(w http.ResponseWriter, r *http.Request, db *database.DataBase) (int64, bool) {
+	postUUID := r.PathValue("id")
+	if postUUID == "" {
+		RespondError(w, http.StatusBadRequest, "Post ID required")
+		return 0, false
+	}
+
+	post, err := db.GetPostByUUID(r.Context(), postUUID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Post not found")
+		return 0, false
+	}
+
+	return post.ID, true
 }
 
 type PostResponse struct {
@@ -57,10 +75,20 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		req.PrivacyLevel = "public"
 	}
 
+	var groupID *int64
+	if req.GroupID != nil {
+		group, err := db.GetGroupByUUID(r.Context(), *req.GroupID)
+		if err != nil {
+			RespondError(w, http.StatusNotFound, "Group not found")
+			return
+		}
+		groupID = &group.ID
+	}
+
 	post := &database.Post{
 		UUID:         uuid.New().String(),
 		AuthorID:     userID,
-		GroupID:      req.GroupID,
+		GroupID:      groupID,
 		Content:      req.Content,
 		ImagePath:    req.ImagePath,
 		PrivacyLevel: req.PrivacyLevel,
@@ -76,12 +104,11 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 	notifyFollowersOfNewPost(db, userID, post)
 
 	RespondSuccess(w, http.StatusCreated, "Post created", map[string]any{
-		"id":            id,
-		"uuid":          post.UUID,
+		"id":            post.UUID,
 		"content":       post.Content,
 		"image_path":    post.ImagePath,
 		"privacy_level": post.PrivacyLevel,
-		"group_id":      post.GroupID,
+		"group_id":      req.GroupID,
 	})
 }
 
@@ -135,10 +162,8 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		return
 	}
 
-	postIDstr := r.PathValue("id")
-	postID, err := strconv.ParseInt(postIDstr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+	postID, ok := resolvePostID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -168,10 +193,8 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		return
 	}
 
-	postIDstr := r.PathValue("id")
-	postID, err := strconv.ParseInt(postIDstr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid post ID")
+	postID, ok := resolvePostID(w, r, db)
+	if !ok {
 		return
 	}
 

@@ -74,15 +74,17 @@ type FollowQueries struct {
 }
 
 type Post struct {
-	ID           int64   `json:"db_id"`
-	UUID         string  `json:"id"`
-	AuthorID     int64   `json:"author_id"`
-	Author       *User   `json:"author,omitempty"`
-	GroupID      *int64  `json:"group_id,omitempty"`
-	Content      string  `json:"content"`
-	ImagePath    *string `json:"image_path,omitempty"`
-	PrivacyLevel string  `json:"privacy_level"`
-	IsDeleted    bool   `json:"is_deleted"`
+	ID           int64     `json:"-"`
+	UUID         string    `json:"id"`
+	AuthorID     int64     `json:"-"`
+	AuthorUUID   string    `json:"author_id"`
+	Author       *User     `json:"author,omitempty"`
+	GroupID      *int64    `json:"-"`
+	GroupUUID    *string   `json:"group_id,omitempty"`
+	Content      string    `json:"content"`
+	ImagePath    *string   `json:"image_path,omitempty"`
+	PrivacyLevel string    `json:"privacy_level"`
+	IsDeleted    bool      `json:"is_deleted"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Comments     []Comment `json:"comments,omitempty"`
@@ -90,17 +92,20 @@ type Post struct {
 }
 
 type Comment struct {
-	ID              int64     `json:"id"`
-	UUID            string    `json:"uuid"`
-	PostID          int64     `json:"post_id"`
-	AuthorID        int64     `json:"author_id"`
-	Author          *User     `json:"author,omitempty"`
-	ParentCommentID *int64    `json:"parent_comment_id,omitempty"`
-	Content         string    `json:"content"`
-	ImagePath       *string   `json:"image_path,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	IsDeleted       bool      `json:"is_deleted"`
+	ID                int64     `json:"-"`
+	UUID              string    `json:"id"`
+	PostID            int64     `json:"-"`
+	PostUUID          string    `json:"post_id"`
+	AuthorID          int64     `json:"-"`
+	AuthorUUID        string    `json:"author_id"`
+	Author            *User     `json:"author,omitempty"`
+	ParentCommentID   *int64    `json:"-"`
+	ParentCommentUUID *string   `json:"parent_comment_id,omitempty"`
+	Content           string    `json:"content"`
+	ImagePath         *string   `json:"image_path,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	IsDeleted         bool      `json:"is_deleted"`
 }
 
 type CommentQueries struct {
@@ -153,7 +158,7 @@ type GroupQueries struct {
 }
 
 type Event struct {
-	ID            int64     `json:"db_id"`
+	ID            int64     `json:"-"`
 	UUID          string    `json:"id"`
 	GroupID       int64     `json:"group_id"`
 	CreatorID     int64     `json:"creator_id"`

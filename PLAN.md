@@ -206,13 +206,14 @@ All database methods implemented: users, sessions, follows, posts (incl. feed), 
 - `GET /api/followers` / `/following` / `/follow/pending`
 
 ### Phase D — Post & Comment Handlers ✅
+All `{id}` params are **UUIDs** (`GetPostByUUID` / `GetCommentByUUID` lookup). Cross-references in responses (`author_id`, `group_id`, `post_id`, `parent_comment_id`) are UUIDs.
 - `GET /api/feed` — paginated, privacy-filtered feed
-- `POST /api/posts` — create
+- `POST /api/posts` — create (optional `group_id` as group UUID)
 - `GET /api/post/{id}` — single post with author + comment count
 - `POST /api/posts/{id}/edit` — edit (owner)
 - `DELETE /api/posts/{id}` — soft delete (owner)
 - `GET /api/user/posts` — own posts
-- `POST /api/comments` — create
+- `POST /api/comments` — create (`post_id` / `parent_comment_id` as UUIDs)
 - `GET /api/posts/{id}/comments` — list (flat, frontend builds tree)
 - `POST /api/comments/{id}/edit` — edit (owner)
 - `DELETE /api/comments/{id}` — soft delete (owner)
@@ -286,10 +287,10 @@ Emoji picker button + `:shortcode:` autocomplete with keyboard navigation (Arrow
 Wire ProfilePage / EditProfilePage, FollowButton, UserCard/UserList, Followers/Following pages, SearchPage. Uses Backend Phase C.
 
 ### Phase 7 — Groups 🔜
-Wire GroupDetailPage (render group + events via existing `useGroup`/`useGroupEvents` hooks), CreateGroupPage, member UI. Uses Backend Phase E. GroupsPage browse list already wired.
+GroupDetailPage is wired (group header + member count + EventForm + EventList). Remaining: CreateGroupPage, member management UI, join/invite UI. Uses Backend Phase E. GroupsPage browse list already wired.
 
 ### Phase 7b — Events ✅
-Event API/hooks/components done: `api/groups.ts`, `useGroups.ts`, `EventCard` (going/not_going buttons + counts, optimistic RSVP), `EventList`, `EventForm`. Awaiting GroupDetailPage wiring to display them. Uses Backend Phase F.
+Event API/hooks/components done and wired into GroupDetailPage: `api/groups.ts`, `useGroups.ts`, `EventCard` (going/not_going buttons + counts, optimistic RSVP), `EventList`, `EventForm`. Uses Backend Phase F.
 
 ### Phase 8 — Notifications ✅ + WebSocket frontend
 NotificationsPage, TopBar bell, `NotificationProvider`, `useWebSocket` connection to `/api/ws` — all done. Real-time notification push works.
@@ -373,7 +374,7 @@ Chat (conversations/messages/send), moderation endpoints (from configs.json rate
 - **CORS:** Backend sets `Access-Control-Allow-Origin` from `configs.json` `frontend.url` (`http://localhost:3000`).
 - **Port:** Backend `:8080`, frontend dev `:3000` (Next.js default).
 - **snake_case** everywhere to match Go JSON tags.
-- **Route IDs:** Users, groups, and events use **UUID** in route paths (looked up internally by numeric FK). Posts and comments still use numeric IDs — to be standardized to UUID later.
+- **Route IDs:** **All** resources (users, groups, events, posts, comments) use **UUID** in route paths and cross-references (looked up internally by numeric FK). Numeric IDs are never exposed in API responses (`json:"-"`).
 - **File naming:** React components are PascalCase; all other files (hooks, api, utils, views) are camelCase.
 
 ## Redis Integration (Phase J)

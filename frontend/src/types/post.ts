@@ -2,7 +2,6 @@ import type { User } from './user'
 
 export interface Post {
   id: string
-  db_id: number
   author_id: string
   author?: User
   group_id?: string
