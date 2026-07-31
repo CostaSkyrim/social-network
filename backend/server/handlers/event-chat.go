@@ -120,7 +120,7 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	targetUserIDStr := r.PathValue("id")
-	targetUserID, err := strconv.ParseInt(targetUserIDStr, 10, 64)
+	targetUserID, err := resolveUserID(r, db, targetUserIDStr)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "Invalid user ID")
 		return

@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	database "social-network/backend/db/sql"
 
@@ -172,7 +171,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		return
 	}
 
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	userID, err := resolveUserID(r, db, userIDStr)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "Invalid user_id")
 		return
@@ -207,7 +206,7 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		return
 	}
 
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	userID, err := resolveUserID(r, db, userIDStr)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "Invalid user_id")
 		return

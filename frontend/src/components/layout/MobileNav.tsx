@@ -7,7 +7,7 @@ const items = [
   { to: '/home', label: 'Home', icon: '🏠' },
   { to: '/profile/me', label: 'Profile', icon: '👤' },
   { to: '/groups', label: 'Groups', icon: '👥' },
-  { to: '/chat', label: 'Chat', icon: '💬' },
+  { to: '/followers', label: 'Followers', icon: '💬' },
 ]
 
 export function MobileNav() {

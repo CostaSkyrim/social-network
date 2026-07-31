@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { fetchMessages, fetchDMs, sendMessage as apiSendMessage } from '@/api/chat'
+import { fetchMessages, sendMessage as apiSendMessage } from '@/api/chat'
+import client from '@/api/client'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/lib/cn'
-import type { User } from '@/types/user'
 
 interface MessageData {
   id: number
@@ -24,14 +24,6 @@ interface MessageData {
   created_at: string
 }
 
-interface DMItem {
-  id: number
-  other_user: User
-  last_message?: string
-  last_message_at?: string
-  unread_count: number
-}
-
 function formatTime(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -42,61 +34,74 @@ export default function ChatPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { subscribe } = useWebSocket()
-  const targetUserID = params?.id as string | undefined
+  const targetUserID = params?.id as string
 
-  const [dms, set_dms] = useState<DMItem[]>([])
   const [messages, set_messages] = useState<MessageData[]>([])
   const [input, set_input] = useState('')
-  const [is_loading_dms, set_is_loading_dms] = useState(true)
-  const [is_loading_msgs, set_is_loading_msgs] = useState(false)
+  const [is_loading, set_is_loading] = useState(true)
+  const [partner, set_partner] = useState<{
+    id: string
+    first_name: string
+    last_name: string
+    nickname?: string
+    avatar_path?: string
+    is_online: boolean
+  } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dmIDRef = useRef<number | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
+    if (!targetUserID) return
+
     let cancelled = false
     async function load() {
       try {
-        const data = await fetchDMs()
-        if (!cancelled) set_dms(data)
-      } catch {
-        // silently fail
-      } finally {
-        if (!cancelled) set_is_loading_dms(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    if (!targetUserID || !dms.length) return
-
-    const targetID = Number(targetUserID)
-    const dm = dms.find((d) => d.other_user.id === targetID)
-    if (!dm) return
-
-    let cancelled = false
-    set_is_loading_msgs(true)
-    async function load() {
-      try {
-        const msgs = await fetchMessages(dm.id)
-        if (!cancelled) {
-          set_messages(msgs)
-          scrollToBottom()
+        const dmsRes = await client.get('/api/chat/dms')
+        const dms = dmsRes.data.data ?? []
+        const dm = dms.find((d: any) => d.other_user?.id === targetUserID)
+        if (dm) {
+          dmIDRef.current = dm.id
+          set_partner({
+            id: dm.other_user.id,
+            first_name: dm.other_user.first_name,
+            last_name: dm.other_user.last_name,
+            nickname: dm.other_user.nickname,
+            avatar_path: dm.other_user.avatar_path,
+            is_online: dm.other_user.is_online ?? false,
+          })
+          const msgs = await fetchMessages(dm.id)
+          if (!cancelled) {
+            set_messages(msgs)
+            scrollToBottom()
+          }
+        } else {
+          const userRes = await client.get(`/api/users/${targetUserID}`)
+          const other = userRes.data.data
+          if (other) {
+            set_partner({
+              id: other.id,
+              first_name: other.first_name,
+              last_name: other.last_name,
+              nickname: other.nickname,
+              avatar_path: other.avatar_path,
+              is_online: other.is_online ?? false,
+            })
+          }
         }
       } catch {
         // silently fail
       } finally {
-        if (!cancelled) set_is_loading_msgs(false)
+        if (!cancelled) set_is_loading(false)
       }
     }
     load()
     return () => { cancelled = true }
-  }, [targetUserID, dms])
+  }, [targetUserID])
 
   useEffect(() => {
     if (!targetUserID) return
@@ -107,6 +112,7 @@ export default function ChatPage() {
         dm_id: number
         content: string
         sender: {
+          id?: number
           first_name: string
           last_name: string
           nickname?: string
@@ -114,62 +120,37 @@ export default function ChatPage() {
         }
         created_at: string
       }
-      if (!payload) return
+      if (!payload || payload.dm_id !== dmIDRef.current) return
 
-      const currentDM = dms.find(
-        (d) => d.other_user.id === targetUserID,
-      )
-
-      if (currentDM && payload.dm_id === currentDM.id) {
-        set_messages((prev) => [
-          ...prev,
-          {
-            id: payload.message_id,
-            uuid: crypto.randomUUID(),
-            sender_id: msg.sender_id ?? 0,
-            sender: payload.sender,
-            content: payload.content,
-            is_read: false,
-            created_at: payload.created_at,
-          },
-        ])
-        setTimeout(scrollToBottom, 100)
-      }
-
-      set_dms((prev) => {
-        const idx = prev.findIndex((d) => d.id === payload.dm_id)
-        if (idx === -1) return prev
-        const updated = [...prev]
-        updated[idx] = {
-          ...updated[idx],
-          last_message: payload.content,
-          last_message_at: payload.created_at,
-          unread_count:
-            currentDM?.id === payload.dm_id
-              ? 0
-              : updated[idx].unread_count + 1,
-        }
-        return updated
-      })
+      set_messages((prev) => [
+        ...prev,
+        {
+          id: payload.message_id,
+          uuid: crypto.randomUUID(),
+          sender_id: msg.sender_id ?? 0,
+          sender: payload.sender,
+          content: payload.content,
+          is_read: false,
+          created_at: payload.created_at,
+        },
+      ])
+      setTimeout(scrollToBottom, 100)
     })
 
     return unsub
-  }, [targetUserID, dms, subscribe])
+  }, [targetUserID, subscribe])
 
   useEffect(() => {
+    if (!partner) return
     const unsub = subscribe('presence_update', (msg) => {
       const payload = msg.payload as { user_id: number; is_online: boolean } | undefined
       if (!payload) return
-      set_dms((prev) =>
-        prev.map((d) =>
-          d.other_user.id === String(payload.user_id)
-            ? { ...d, other_user: { ...d.other_user, is_online: payload.is_online } }
-            : d,
-        ),
-      )
+      if (String(payload.user_id) === partner.id) {
+        set_partner((prev) => (prev ? { ...prev, is_online: payload.is_online } : null))
+      }
     })
     return unsub
-  }, [subscribe])
+  }, [partner?.id, subscribe])
 
   const handleSend = async () => {
     if (!input.trim() || !targetUserID) return
@@ -198,7 +179,8 @@ export default function ChatPage() {
     setTimeout(scrollToBottom, 100)
 
     try {
-      const result = await apiSendMessage(Number(targetUserID), content)
+      const result = await apiSendMessage(targetUserID, content)
+      dmIDRef.current = result.dm_id
       set_messages((prev) =>
         prev.map((m) => (m.id === tempID ? { ...m, id: result.id } : m)),
       )
@@ -214,102 +196,39 @@ export default function ChatPage() {
     }
   }
 
-  const selectedDM = dms.find((d) => d.other_user.id === targetUserID)
-  const otherUser = selectedDM?.other_user
-
   if (!targetUserID) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">Messages</h2>
-        {is_loading_dms ? (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
-                <div className="flex-1 space-y-1">
-                  <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : dms.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-            <p className="text-4xl">💬</p>
-            <p className="mt-2 text-sm text-gray-500">
-              No conversations yet. Go to your followers page to start chatting.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-            {dms
-              .filter((d) => d.other_user)
-              .map((dm) => (
-                <button
-                  key={dm.id}
-                  onClick={() => router.push(`/chat/${dm.other_user.id}`)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
-                >
-                  <div className="relative">
-                    <Avatar
-                      src={dm.other_user.avatar_path}
-                      alt={`${dm.other_user.first_name} ${dm.other_user.last_name}`}
-                      size="sm"
-                    />
-                    {dm.other_user.is_online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {dm.other_user.first_name} {dm.other_user.last_name}
-                    </p>
-                    <p className="truncate text-xs text-gray-500">
-                      {dm.last_message ?? 'No messages yet'}
-                    </p>
-                  </div>
-                  {dm.unread_count > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[11px] font-bold text-white">
-                      {dm.unread_count}
-                    </span>
-                  )}
-                </button>
-              ))}
-          </div>
-        )}
-      </div>
-    )
+    return null
   }
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       <div className="flex items-center gap-3 border-b border-gray-200 pb-3">
         <button
-          onClick={() => router.push('/chat')}
+          onClick={() => router.back()}
           className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        {otherUser && (
+        {partner && (
           <div className="flex items-center gap-2">
             <div className="relative">
               <Avatar
-                src={otherUser.avatar_path}
-                alt={`${otherUser.first_name} ${otherUser.last_name}`}
+                src={partner.avatar_path}
+                alt={`${partner.first_name} ${partner.last_name}`}
                 size="sm"
               />
-              {otherUser.is_online && (
+              {partner.is_online && (
                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
               )}
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">
-                {otherUser.first_name} {otherUser.last_name}
+                {partner.first_name} {partner.last_name}
               </p>
               <p className="text-xs text-gray-500">
-                {otherUser.is_online ? 'Online' : 'Offline'}
+                {partner.is_online ? 'Online' : 'Offline'}
               </p>
             </div>
           </div>
@@ -317,13 +236,13 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-3 space-y-2">
-        {is_loading_msgs ? (
+        {is_loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           </div>
         ) : (
           messages.map((msg) => {
-            const isMine = msg.sender_id === Number(user?.id ?? 0)
+            const isMine = String(msg.sender_id) === String(user?.id ?? '')
             return (
               <div
                 key={msg.id}

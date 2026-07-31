@@ -46,7 +46,7 @@ export async function fetchMessages(
 }
 
 export async function sendMessage(
-  targetUserID: number,
+  targetUserID: string,
   content: string,
 ): Promise<{ id: number; dm_id: number; content: string; sender_id: number }> {
   const res = await client.post(`/api/chat/send/${targetUserID}`, { content })
