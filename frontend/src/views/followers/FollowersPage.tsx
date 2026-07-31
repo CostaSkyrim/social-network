@@ -34,7 +34,9 @@ export default function FollowersPage() {
     let cancelled = false
     async function load() {
       try {
+        console.log('[FollowersPage] Fetching followers for user_id=', userID)
         const data = await fetchFollowers(userID)
+        console.log('[FollowersPage] Got followers:', data)
         if (!cancelled) {
           set_followers(data)
         }

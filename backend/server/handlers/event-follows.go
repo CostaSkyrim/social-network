@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	database "social-network/backend/db/sql"
@@ -166,6 +167,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 	}
 
 	userIDStr := r.URL.Query().Get("user_id")
+	log.Printf("[GET /api/followers] raw user_id=%q", userIDStr)
 	if userIDStr == "" {
 		RespondError(w, http.StatusBadRequest, "user_id query parameter required")
 		return
@@ -173,15 +175,20 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 
 	userID, err := resolveUserID(r, db, userIDStr)
 	if err != nil {
+		log.Printf("[GET /api/followers] resolveUserID failed: %v", err)
 		RespondError(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
+	log.Printf("[GET /api/followers] resolved userID=%d", userID)
 
 	followers, err := db.GetFollowersWithDM(r.Context(), userID)
 	if err != nil {
+		log.Printf("[GET /api/followers] GetFollowersWithDM error: %v", err)
 		RespondError(w, http.StatusInternalServerError, "Failed to get followers")
 		return
 	}
+
+	log.Printf("[GET /api/followers] got %d followers for user %d", len(followers), userID)
 
 	if followers == nil {
 		followers = []database.FollowerWithDM{}

@@ -1699,11 +1699,17 @@ func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]Fol
 	var followers []FollowerWithDM
 	for rows.Next() {
 		var f FollowerWithDM
+		var lastDMAtStr sql.NullString
 		if scanErr := rows.Scan(
 			&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
-			&f.Nickname, &f.AvatarPath, &f.IsPublic, &f.LastDMAt,
+			&f.Nickname, &f.AvatarPath, &f.IsPublic, &lastDMAtStr,
 		); scanErr != nil {
 			return nil, fmt.Errorf("failed to scan follower: %w", scanErr)
+		}
+		if lastDMAtStr.Valid {
+			if t, err := time.Parse("2006-01-02 15:04:05", lastDMAtStr.String); err == nil {
+				f.LastDMAt = t
+			}
 		}
 		followers = append(followers, f)
 	}

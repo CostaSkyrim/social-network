@@ -22,6 +22,7 @@ type DataBase struct {
 	mu           sync.RWMutex
 	cfg          *DBConfig
 	SystemImages map[string]struct{}
+	wg           sync.WaitGroup
 }
 
 type DBConfig struct {
@@ -86,9 +87,11 @@ func New(ctx context.Context, cfg *DBConfig) (*DataBase, error) {
 		SystemImages: cfg.SystemImages,
 	}
 
+	db.wg.Add(1)
 	go db.sessionCleanupRoutine(ctx)
 
 	if cfg.WAL.AutoTruncate {
+		db.wg.Add(1)
 		go db.walTruncateRoutine(ctx)
 	}
 
@@ -122,6 +125,8 @@ func configurePragmas(conn *sql.DB, wal WALConfig) error {
 }
 
 func (db *DataBase) walTruncateRoutine(ctx context.Context) {
+	defer db.wg.Done()
+
 	if db.cfg.WAL.TruncateIntervalDuration == 0 {
 		db.cfg.WAL.TruncateIntervalDuration = 5 * time.Minute
 	}
@@ -143,6 +148,8 @@ func (db *DataBase) walTruncateRoutine(ctx context.Context) {
 
 // sessionCleanupRoutine periodically cleans up expired sessions
 func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
+	defer db.wg.Done()
+
 	if db.cfg.SessionCleanupDuration == 0 {
 		db.cfg.SessionCleanupDuration = 10 * time.Minute
 	}
@@ -187,10 +194,13 @@ func applyMigrations(migrationsPath, dbPath string) error {
 
 // Gracefuly closes the DB connection
 func (db *DataBase) Close() error {
+	log.Println("Waiting for background DB routines to finish...")
+	db.wg.Wait()
+
+	log.Println("Closing database connection...")
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	log.Println("Closing database connection...")
 	return db.conn.Close()
 }
 
