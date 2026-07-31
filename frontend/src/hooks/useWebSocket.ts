@@ -44,13 +44,6 @@ export function useWebSocket() {
         if (handlers) {
           handlers.forEach((h) => h(msg))
         }
-
-        if (msg.type === 'notification') {
-          const notifHandlers = handlersRef.current.get('notification')
-          if (notifHandlers) {
-            notifHandlers.forEach((h) => h(msg))
-          }
-        }
       } catch {
         // ignore parse errors
       }

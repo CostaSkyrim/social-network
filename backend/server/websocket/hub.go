@@ -254,7 +254,7 @@ func (h *Hub) dispatchMessage(msg *WSMessage) {
 		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 			return
 		}
-		h.SendToUser(payload.DMID, msg)
+		h.SendToUser(payload.DMUserID, msg)
 		h.SendToUser(msg.SenderID, msg)
 
 	case TypeGroupMessage:

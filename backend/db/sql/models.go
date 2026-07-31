@@ -73,6 +73,12 @@ type FollowQueries struct {
 	GetPending   *sql.Stmt
 }
 
+type FollowerWithDM struct {
+	User
+	UnreadCount int       `json:"unread_count"`
+	LastDMAt    time.Time `json:"last_dm_at,omitempty"`
+}
+
 type Post struct {
 	ID           int64     `json:"-"`
 	UUID         string    `json:"id"`

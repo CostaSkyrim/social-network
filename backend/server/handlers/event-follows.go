@@ -178,14 +178,18 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		return
 	}
 
-	followers, err := db.GetFollowers(r.Context(), userID)
+	followers, err := db.GetFollowersWithDM(r.Context(), userID)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to get followers")
 		return
 	}
 
 	if followers == nil {
-		followers = []database.User{}
+		followers = []database.FollowerWithDM{}
+	}
+
+	for i := range followers {
+		followers[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(followers[i].User.ID)
 	}
 
 	RespondSuccess(w, http.StatusOK, "Followers retrieved", followers)

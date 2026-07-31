@@ -2,10 +2,16 @@ import type { User } from './user'
 
 export interface Message {
   uuid: string
-  sender_id: string
-  sender?: User
+  sender_id: number
+  sender?: {
+    id?: number
+    first_name: string
+    last_name: string
+    nickname?: string
+    avatar_path?: string
+  }
   direct_message_id?: number
-  group_id?: string
+  group_id?: number
   content: string
   is_read: boolean
   created_at: string
