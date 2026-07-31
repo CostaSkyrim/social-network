@@ -245,7 +245,7 @@ export default function ChatPage() {
             const isMine = String(msg.sender_id) === String(user?.id ?? '')
             return (
               <div
-                key={msg.id}
+                key={msg.uuid}
                 className={cn('flex', isMine ? 'justify-end' : 'justify-start')}
               >
                 {!isMine && (
