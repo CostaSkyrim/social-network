@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { useGroup, useGroupEvents } from '@/hooks/useGroups'
 import { EventList } from '@/components/group/EventList'
 import { EventForm } from '@/components/group/EventForm'
+import { MemberList } from '@/components/group/MemberList'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -54,6 +55,15 @@ export default function GroupDetailPage() {
             <span className="text-xs text-gray-400">{accepted_count} members</span>
           </div>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h3 className="text-sm font-semibold text-gray-900">Members</h3>
+        </CardHeader>
+        <CardContent>
+          <MemberList members={members} />
+        </CardContent>
       </Card>
 
       <div className="space-y-4">

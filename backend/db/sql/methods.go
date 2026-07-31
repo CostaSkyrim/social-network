@@ -1325,24 +1325,29 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 	var members []GroupMember
 	for rows.Next() {
 		var gm GroupMember
-		var u struct {
-			ID         int64
-			UUID       string
-			Email      string
-			FirstName  string
-			LastName   string
-			Nickname   *string
-			AvatarPath *string
-		}
+		u := &User{}
+		var nickname, avatarPath, invitedByUUID sql.NullString
+
 		err := rows.Scan(
 			&u.ID, &u.UUID, &u.Email, &u.FirstName, &u.LastName,
-			&u.Nickname, &u.AvatarPath, &gm.Status, &gm.JoinedAt,
+			&nickname, &avatarPath, &gm.Status, &gm.JoinedAt,
+			&invitedByUUID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan group member: %w", err)
 		}
+		if nickname.Valid {
+			u.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			u.AvatarPath = &avatarPath.String
+		}
 		gm.GroupID = groupID
 		gm.UserID = u.ID
+		gm.User = u
+		if invitedByUUID.Valid {
+			gm.InvitedByUUID = &invitedByUUID.String
+		}
 		members = append(members, gm)
 	}
 
