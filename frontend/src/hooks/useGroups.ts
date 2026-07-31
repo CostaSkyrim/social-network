@@ -7,6 +7,8 @@ import {
   getGroupEvents,
   createEvent as apiCreateEvent,
   rsvpEvent as apiRsvpEvent,
+  acceptGroupMember as apiAcceptGroupMember,
+  rejectGroupMember as apiRejectGroupMember,
 } from '@/api/groups'
 import { useUI } from '@/context/UIProvider'
 import type { CreateEventInput, GroupEvent } from '@/types/group'
@@ -48,6 +50,44 @@ export function useCreateEvent(groupId: string) {
     onError: (err: any) => {
       show_toast({
         message: err?.response?.data?.error || 'Failed to create event',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useAcceptGroupMember(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (userId: string) => apiAcceptGroupMember(groupId, userId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Member accepted', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to accept member',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useRejectGroupMember(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (userId: string) => apiRejectGroupMember(groupId, userId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Member declined', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to decline member',
         type: 'error',
       })
     },

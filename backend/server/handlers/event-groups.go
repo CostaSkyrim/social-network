@@ -16,7 +16,7 @@ type CreateGroupRequest struct {
 }
 
 type GroupMemberRequest struct {
-	UserID int64 `json:"user_id"`
+	UserID string `json:"user_id"`
 }
 
 type GroupResponse struct {
@@ -301,19 +301,31 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
+	targetUser, err := db.GetUserByUUID(r.Context(), req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
 	for _, m := range members {
-		if m.UserID == req.UserID {
+		if m.UserID == targetUser.ID {
 			RespondError(w, http.StatusConflict, "User is already a member or has a pending invitation")
 			return
 		}
 	}
 
-	if err := db.AddGroupMember(r.Context(), groupID, req.UserID, currentUserID, "invited"); err != nil {
+	if err := db.AddGroupMember(r.Context(), groupID, targetUser.ID, currentUserID, "invited"); err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to invite user")
 		return
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifGroupInvitation, "invited you to join group: "+group.Title, &groupID)
+	inviter, _ := db.GetUserByID(r.Context(), currentUserID)
+	inviterName := "A user"
+	if inviter != nil {
+		inviterName = getDisplayName(inviter)
+	}
+
+	sendNotification(db, targetUser.ID, currentUserID, NotifGroupInvitation, inviterName+" invited you to join group: "+group.Title, &groupID, &group.UUID)
 
 	RespondSuccess(w, http.StatusOK, "Invitation sent", nil)
 }
@@ -358,7 +370,13 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 		return
 	}
 
-	sendNotification(db, group.CreatorID, currentUserID, NotifGroupJoinRequest, "requested to join group: "+group.Title, &groupID)
+	requester, _ := db.GetUserByID(r.Context(), currentUserID)
+	requesterName := "A user"
+	if requester != nil {
+		requesterName = getDisplayName(requester)
+	}
+
+	sendNotification(db, group.CreatorID, currentUserID, NotifGroupJoinRequest, requesterName+" wants to join your group: "+group.Title, &groupID, &group.UUID)
 
 	RespondSuccess(w, http.StatusOK, "Join request sent", nil)
 }
@@ -397,12 +415,18 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	if err := db.UpdateMemberStatus(r.Context(), groupID, req.UserID, "accepted"); err != nil {
+	targetUser, err := db.GetUserByUUID(r.Context(), req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	if err := db.UpdateMemberStatus(r.Context(), groupID, targetUser.ID, "accepted"); err != nil {
 		RespondError(w, http.StatusNotFound, "Member not found")
 		return
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifGroupAccepted, "accepted your request to join group: "+group.Title, &groupID)
+	sendNotification(db, targetUser.ID, currentUserID, NotifGroupAccepted, "accepted your request to join group: "+group.Title, &groupID, &group.UUID)
 
 	RespondSuccess(w, http.StatusOK, "Member accepted", nil)
 }
@@ -441,7 +465,13 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	if err := db.UpdateMemberStatus(r.Context(), groupID, req.UserID, "declined"); err != nil {
+	targetUser, err := db.GetUserByUUID(r.Context(), req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	if err := db.UpdateMemberStatus(r.Context(), groupID, targetUser.ID, "declined"); err != nil {
 		RespondError(w, http.StatusNotFound, "Member not found")
 		return
 	}

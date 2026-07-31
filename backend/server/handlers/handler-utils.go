@@ -44,13 +44,14 @@ func resolveUserID(r *http.Request, db *database.DataBase, idStr string) (int64,
 	return userID, nil
 }
 
-func sendNotification(db *database.DataBase, userID int64, fromUserID int64, notifType string, content string, relatedID *int64) {
+func sendNotification(db *database.DataBase, userID int64, fromUserID int64, notifType string, content string, relatedID *int64, relatedUUID *string) {
 	notif, err := db.CreateNotification(context.Background(), &database.Notification{
-		UserID:     userID,
-		FromUserID: &fromUserID,
-		Type:       notifType,
-		Content:    content,
-		RelatedID:  relatedID,
+		UserID:      userID,
+		FromUserID:  &fromUserID,
+		Type:        notifType,
+		Content:     content,
+		RelatedID:   relatedID,
+		RelatedUUID: relatedUUID,
 	})
 	if err != nil {
 		fmt.Printf("Error creating notification: %v\n", err)
@@ -59,14 +60,15 @@ func sendNotification(db *database.DataBase, userID int64, fromUserID int64, not
 
 	if GlobalHub != nil {
 		payload, _ := json.Marshal(ws.NotificationPayload{
-			ID:         notif,
-			Type:       notifType,
-			Content:    content,
-			RelatedID:  relatedID,
-			FromUserID: &fromUserID,
-			TargetID:   userID,
-			IsRead:     false,
-			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+			ID:          notif,
+			Type:        notifType,
+			Content:     content,
+			RelatedID:   relatedID,
+			RelatedUUID: relatedUUID,
+			FromUserID:  &fromUserID,
+			TargetID:    userID,
+			IsRead:      false,
+			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		})
 		GlobalHub.SendToUser(userID, &ws.WSMessage{
 			Type:      ws.TypeNotification,

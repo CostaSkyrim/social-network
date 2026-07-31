@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useNotifications } from '@/context/NotificationProvider'
+import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
 import { EmptyState } from '@/components/common/EmptyState'
 import { cn } from '@/lib/cn'
 
@@ -35,6 +37,7 @@ export default function NotificationsPage() {
     is_loading,
     mark_read,
     mark_all_read,
+    refresh,
   } = useNotifications()
 
   if (is_loading) {
@@ -78,38 +81,117 @@ export default function NotificationsPage() {
       ) : (
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
           {notifications.map((notif) => (
-            <button
+            <NotificationRow
               key={notif.id}
-              onClick={() => !notif.is_read && mark_read(notif.id)}
-              className={cn(
-                'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50',
-                !notif.is_read && 'bg-blue-50/50',
-              )}
-            >
-              <span className="mt-0.5 text-xl">
-                {notif_icons[notif.type] || '🔔'}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'text-sm',
-                    !notif.is_read
-                      ? 'font-semibold text-gray-900'
-                      : 'text-gray-700',
-                  )}
-                >
-                  {notif.content}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  {formatTimeAgo(notif.created_at)}
-                </p>
-              </div>
-              {!notif.is_read && (
-                <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
-              )}
-            </button>
+              notif={notif}
+              on_mark_read={() => !notif.is_read && mark_read(notif.id)}
+              on_after_action={refresh}
+            />
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+function NotificationRow({
+  notif,
+  on_mark_read,
+  on_after_action,
+}: {
+  notif: {
+    id: number
+    type: string
+    content: string
+    related_id?: string
+    from_user_id?: string
+    is_read: boolean
+    created_at: string
+  }
+  on_mark_read: () => void
+  on_after_action: () => Promise<void>
+}) {
+  const is_actionable =
+    notif.type === 'group_join_request' && !notif.is_read
+  const group_id = notif.related_id
+  const requester_id = notif.from_user_id
+  const [action, set_action] = useState<'accept' | 'decline' | null>(null)
+  const accept_mutation = useAcceptGroupMember(group_id ?? '')
+  const reject_mutation = useRejectGroupMember(group_id ?? '')
+
+  async function handle_accept() {
+    if (!group_id || !requester_id) return
+    set_action('accept')
+    try {
+      await accept_mutation.mutateAsync(requester_id)
+      await on_mark_read()
+    } finally {
+      set_action(null)
+    }
+    await on_after_action()
+  }
+
+  async function handle_decline() {
+    if (!group_id || !requester_id) return
+    set_action('decline')
+    try {
+      await reject_mutation.mutateAsync(requester_id)
+      await on_mark_read()
+    } finally {
+      set_action(null)
+    }
+    await on_after_action()
+  }
+
+  const is_pending =
+    action !== null ||
+    accept_mutation.isPending ||
+    reject_mutation.isPending
+
+  return (
+    <div
+      className={cn(
+        'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
+        !notif.is_read && 'bg-blue-50/50',
+      )}
+    >
+      <span className="mt-0.5 text-xl">
+        {notif_icons[notif.type] || '🔔'}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            'text-sm',
+            !notif.is_read ? 'font-semibold text-gray-900' : 'text-gray-700',
+          )}
+        >
+          {notif.content}
+        </p>
+        <p className="mt-0.5 text-xs text-gray-500">
+          {formatTimeAgo(notif.created_at)}
+        </p>
+
+        {is_actionable && (
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              onClick={handle_accept}
+              disabled={is_pending}
+              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {action === 'accept' ? 'Accepting…' : 'Accept'}
+            </button>
+            <button
+              onClick={handle_decline}
+              disabled={is_pending}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {action === 'decline' ? 'Declining…' : 'Decline'}
+            </button>
+          </div>
+        )}
+      </div>
+      {!notif.is_read && (
+        <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
       )}
     </div>
   )

@@ -96,11 +96,12 @@ type seedMessage struct {
 }
 
 type seedNotification struct {
-	UserID     int64  `json:"user_id"`
-	FromUserID *int64 `json:"from_user_id"`
-	Type       string `json:"type"`
-	Content    string `json:"content"`
-	RelatedID  *int64 `json:"related_id"`
+	UserID      int64   `json:"user_id"`
+	FromUserID  *int64  `json:"from_user_id"`
+	Type        string  `json:"type"`
+	Content     string  `json:"content"`
+	RelatedID   *int64  `json:"related_id"`
+	RelatedUUID *string `json:"related_uuid"`
 }
 
 type seedData struct {
@@ -463,7 +464,7 @@ func createDM(db *sql.DB, user1ID, user2ID int64) (int64, error) {
 func insertNotifications(db *sql.DB, notifications []seedNotification) error {
 	for _, n := range notifications {
 		_, err := db.Exec(queries.CreateNotification,
-			n.UserID, n.FromUserID, n.Type, n.Content, n.RelatedID)
+			n.UserID, n.FromUserID, n.Type, n.Content, n.RelatedID, n.RelatedUUID)
 		if err != nil {
 			return fmt.Errorf("insert notification: %w", err)
 		}
@@ -493,6 +494,12 @@ func dropAllData(db *sql.DB) error {
 		if _, err := db.Exec("DELETE FROM " + table); err != nil {
 			return fmt.Errorf("delete from %s: %w", table, err)
 		}
+	}
+
+	// Reset AUTOINCREMENT counters so reseeded rows get IDs 1..N,
+	// matching the numeric references in seed.json.
+	if _, err := db.Exec("DELETE FROM sqlite_sequence"); err != nil {
+		return fmt.Errorf("reset sqlite_sequence: %w", err)
 	}
 
 	return nil

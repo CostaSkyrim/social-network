@@ -509,15 +509,18 @@ const (
 const (
 	CreateNotification = `
 		INSERT INTO notifications (user_id, from_user_id, type, content,
-		 related_id)
-		VALUES (?, ?, ?, ?, ?)
+		 related_id, related_uuid)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
 	GetUserNotifications = `
-		SELECT id, from_user_id, type, content, is_read, related_id, created_at
-		FROM notifications
-		WHERE user_id = ?
-		ORDER BY created_at DESC
+		SELECT n.id, n.from_user_id, u.uuid as from_user_uuid,
+		 u.first_name, u.last_name, u.nickname, u.avatar_path,
+		 n.type, n.content, n.is_read, n.related_id, n.related_uuid, n.created_at
+		FROM notifications n
+		LEFT JOIN users u ON u.id = n.from_user_id
+		WHERE n.user_id = ?
+		ORDER BY n.created_at DESC
 		LIMIT ? OFFSET ?
 	`
 

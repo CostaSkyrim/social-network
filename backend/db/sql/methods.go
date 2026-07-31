@@ -1741,6 +1741,7 @@ func (db *DataBase) CreateNotification(ctx context.Context, notification *Notifi
 		notification.Type,
 		notification.Content,
 		notification.RelatedID,
+		notification.RelatedUUID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create notification: %w", err)
@@ -1772,18 +1773,44 @@ func (db *DataBase) GetUserNotifications(ctx context.Context, userID int64, limi
 	var notifications []*Notification
 	for rows.Next() {
 		notif := &Notification{}
+		var fromUserUUID, firstName, lastName sql.NullString
+		var nickname, avatarPath sql.NullString
+
 		err := rows.Scan(
 			&notif.ID,
 			&notif.FromUserID,
+			&fromUserUUID,
+			&firstName,
+			&lastName,
+			&nickname,
+			&avatarPath,
 			&notif.Type,
 			&notif.Content,
 			&notif.IsRead,
 			&notif.RelatedID,
+			&notif.RelatedUUID,
 			&notif.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan notification: %w", err)
 		}
+
+		if fromUserUUID.Valid {
+			notif.FromUserUUID = &fromUserUUID.String
+			fromUser := &User{
+				UUID:      fromUserUUID.String,
+				FirstName: firstName.String,
+				LastName:  lastName.String,
+			}
+			if nickname.Valid {
+				fromUser.Nickname = &nickname.String
+			}
+			if avatarPath.Valid {
+				fromUser.AvatarPath = &avatarPath.String
+			}
+			notif.FromUser = fromUser
+		}
+
 		notifications = append(notifications, notif)
 	}
 

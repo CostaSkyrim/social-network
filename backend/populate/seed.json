@@ -54,7 +54,7 @@
       "password": "password123",
       "first_name": "Eve",
       "last_name": "Davis",
-      "nickname": null,
+      "nickname": "eve",
       "date_of_birth": "2000-01-14T00:00:00Z",
       "about_me": null,
       "avatar_path": null,
@@ -740,14 +740,16 @@
       "from_user_id": 1,
       "type": "group_invite",
       "content": "You have been invited to join Photography Club",
-      "related_id": 2
+      "related_id": 2,
+      "related_uuid": "g0020000-0000-4000-8000-000000000002"
     },
     {
       "user_id": 3,
       "from_user_id": 6,
       "type": "group_join_request",
       "content": "Frank Miller wants to join Golang Enthusiasts",
-      "related_id": 1
+      "related_id": 1,
+      "related_uuid": "g0010000-0000-4000-8000-000000000001"
     },
     {
       "user_id": 1,

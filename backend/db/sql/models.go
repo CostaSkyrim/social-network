@@ -228,16 +228,18 @@ type MessageQueries struct {
 }
 
 type Notification struct {
-	ID         int64     `json:"id"`
-	UserID     int64     `json:"-"`
-	FromUserID *int64    `json:"from_user_id,omitempty"`
-	FromUser   *User     `json:"from_user,omitempty"`
-	Type       string    `json:"type"`
-	Content    string    `json:"content"`
-	RelatedID  *int64    `json:"related_id,omitempty"`
-	IsRead     bool      `json:"is_read"`
-	ReadAt     time.Time `json:"read_at"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"-"`
+	FromUserID   *int64    `json:"-"`
+	FromUserUUID *string   `json:"from_user_id,omitempty"`
+	FromUser     *User     `json:"from_user,omitempty"`
+	Type         string    `json:"type"`
+	Content      string    `json:"content"`
+	RelatedID    *int64    `json:"-"`
+	RelatedUUID  *string   `json:"related_id,omitempty"`
+	IsRead       bool      `json:"is_read"`
+	ReadAt       time.Time `json:"read_at"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type NotificationQueries struct {

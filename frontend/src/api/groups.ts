@@ -43,3 +43,11 @@ export async function rsvpEvent(
   if (!res.data.data) throw new Error('Failed to update RSVP')
   return res.data.data
 }
+
+export async function acceptGroupMember(groupId: string, userId: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/accept`, { user_id: userId })
+}
+
+export async function rejectGroupMember(groupId: string, userId: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/reject`, { user_id: userId })
+}

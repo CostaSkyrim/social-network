@@ -69,8 +69,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             id: number
             type: string
             content: string
-            related_id?: number
-            from_user_id?: number
+            related_id?: number | string
+            related_id_uuid?: string
+            from_user_id?: number | string
             is_read: boolean
             created_at: string
           }
@@ -81,10 +82,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         id: payload.id,
         type: payload.type,
         content: payload.content,
-        related_id: payload.related_id,
-        from_user_id: payload.from_user_id
-          ? String(payload.from_user_id)
-          : undefined,
+        related_id:
+          typeof payload.related_id === 'string'
+            ? payload.related_id
+            : payload.related_id_uuid,
+        from_user_id:
+          payload.from_user_id !== undefined
+            ? String(payload.from_user_id)
+            : undefined,
         is_read: payload.is_read,
         created_at: payload.created_at,
       }

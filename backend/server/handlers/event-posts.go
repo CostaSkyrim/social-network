@@ -228,7 +228,7 @@ func notifyFollowersOfNewPost(db *database.DataBase, authorID int64, post *datab
 	}
 
 	for _, followerID := range followerIDs {
-		sendNotification(db, followerID, authorID, NotifNewPost, "shared a new post", &post.ID)
+		sendNotification(db, followerID, authorID, NotifNewPost, "shared a new post", &post.ID, nil)
 	}
 
 	fmt.Printf("Sent new_post notification to %d followers\n", len(followerIDs))

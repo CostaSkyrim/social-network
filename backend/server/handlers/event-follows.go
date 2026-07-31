@@ -51,7 +51,7 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 		db.AcceptFollowRequest(r.Context(), currentUserID, req.UserID)
 
-		sendNotification(db, req.UserID, currentUserID, NotifNewFollower, "started following you", &currentUserID)
+		sendNotification(db, req.UserID, currentUserID, NotifNewFollower, "started following you", &currentUserID, nil)
 
 		RespondSuccess(w, http.StatusOK, "Now following user", nil)
 		return
@@ -68,7 +68,7 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifFollowRequest, "sent you a follow request", &currentUserID)
+	sendNotification(db, req.UserID, currentUserID, NotifFollowRequest, "sent you a follow request", &currentUserID, nil)
 
 	RespondSuccess(w, http.StatusOK, "Follow request sent", nil)
 }
@@ -103,7 +103,7 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		content = name + " accepted your follow request"
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifFollowAccepted, content, &currentUserID)
+	sendNotification(db, req.UserID, currentUserID, NotifFollowAccepted, content, &currentUserID, nil)
 
 	RespondSuccess(w, http.StatusOK, "Follow request accepted", nil)
 }
