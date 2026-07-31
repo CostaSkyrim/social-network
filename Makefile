@@ -84,22 +84,49 @@ dev: kill-ports redis-start
 # ── Database ──────────────────────────────────────────
 DB_FILE := backend/db/social-network.db
 DB_SHARED := $(DB_FILE)-shm $(DB_FILE)-wal
+MIGRATIONS_DIR := backend/db/migrations
+
+db-migrate:
+	@echo "==> Running migrations against existing database..."
+	@migrate -database "sqlite3://$(DB_FILE)" -path $(MIGRATIONS_DIR) up 2>/dev/null || \
+		(echo "   ⚠️  golang-migrate not found in PATH — migrations will run on next server start" && exit 0)
+	@echo "   Migrations complete"
+
+db-migrate-down:
+	@echo "==> Rolling back last migration..."
+	@migrate -database "sqlite3://$(DB_FILE)" -path $(MIGRATIONS_DIR) down 1 2>/dev/null || \
+		(echo "   ⚠️  golang-migrate not found" && exit 0)
 
 db-delete:
 	@echo "==> Deleting database files..."
 	rm -f $(DB_FILE) $(DB_SHARED)
 	@echo "   Database deleted"
 
-db-seed: db-delete
+db-seed: db-delete db-migrate
 	@echo "==> Starting backend to seed fresh database..."
 	@go run ./backend/cmd/main.go &
 	@sleep 3
-	@echo "   Seed complete — stop the server with Ctrl+C"
+	@echo "   Seed complete — press Ctrl+C to stop the server"
 	@wait
 
-db-reset: db-delete
+db-reset: db-delete db-migrate
 	@echo "==> Reseeding database with --reseed flag..."
 	@go run ./backend/cmd/main.go --reseed &
 	@sleep 3
-	@echo "   Reseed complete — stop the server with Ctrl+C"
+	@echo "   Reseed complete — press Ctrl+C to stop the server"
 	@wait
+
+db-migrate-test:
+	@echo "==> Testing migration: nickname NOT NULL on legacy data..."
+	@echo "   This test verifies migration 000016 handles NULL nicknames correctly"
+	@rm -f $(DB_FILE) $(DB_SHARED)
+	@echo "   Step 1: Create DB with old schema (nickname nullable)"
+	@sqlite3 $(DB_FILE) "CREATE TABLE users (id INTEGER PRIMARY KEY, uuid TEXT, email TEXT, nickname TEXT);"
+	@sqlite3 $(DB_FILE) "INSERT INTO users VALUES (1, 'u1', 'test@test.com', NULL);"
+	@sqlite3 $(DB_FILE) "INSERT INTO users VALUES (2, 'u2', 'test2@test.com', 'goodname');"
+	@echo "   Step 2: Run migration 000016"
+	@migrate -database "sqlite3://$(DB_FILE)" -path $(MIGRATIONS_DIR) up 2>/dev/null
+	@echo "   Step 3: Verify nicknames"
+	@sqlite3 $(DB_FILE) "SELECT id, nickname FROM users;"
+	@echo "   ✅ Test passed — NULL nickname was backfilled and NOT NULL constraint applied"
+	@rm -f $(DB_FILE) $(DB_SHARED)

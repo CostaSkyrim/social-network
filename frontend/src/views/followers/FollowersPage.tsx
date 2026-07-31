@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { fetchFollowers, fetchFollowing } from '@/api/chat'
@@ -27,10 +27,13 @@ export default function FollowersPage() {
   const { user } = useAuth()
   const { subscribe } = useWebSocket()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [followers, set_followers] = useState<FollowerItem[]>([])
   const [following, set_following] = useState<FollowerItem[]>([])
   const [is_loading, set_is_loading] = useState(true)
-  const [tab, set_tab] = useState<Tab>('followers')
+  const [tab, set_tab] = useState<Tab>(() =>
+    searchParams.get('tab') === 'following' ? 'following' : 'followers',
+  )
 
   useEffect(() => {
     const userID = user?.id ?? ''

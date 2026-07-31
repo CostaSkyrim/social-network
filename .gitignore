@@ -12,6 +12,7 @@ dump.rdb
 # Build artifacts
 main
 backend/main
+bin
 
 # Environment
 .env
