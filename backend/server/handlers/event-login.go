@@ -22,8 +22,7 @@ type LoginResponse struct {
 }
 
 type UserResponse struct {
-	ID          int64     `json:"id"`
-	UUID        string    `json:"uuid"`
+	ID          string    `json:"id"`
 	Email       string    `json:"email"`
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
@@ -75,8 +74,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase)
 
 func userToResponse(user *database.User) *UserResponse {
 	return &UserResponse{
-		ID:          user.ID,
-		UUID:        user.UUID,
+		ID:          user.UUID,
 		Email:       user.Email,
 		FirstName:   user.FirstName,
 		LastName:    user.LastName,

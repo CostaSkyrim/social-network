@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"social-network/backend/cache"
@@ -29,6 +30,18 @@ func setGlobalRedis(rc *cache.RedisClient) {
 
 func getRedis() *cache.RedisClient {
 	return globalRedis
+}
+
+func resolveUserID(r *http.Request, db *database.DataBase, idStr string) (int64, error) {
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		user, err := db.GetUserByUUID(r.Context(), idStr)
+		if err != nil {
+			return 0, fmt.Errorf("invalid user identifier")
+		}
+		userID = user.ID
+	}
+	return userID, nil
 }
 
 func sendNotification(db *database.DataBase, userID int64, fromUserID int64, notifType string, content string, relatedID *int64) {

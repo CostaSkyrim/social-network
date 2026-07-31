@@ -1670,25 +1670,46 @@ func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]Fol
 
 	rows, err := db.conn.QueryContext(ctx, queries.GetFollowersWithDM, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query followers with DM: %w", err)
+		rows, err = db.conn.QueryContext(ctx, queries.GetFollowers, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query followers: %w", err)
+		}
+		defer rows.Close()
+
+		var followers []FollowerWithDM
+		for rows.Next() {
+			var f FollowerWithDM
+			if scanErr := rows.Scan(
+				&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
+				&f.Nickname, &f.AvatarPath, &f.IsPublic,
+			); scanErr != nil {
+				return nil, fmt.Errorf("failed to scan follower: %w", scanErr)
+			}
+			followers = append(followers, f)
+		}
+
+		if scanErr := rows.Err(); scanErr != nil {
+			return nil, fmt.Errorf("row iteration error: %w", scanErr)
+		}
+
+		return followers, nil
 	}
 	defer rows.Close()
 
 	var followers []FollowerWithDM
 	for rows.Next() {
 		var f FollowerWithDM
-		err := rows.Scan(
+		if scanErr := rows.Scan(
 			&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
 			&f.Nickname, &f.AvatarPath, &f.IsPublic, &f.LastDMAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan follower: %w", err)
+		); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan follower: %w", scanErr)
 		}
 		followers = append(followers, f)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
+	if scanErr := rows.Err(); scanErr != nil {
+		return nil, fmt.Errorf("row iteration error: %w", scanErr)
 	}
 
 	return followers, nil
