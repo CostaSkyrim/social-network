@@ -236,6 +236,18 @@
                 "rate_limit_count": 5,
                 "rate_limit_second_interval": 20.0
             },
+            "/api/events/": {
+                "rate_limit_count": 15,
+                "rate_limit_second_interval": 20.0
+            },
+            "/api/events/{id}/rsvp": {
+                "rate_limit_count": 10,
+                "rate_limit_second_interval": 20.0
+            },
+            "/api/groups/{id}/events": {
+                "rate_limit_count": 10,
+                "rate_limit_second_interval": 20.0
+            },
             "/addcategory": {
                 "rate_limit_count": 100,
                 "rate_limit_second_interval": 20.0

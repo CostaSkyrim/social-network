@@ -17,3 +17,14 @@ export function truncate(text: string, max: number): string {
   if (text.length <= max) return text
   return text.slice(0, max) + '...'
 }
+
+export function format_datetime(iso: string): string {
+  const date = new Date(iso)
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

@@ -271,6 +271,13 @@ const (
 		WHERE id = ?
 	`
 
+	GetGroupByUUID = `
+		SELECT id, uuid, creator_id, title, description, avatar_path,
+		 created_at, updated_at, last_message_at
+		FROM groups
+		WHERE uuid = ?
+	`
+
 	GetUserGroups = `
 		SELECT g.id, g.uuid, g.title, g.description, g.avatar_path,
 		 g.last_message_at
@@ -508,12 +515,44 @@ const (
 		ON CONFLICT(event_id, user_id) DO UPDATE SET response = ?
 	`
 
+	GetEventByID = `
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
+			 e.event_datetime, e.created_at, e.updated_at,
+			 u.first_name, u.last_name, u.nickname
+		FROM events e
+		JOIN users u ON u.id = e.creator_id
+		WHERE e.id = ?
+	`
+
+	GetEventByUUID = `
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
+			 e.event_datetime, e.created_at, e.updated_at,
+			 u.first_name, u.last_name, u.nickname
+		FROM events e
+		JOIN users u ON u.id = e.creator_id
+		WHERE e.uuid = ?
+	`
+
 	GetGroupEvents = `
 		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.event_datetime, e.created_at, u.first_name, u.last_name, u.nickname
+			 e.event_datetime, e.created_at, e.updated_at,
+			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
 		WHERE e.group_id = ?
 		ORDER BY e.event_datetime ASC
+	`
+
+	GetEventResponseByUser = `
+		SELECT id, event_id, user_id, response, created_at, updated_at
+		FROM event_responses
+		WHERE event_id = ? AND user_id = ?
+	`
+
+	GetEventResponseCounts = `
+		SELECT response, COUNT(*)
+		FROM event_responses
+		WHERE event_id = ?
+		GROUP BY response
 	`
 )

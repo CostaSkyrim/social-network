@@ -1088,6 +1088,37 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	return group, nil
 }
 
+// GetGroupByUUID retrieves a group by its UUID
+func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	group := &Group{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetGroupByUUID,
+		uuid,
+	).Scan(
+		&group.ID,
+		&group.UUID,
+		&group.CreatorID,
+		&group.Title,
+		&group.Description,
+		&group.AvatarPath,
+		&group.CreatedAt,
+		&group.UpdatedAt,
+		&group.LastMessageAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("group not found")
+		}
+		return nil, fmt.Errorf("failed to query group: %w", err)
+	}
+
+	return group, nil
+}
+
 // GetUserGroups retrieves all groups a user is member of
 func (db *DataBase) GetUserGroups(ctx context.Context, userID int64) ([]*Group, error) {
 	if ctx == nil {
@@ -1697,4 +1728,265 @@ func (db *DataBase) GetUnreadNotificationCount(ctx context.Context, userID int64
 	}
 
 	return count, nil
+}
+
+//====================================
+// EVENT METHODS
+//====================================
+
+// CreateEvent creates a new group event
+func (db *DataBase) CreateEvent(ctx context.Context, event *Event) (int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.conn.ExecContext(dbCtx,
+		queries.CreateEvent,
+		event.UUID,
+		event.GroupID,
+		event.CreatorID,
+		event.Title,
+		event.Description,
+		event.EventDateTime,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create event: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get event id: %w", err)
+	}
+
+	return id, nil
+}
+
+// GetEventByID retrieves an event by ID with the creator's info
+func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	event := &Event{}
+	var firstName, lastName string
+	var nickname sql.NullString
+
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetEventByID,
+		eventID,
+	).Scan(
+		&event.ID,
+		&event.UUID,
+		&event.GroupID,
+		&event.CreatorID,
+		&event.Title,
+		&event.Description,
+		&event.EventDateTime,
+		&event.CreatedAt,
+		&event.UpdatedAt,
+		&firstName,
+		&lastName,
+		&nickname,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("event not found")
+		}
+		return nil, fmt.Errorf("failed to query event: %w", err)
+	}
+
+	event.Creator = &User{
+		FirstName: firstName,
+		LastName:  lastName,
+	}
+	if nickname.Valid {
+		event.Creator.Nickname = &nickname.String
+	}
+
+	return event, nil
+}
+
+// GetEventByUUID retrieves an event by its UUID with the creator's info
+func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	event := &Event{}
+	var firstName, lastName string
+	var nickname sql.NullString
+
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetEventByUUID,
+		uuid,
+	).Scan(
+		&event.ID,
+		&event.UUID,
+		&event.GroupID,
+		&event.CreatorID,
+		&event.Title,
+		&event.Description,
+		&event.EventDateTime,
+		&event.CreatedAt,
+		&event.UpdatedAt,
+		&firstName,
+		&lastName,
+		&nickname,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("event not found")
+		}
+		return nil, fmt.Errorf("failed to query event: %w", err)
+	}
+
+	event.Creator = &User{
+		FirstName: firstName,
+		LastName:  lastName,
+	}
+	if nickname.Valid {
+		event.Creator.Nickname = &nickname.String
+	}
+
+	return event, nil
+}
+
+// GetGroupEvents retrieves all events for a group
+func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetGroupEvents,
+		groupID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*Event
+	for rows.Next() {
+		event := &Event{}
+		var firstName, lastName string
+		var nickname sql.NullString
+
+		err := rows.Scan(
+			&event.ID,
+			&event.UUID,
+			&event.GroupID,
+			&event.CreatorID,
+			&event.Title,
+			&event.Description,
+			&event.EventDateTime,
+			&event.CreatedAt,
+			&event.UpdatedAt,
+			&firstName,
+			&lastName,
+			&nickname,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		event.Creator = &User{
+			FirstName: firstName,
+			LastName:  lastName,
+		}
+		if nickname.Valid {
+			event.Creator.Nickname = &nickname.String
+		}
+
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return events, nil
+}
+
+// CreateEventRSVP upserts a user's response to an event
+func (db *DataBase) CreateEventRSVP(ctx context.Context, eventID, userID int64, response string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.CreateEventRSVP,
+		eventID, userID, response, response,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to save event response: %w", err)
+	}
+
+	return nil
+}
+
+// GetEventResponseByUser retrieves a user's response to an event
+func (db *DataBase) GetEventResponseByUser(ctx context.Context, eventID, userID int64) (*EventResponse, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	resp := &EventResponse{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetEventResponseByUser,
+		eventID, userID,
+	).Scan(
+		&resp.ID,
+		&resp.EventID,
+		&resp.UserID,
+		&resp.Response,
+		&resp.CreatedAt,
+		&resp.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query event response: %w", err)
+	}
+
+	return resp, nil
+}
+
+// GetEventResponseCounts returns the number of going / not_going responses for an event
+func (db *DataBase) GetEventResponseCounts(ctx context.Context, eventID int64) (map[string]int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetEventResponseCounts,
+		eventID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query event response counts: %w", err)
+	}
+	defer rows.Close()
+
+	counts := map[string]int{"going": 0, "not_going": 0}
+	for rows.Next() {
+		var response string
+		var count int
+		if err := rows.Scan(&response, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan response count: %w", err)
+		}
+		counts[response] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return counts, nil
 }

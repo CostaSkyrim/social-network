@@ -62,7 +62,7 @@ social-network/
 │   │   │   ├── common/         ✅ (EmptyState, ErrorBoundary, ImageUpload, InfiniteScroll, LoadingScreen, LoadingSkeleton)
 │   │   │   ├── post/           ✅ (PostCard, PostForm, PostList, PrivacySelector)
 │   │   │   ├── comment/        ✅ (CommentItem, CommentList)
-│   │   │   ├── group/          # empty — Phase 6
+│   │   │   ├── group/          ✅ (EventCard, EventList, EventForm)
 │   │   │   ├── user/           # empty — Phase 5
 │   │   │   ├── chat/           # empty — Phase 8
 │   │   │   └── notification/   # empty — Phase 7
@@ -96,7 +96,10 @@ social-network/
 │   │   ├── event-comments.go   ✅ (create, list, delete, edit comments)
 │   │   ├── event-follows.go    ✅ (request, accept, decline, remove, followers, following, pending)
 │   │   ├── event-users.go      ✅ (get profile, update profile)
-│   │   └── event-groups.go     ✅ (create, get, update, delete, browse, invite, join, accept, reject, leave, members)
+│   │   ├── event-groups.go     ✅ (create, get, update, delete, browse, invite, join, accept, reject, leave, members)
+│   │   ├── event-events.go     ✅ (create, list, get event, RSVP — going/not_going with counts)
+│   │   ├── event-notifications.go ✅ (list, unread count, mark read, mark all read)
+│   │   └── notification-types.go  ✅ (notification type constants)
 │   ├── cache/
 │   │   └── redis.go            ✅ (Redis client, presence tracking, caching, rate limiting, pub/sub)
 │   ├── server/websocket/
@@ -143,6 +146,8 @@ social-network/
 | Follow handlers (request, accept, decline, remove, list) | ✅ |
 | User handlers (get profile, edit profile) | ✅ |
 | Group handlers (CRUD, browse, invite, join, accept, reject, leave, members) | ✅ |
+| Event handlers (create, list, get, RSVP going/not_going with counts) | ✅ |
+| Notification handlers (list, unread count, mark read, mark all) | ✅ |
 | Soft delete support (is_deleted on posts + comments) | ✅ |
 | Seed data JSON + loader (with deleted entries) | ✅ |
 | Redis client + connection (degrades gracefully if unavailable) | ✅ |
@@ -151,8 +156,6 @@ social-network/
 | WebSocket hub (`/api/ws`) — register/unregister, broadcast, typing | ✅ |
 | WS message dispatch (chat, group, notification, presence) | ✅ |
 | Redis session store migration (SQLite → Redis) | ⬜ |
-| Event handlers | ⬜ |
-| Notification handlers | ⬜ |
 | Message/DM handlers | ⬜ |
 | Docker | ⬜ |
 
@@ -215,13 +218,29 @@ All database methods implemented: users, sessions, follows, posts (incl. feed), 
 - `DELETE /api/comments/{id}` — soft delete (owner)
 
 ### Phase E — Group Handlers ✅
-Create, get, update, delete, browse, user groups, invite, join, accept, reject, leave, members.
+Create, get, update, delete, browse, user groups, invite, join, accept, reject, leave, members. All group routes use **UUID** lookup (`GetGroupByUUID`).
 
-### Phase F — Event Handlers 🔜
-Group events + RSVP (going / not_going / maybe).
+### Phase F — Event Handlers ✅
+- `POST /api/groups/{id}/events` — create (title 5–300, future datetime required); notifies accepted members via `sendNotification` (`new_event`)
+- `GET /api/groups/{id}/events` — list with `{ going, not_going, total, my_response }` per event
+- `GET /api/events/{id}` — single event detail (same enrichment)
+- `POST /api/events/{id}/rsvp` — upsert response (`going` / `not_going`), returns updated counts
+- All endpoints require accepted group membership (or creator)
+- All event routes use **UUID** lookup (`GetEventByUUID`); numeric `Event.ID` used internally
+- `EventResponse` model
 
-### Phase G — Notification Handlers 🔜
-List notifications, mark read, unread count.
+**Frontend (Phase 7b, done):**
+- `api/groups.ts` + `hooks/useGroups.ts` — browse, group, events, create event, RSVP (optimistic)
+- `components/group/`: `EventCard` (RSVP buttons + counts), `EventList`, `EventForm`
+- `GroupsPage` — browse list linking to `/groups/{uuid}`
+
+### Phase G — Notification Handlers ✅
+- `GET /api/notifications` — paginated list
+- `GET /api/notifications/unread-count`
+- `PUT /api/notifications/{id}/read` — mark one read
+- `PUT /api/notifications/read-all`
+- `sendNotification` helper → creates DB row + pushes real-time over WebSocket (`TypeNotification` → target user)
+- Frontend: `useWebSocket`, `NotificationProvider`, TopBar bell, NotificationsPage
 
 ### Phase H — Chat / Message Handlers 🔜
 Conversations (DMs), messages, group chat, read receipts.
@@ -267,10 +286,13 @@ Emoji picker button + `:shortcode:` autocomplete with keyboard navigation (Arrow
 Wire ProfilePage / EditProfilePage, FollowButton, UserCard/UserList, Followers/Following pages, SearchPage. Uses Backend Phase C.
 
 ### Phase 7 — Groups 🔜
-Wire GroupsPage / GroupDetailPage / CreateGroupPage, group components. Uses Backend Phase E.
+Wire GroupDetailPage (render group + events via existing `useGroup`/`useGroupEvents` hooks), CreateGroupPage, member UI. Uses Backend Phase E. GroupsPage browse list already wired.
 
-### Phase 8 — Notifications + WebSocket 🔜
-NotificationBell, NotificationsPage, `ws/websocket.ts` shared connection to `/api/ws`. Uses Backend Phases G + I.
+### Phase 7b — Events ✅
+Event API/hooks/components done: `api/groups.ts`, `useGroups.ts`, `EventCard` (going/not_going buttons + counts, optimistic RSVP), `EventList`, `EventForm`. Awaiting GroupDetailPage wiring to display them. Uses Backend Phase F.
+
+### Phase 8 — Notifications ✅ + WebSocket frontend
+NotificationsPage, TopBar bell, `NotificationProvider`, `useWebSocket` connection to `/api/ws` — all done. Real-time notification push works.
 
 ### Phase 9 — Chat 🔜
 ChatPage, ChatList/ChatWindow/MessageBubble/MessageInput, real-time via WebSocket. Uses Backend Phases H + I.
@@ -320,10 +342,17 @@ Dockerfile + nginx, production build testing, responsive polish.
 | POST | `/api/groups/{id}/reject` | RejectGroupMemberHandler | ✅ |
 | POST | `/api/groups/{id}/leave` | LeaveGroupHandler | ✅ |
 | GET | `/api/groups/{id}/members` | GetGroupMembersHandler | ❌ |
+| POST/GET | `/api/groups/{id}/events` | GroupEventsHandler (create/list) | ✅ |
+| GET | `/api/events/{id}` | GetEventHandler | ✅ |
+| POST | `/api/events/{id}/rsvp` | EventRSVPHandler | ✅ |
+| GET | `/api/notifications` | GetNotificationsHandler | ✅ |
+| GET | `/api/notifications/unread-count` | GetUnreadNotificationCountHandler | ✅ |
+| PUT | `/api/notifications/{id}/read` | MarkNotificationReadHandler | ✅ |
+| PUT | `/api/notifications/read-all` | MarkAllNotificationsReadHandler | ✅ |
 | WS | `/api/ws` | ServeWS (hub upgrade) | ✅ |
 
 ### Planned
-Events (create/list/rsvp), notifications (list/seen/unread), chat (conversations/messages/send), moderation endpoints (from configs.json rate limits).
+Chat (conversations/messages/send), moderation endpoints (from configs.json rate limits).
 
 ## Key Conventions
 
@@ -335,7 +364,7 @@ Events (create/list/rsvp), notifications (list/seen/unread), chat (conversations
 - **Soft delete:** Posts and comments set `is_deleted = 1`. They remain visible in feeds/threads but render as `[deleted]` with nested replies intact (Reddit-style). Delete requires ownership.
 - **Follows:** Public profile → instant follow. Private profile → request must be sent, recipient accepts or declines.
 - **Chat access:** Users can only start a DM if at least one of them follows the other (or the recipient has a public profile).
-- **Groups:** Invite/request with statuses `pending`, `accepted`, `declined`, `invited`. Only accepted members see group content and chat. Group events have RSVP options: `going`, `not_going`, `maybe`.
+- **Groups:** Invite/request with statuses `pending`, `accepted`, `declined`, `invited`. Only accepted members see group content and chat. Group events have RSVP options: `going`, `not_going`.
 - **Emoji:** Picker button + `:shortcode:` autocomplete backed by `@emoji-mart/data`. Emojis are plain Unicode — stored as TEXT in SQLite.
 - **WebSocket:** single shared connection at `/api/ws` (auth required). Hub dispatches `chat_message`, `group_message`, `notification`, `presence_update`, `typing`, `ping`/`pong`. Presence tracked in Redis with 30s TTL keys. Frontend `ws/websocket.ts` connection manager planned.
 - **Pagination:** `limit`/`offset` query params. TanStack `useInfiniteQuery` on the frontend.
@@ -344,6 +373,7 @@ Events (create/list/rsvp), notifications (list/seen/unread), chat (conversations
 - **CORS:** Backend sets `Access-Control-Allow-Origin` from `configs.json` `frontend.url` (`http://localhost:3000`).
 - **Port:** Backend `:8080`, frontend dev `:3000` (Next.js default).
 - **snake_case** everywhere to match Go JSON tags.
+- **Route IDs:** Users, groups, and events use **UUID** in route paths (looked up internally by numeric FK). Posts and comments still use numeric IDs — to be standardized to UUID later.
 - **File naming:** React components are PascalCase; all other files (hooks, api, utils, views) are camelCase.
 
 ## Redis Integration (Phase J)
@@ -385,6 +415,6 @@ On first launch, 6 users are pre-loaded. All share password: `password123`
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
 
-Plus 28 posts (2 marked deleted), 35 comments (3 marked deleted, some nested under deleted parents), 2 groups with events, DMs, and notifications.
+Plus 28 posts (2 marked deleted), 35 comments (3 marked deleted, some nested under deleted parents), 2 groups, 5 events (with going/not_going RSVPs), DMs, and notifications.
 
 To reset: `make backend-run-reseed` (or `go run ./backend/cmd/main.go --reseed`)
