@@ -97,14 +97,14 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return
 	}
 
-	nickname := generateNickname(req.Email)
+	nickname := generateNickname(req.Email, limits.MinUsername, limits.MaxUsername)
 
 	for {
 		_, err := db.GetUserByNickname(r.Context(), nickname)
 		if err != nil {
 			break
 		}
-		nickname = generateNicknameWithSuffix(req.Email, rand.Intn(9000)+1000)
+		nickname = generateNicknameWithSuffix(req.Email, limits.MinUsername, limits.MaxUsername, rand.Intn(9000)+1000)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -170,12 +170,12 @@ func calculateAge(dob time.Time) int {
 
 var nonAlphaNum = regexp.MustCompile(`[^a-z0-9_]`)
 
-func sanitizeNickname(raw string) string {
+func sanitizeNickname(raw string, maxLen int) string {
 	lower := strings.ToLower(raw)
 	sanitized := nonAlphaNum.ReplaceAllString(lower, "_")
 	sanitized = strings.Trim(sanitized, "_")
-	if len(sanitized) > 30 {
-		sanitized = sanitized[:30]
+	if len(sanitized) > maxLen {
+		sanitized = sanitized[:maxLen]
 	}
 	if sanitized == "" {
 		sanitized = "user"
@@ -183,16 +183,28 @@ func sanitizeNickname(raw string) string {
 	return sanitized
 }
 
-func generateNickname(email string) string {
+func generateNickname(email string, minLen, maxLen int) string {
 	parts := strings.SplitN(email, "@", 2)
-	return sanitizeNickname(parts[0])
+	base := sanitizeNickname(parts[0], maxLen)
+	if len(base) < minLen {
+		padding := minLen - len(base)
+		base = base + "_" + strings.Repeat("0", padding-1)
+		if len(base) > maxLen {
+			base = base[:maxLen]
+		}
+	}
+	return base
 }
 
-func generateNicknameWithSuffix(email string, suffix int) string {
-	base := generateNickname(email)
-	trimmed := base
-	if len(base) > 26 {
-		trimmed = base[:26]
+func generateNicknameWithSuffix(email string, minLen, maxLen int, suffix int) string {
+	base := generateNickname(email, minLen, maxLen)
+	suffixStr := fmt.Sprintf("%d", suffix)
+	maxBaseLen := maxLen - len(suffixStr)
+	if maxBaseLen < 1 {
+		maxBaseLen = 1
 	}
-	return fmt.Sprintf("%s%d", trimmed, suffix)
+	if len(base) > maxBaseLen {
+		base = base[:maxBaseLen]
+	}
+	return base + suffixStr
 }

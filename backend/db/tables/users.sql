@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    nickname VARCHAR(100) UNIQUE,
+    nickname VARCHAR(100) UNIQUE NOT NULL,
     date_of_birth DATE NOT NULL,
     about_me TEXT,
     avatar_path VARCHAR(500),
