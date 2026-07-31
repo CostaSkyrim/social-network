@@ -17,7 +17,7 @@ export default function LoginPage() {
     set_error(null)
 
     if (!email.trim() || !password.trim()) {
-      set_error('Email and password are required')
+      set_error('Email/nickname and password are required')
       return
     }
 
@@ -38,11 +38,11 @@ export default function LoginPage() {
 
       <Input
         id="email"
-        label="Email"
-        type="email"
+        label="Email or Nickname"
+        type="text"
         value={email}
         onChange={(e) => set_email(e.target.value)}
-        placeholder="alice@example.com"
+        placeholder="alice@example.com or alicej"
         required
       />
 
