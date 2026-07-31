@@ -14,7 +14,7 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - **Comments** — Nested reply threads. Edit and soft-delete your own comments (deleted comments render as `[deleted]` with replies intact).
 - **Emoji support** — Emoji picker button plus `:shortcode:` autocomplete (e.g. type `:cat` → pick 🐱) with keyboard navigation.
 - **Groups** — Create groups with title and description. Invite users or accept join requests. Group members can post, comment, create events, and chat in a shared group room.
-- **Events** — Group members can create events with title, description, and date/time. RSVP with Going / Not Going / Maybe.
+- **Events** — Group members can create events with title, description, and date/time. RSVP with Going / Not Going. Live counts per event plus your own response.
 - **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, and new events. Notifications appear across all pages.
 - **Chat** — Real-time private messaging between users who follow each other. Group chat rooms for group members. Emoji support. WebSocket-powered instant delivery.
 - **Real-time presence** — Online/offline status tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub (`/api/ws`).
@@ -29,11 +29,13 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - Follow system (request / accept / decline / unfollow)
 - User profiles (view + edit)
 - Group management (CRUD, browse, invite, join, accept, reject, leave, members)
+- Events (create, list with going/not_going counts, single event detail, RSVP upsert) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
+- Notifications (list, unread count, mark read / mark all) with real-time WebSocket push
 - Emoji picker + `:shortcode:` autocomplete in the post composer
 - WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive
 - Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels
 
-**Planned:** Events, notifications UI, chat UI (WebSocket frontend), Redis session store migration, cross-instance pub/sub, Docker.
+**Planned:** GroupDetailPage wiring (events ready to display), Chat UI (WebSocket frontend), Redis session store migration, cross-instance pub/sub, Docker.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
@@ -150,7 +152,7 @@ On first launch, 6 users are pre-loaded. All share the same password: `password1
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
 
-The seed also includes 28 posts (2 deleted), 35 comments (3 deleted), 2 groups with events, DMs, and notifications — useful for testing soft-delete rendering and privacy filtering.
+The seed also includes 28 posts (2 deleted), 35 comments (3 deleted), 2 groups, 5 events (with going/not_going RSVPs), DMs, and notifications — useful for testing soft-delete rendering, privacy filtering, and events.
 
 ## Project Structure
 
@@ -184,6 +186,7 @@ social-network/
 │   ├── server/websocket/  # WebSocket hub, client, handler, types
 │   ├── cache/             # Redis client (presence, caching, rate limit)
 │   └── populate/          # Seed data (seed.json + seed.go)
+│   └── db/migrations/     # SQL migration files (15 up/down)
 ├── docker-compose.yml     # planned
 ├── Makefile               # dev, check, build commands
 ├── setup-dev.sh           # Distrobox container setup

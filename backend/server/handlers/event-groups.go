@@ -28,6 +28,24 @@ type GroupResponse struct {
 	CreatedAt   string  `json:"created_at"`
 }
 
+// resolveGroupID looks up a group by its UUID (from the URL path) and returns
+// the numeric internal ID. Responds with an error and returns false on failure.
+func resolveGroupID(w http.ResponseWriter, r *http.Request, db *database.DataBase) (int64, bool) {
+	groupUUID := r.PathValue("id")
+	if groupUUID == "" {
+		RespondError(w, http.StatusBadRequest, "Group ID required")
+		return 0, false
+	}
+
+	group, err := db.GetGroupByUUID(r.Context(), groupUUID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return 0, false
+	}
+
+	return group.ID, true
+}
+
 func CreateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -83,15 +101,8 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	if groupIDStr == "" {
-		RespondError(w, http.StatusBadRequest, "Group ID required")
-		return
-	}
-
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -121,15 +132,8 @@ func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	if groupIDStr == "" {
-		RespondError(w, http.StatusBadRequest, "Group ID required")
-		return
-	}
-
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -175,15 +179,8 @@ func DeleteGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	if groupIDStr == "" {
-		RespondError(w, http.StatusBadRequest, "Group ID required")
-		return
-	}
-
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -274,10 +271,8 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -335,10 +330,8 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -382,10 +375,8 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -428,10 +419,8 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -472,10 +461,8 @@ func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 
@@ -504,10 +491,8 @@ func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request, db *database
 		return
 	}
 
-	groupIDStr := r.PathValue("id")
-	groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid group ID")
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
 		return
 	}
 

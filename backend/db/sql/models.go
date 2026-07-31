@@ -153,15 +153,25 @@ type GroupQueries struct {
 }
 
 type Event struct {
-	ID            int64     `json:"-"`
+	ID            int64     `json:"db_id"`
 	UUID          string    `json:"id"`
 	GroupID       int64     `json:"group_id"`
 	CreatorID     int64     `json:"creator_id"`
+	Creator       *User     `json:"creator,omitempty"`
 	Title         string    `json:"title"`
 	Description   string    `json:"description"`
 	EventDateTime time.Time `json:"event_datetime"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type EventResponse struct {
+	ID        int64     `json:"-"`
+	EventID   int64     `json:"event_id"`
+	UserID    int64     `json:"user_id"`
+	Response  string    `json:"response"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type EventQueries struct {

@@ -617,15 +617,46 @@
       "title": "Photo Walk: City Architecture",
       "description": "Let's explore downtown and capture the best architectural shots. Meet at the central square.",
       "event_datetime": "2026-07-20T08:00:00Z"
+    },
+    {
+      "uuid": "e0030000-0000-4000-8000-000000000003",
+      "group_id": 1,
+      "creator_id": 3,
+      "title": "Go Meetup: WebAssembly in Go",
+      "description": "Hands-on session exploring WASM with Go. Bring your laptop and a fresh install of TinyGo.",
+      "event_datetime": "2026-09-12T18:00:00Z"
+    },
+    {
+      "uuid": "e0040000-0000-4000-8000-000000000004",
+      "group_id": 2,
+      "creator_id": 1,
+      "title": "Golden Hour Shoot: Sunset at the Pier",
+      "description": "Meet at the west pier 45 minutes before sunset. Bring a tripod if you have one.",
+      "event_datetime": "2026-08-05T19:30:00Z"
+    },
+    {
+      "uuid": "e0050000-0000-4000-8000-000000000005",
+      "group_id": 1,
+      "creator_id": 4,
+      "title": "Open Source Contribution Night",
+      "description": "Bring your favourite open source project and let's tackle issues together. Beginners welcome!",
+      "event_datetime": "2026-10-03T17:00:00Z"
     }
   ],
   "event_responses": [
     { "event_id": 1, "user_id": 3, "response": "going" },
     { "event_id": 1, "user_id": 1, "response": "going" },
-    { "event_id": 1, "user_id": 4, "response": "maybe" },
+    { "event_id": 1, "user_id": 4, "response": "going" },
+    { "event_id": 1, "user_id": 6, "response": "not_going" },
     { "event_id": 2, "user_id": 1, "response": "going" },
     { "event_id": 2, "user_id": 6, "response": "going" },
-    { "event_id": 2, "user_id": 4, "response": "not_going" }
+    { "event_id": 2, "user_id": 4, "response": "not_going" },
+    { "event_id": 3, "user_id": 3, "response": "going" },
+    { "event_id": 3, "user_id": 1, "response": "going" },
+    { "event_id": 4, "user_id": 1, "response": "going" },
+    { "event_id": 4, "user_id": 6, "response": "going" },
+    { "event_id": 5, "user_id": 4, "response": "going" },
+    { "event_id": 5, "user_id": 1, "response": "not_going" }
   ],
   "messages": [
     {
