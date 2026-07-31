@@ -71,6 +71,18 @@
       "about_me": "Photographer and traveler. Currently learning Go for fun.",
       "avatar_path": null,
       "is_public": true
+    },
+    {
+      "uuid": "g7a8b9c0-d1e2-3456-abcd-567890123456",
+      "email": "yuki@example.com",
+      "password": "sub",
+      "first_name": "Yuki",
+      "last_name": "Minakami",
+      "nickname": "yukiblob",
+      "date_of_birth": "1997-12-25T00:00:00Z",
+      "about_me": "Artist and frontend dev. I love pixel art, matcha, and cozy games.",
+      "avatar_path": null,
+      "is_public": true
     }
   ],
   "follows": [
@@ -82,7 +94,13 @@
     { "follower_id": 5, "following_id": 1, "status": "pending" },
     { "follower_id": 6, "following_id": 1, "status": "accepted" },
     { "follower_id": 6, "following_id": 3, "status": "accepted" },
-    { "follower_id": 6, "following_id": 4, "status": "accepted" }
+    { "follower_id": 6, "following_id": 4, "status": "accepted" },
+    { "follower_id": 1, "following_id": 7, "status": "accepted" },
+    { "follower_id": 3, "following_id": 7, "status": "accepted" },
+    { "follower_id": 4, "following_id": 7, "status": "accepted" },
+    { "follower_id": 6, "following_id": 7, "status": "accepted" },
+    { "follower_id": 7, "following_id": 1, "status": "accepted" },
+    { "follower_id": 7, "following_id": 3, "status": "accepted" }
   ],
   "groups": [
     {

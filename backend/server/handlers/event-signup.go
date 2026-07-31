@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
@@ -21,7 +22,6 @@ type SignupRequest struct {
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	DateOfBirth time.Time `json:"date_of_birth"`
-	Nickname    *string   `json:"nickname"`
 	AboutMe     *string   `json:"about_me"`
 }
 
@@ -73,20 +73,6 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return
 	}
 
-	if req.Nickname != nil && *req.Nickname != "" {
-		nickname := strings.TrimSpace(*req.Nickname)
-		if len(nickname) < limits.MinUsername {
-			RespondError(w, http.StatusBadRequest,
-				fmt.Sprintf("Username must be at least %d characters long", limits.MinUsername))
-			return
-		}
-		if len(nickname) > limits.MaxUsername {
-			RespondError(w, http.StatusBadRequest,
-				fmt.Sprintf("Username must be at most %d characters long", limits.MaxUsername))
-			return
-		}
-	}
-
 	if req.AboutMe != nil && len(*req.AboutMe) > limits.MaxBio {
 		RespondError(w, http.StatusBadRequest,
 			fmt.Sprintf("About me must be at most %d characters long", limits.MaxBio))
@@ -111,6 +97,16 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return
 	}
 
+	nickname := generateNickname(req.Email)
+
+	for {
+		_, err := db.GetUserByNickname(r.Context(), nickname)
+		if err != nil {
+			break
+		}
+		nickname = generateNicknameWithSuffix(req.Email, rand.Intn(9000)+1000)
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to process registration")
@@ -123,7 +119,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		PasswordHash: string(hashedPassword),
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
-		Nickname:     req.Nickname,
+		Nickname:     &nickname,
 		DateOfBirth:  req.DateOfBirth,
 		AboutMe:      req.AboutMe,
 		IsPublic:     true,
@@ -170,4 +166,33 @@ func calculateAge(dob time.Time) int {
 	}
 
 	return age
+}
+
+var nonAlphaNum = regexp.MustCompile(`[^a-z0-9_]`)
+
+func sanitizeNickname(raw string) string {
+	lower := strings.ToLower(raw)
+	sanitized := nonAlphaNum.ReplaceAllString(lower, "_")
+	sanitized = strings.Trim(sanitized, "_")
+	if len(sanitized) > 30 {
+		sanitized = sanitized[:30]
+	}
+	if sanitized == "" {
+		sanitized = "user"
+	}
+	return sanitized
+}
+
+func generateNickname(email string) string {
+	parts := strings.SplitN(email, "@", 2)
+	return sanitizeNickname(parts[0])
+}
+
+func generateNicknameWithSuffix(email string, suffix int) string {
+	base := generateNickname(email)
+	trimmed := base
+	if len(base) > 26 {
+		trimmed = base[:26]
+	}
+	return fmt.Sprintf("%s%d", trimmed, suffix)
 }

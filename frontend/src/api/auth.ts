@@ -19,7 +19,6 @@ export async function signup(
   first_name: string,
   last_name: string,
   date_of_birth: string,
-  nickname?: string,
   about_me?: string,
 ): Promise<User> {
   const body: Record<string, string> = {
@@ -29,7 +28,6 @@ export async function signup(
     last_name,
     date_of_birth,
   }
-  if (nickname) body.nickname = nickname
   if (about_me) body.about_me = about_me
 
   const res = await client.post<AuthResponse>('/api/signup', body)

@@ -28,10 +28,9 @@ export function useSignup() {
       first_name: string
       last_name: string
       date_of_birth: string
-      nickname?: string
       about_me?: string
     }) => apiSignup(data.email, data.password, data.first_name, data.last_name,
-      data.date_of_birth, data.nickname, data.about_me),
+      data.date_of_birth, data.about_me),
     onSuccess: (user: User) => {
       set_user(user)
       query_client.invalidateQueries()

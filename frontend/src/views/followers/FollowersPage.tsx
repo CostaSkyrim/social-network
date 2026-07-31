@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { fetchFollowers } from '@/api/chat'
+import { fetchFollowers, fetchFollowing } from '@/api/chat'
 import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/common/EmptyState'
+import { cn } from '@/lib/cn'
 
 interface FollowerItem {
   id: string
@@ -20,12 +21,16 @@ interface FollowerItem {
   last_dm_at?: string
 }
 
+type Tab = 'followers' | 'following'
+
 export default function FollowersPage() {
   const { user } = useAuth()
   const { subscribe } = useWebSocket()
   const router = useRouter()
   const [followers, set_followers] = useState<FollowerItem[]>([])
+  const [following, set_following] = useState<FollowerItem[]>([])
   const [is_loading, set_is_loading] = useState(true)
+  const [tab, set_tab] = useState<Tab>('followers')
 
   useEffect(() => {
     const userID = user?.id ?? ''
@@ -37,9 +42,7 @@ export default function FollowersPage() {
         console.log('[FollowersPage] Fetching followers for user_id=', userID)
         const data = await fetchFollowers(userID)
         console.log('[FollowersPage] Got followers:', data)
-        if (!cancelled) {
-          set_followers(data)
-        }
+        if (!cancelled) set_followers(data)
       } catch {
         // silently fail
       } finally {
@@ -51,24 +54,45 @@ export default function FollowersPage() {
   }, [user?.id])
 
   useEffect(() => {
+    const userID = user?.id ?? ''
+    if (!userID) return
+
+    let cancelled = false
+    async function load() {
+      try {
+        const data = await fetchFollowing(userID)
+        if (!cancelled) set_following(data)
+      } catch {
+        // silently fail
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  useEffect(() => {
     const unsub = subscribe('presence_update', (msg) => {
       const payload = msg.payload as { user_id: number; is_online: boolean } | undefined
       if (!payload) return
-      set_followers((prev) =>
+      const update = (prev: FollowerItem[]) =>
         prev.map((f) =>
           f.id === String(payload.user_id)
             ? { ...f, is_online: payload.is_online }
             : f,
-        ),
-      )
+        )
+      set_followers(update)
+      set_following(update)
     })
     return unsub
   }, [subscribe])
 
+  const list = tab === 'followers' ? followers : following
+  const title = tab === 'followers' ? 'Followers' : 'Following'
+
   if (is_loading) {
     return (
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">Followers</h2>
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3">
@@ -86,12 +110,43 @@ export default function FollowersPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Followers</h2>
-      {followers.length === 0 ? (
-        <EmptyState title="No followers yet" description="When someone follows you, they'll appear here." />
+      <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+        <button
+          onClick={() => set_tab('followers')}
+          className={cn(
+            'flex-1 rounded-md py-1.5 text-sm font-medium transition-colors',
+            tab === 'followers'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700',
+          )}
+        >
+          Followers ({followers.length})
+        </button>
+        <button
+          onClick={() => set_tab('following')}
+          className={cn(
+            'flex-1 rounded-md py-1.5 text-sm font-medium transition-colors',
+            tab === 'following'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700',
+          )}
+        >
+          Following ({following.length})
+        </button>
+      </div>
+
+      {list.length === 0 ? (
+        <EmptyState
+          title={`No ${tab} yet`}
+          description={
+            tab === 'followers'
+              ? "When someone follows you, they'll appear here."
+              : "People you follow will appear here."
+          }
+        />
       ) : (
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-          {followers.map((f) => (
+          {list.map((f) => (
             <button
               key={f.id}
               onClick={() => router.push(`/chat/${f.id}`)}

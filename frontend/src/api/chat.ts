@@ -64,3 +64,10 @@ export async function fetchFollowers(
   const res = await client.get(`/api/followers?user_id=${userID}`)
   return res.data.data ?? []
 }
+
+export async function fetchFollowing(
+  userID: string,
+): Promise<FollowerWithDM[]> {
+  const res = await client.get(`/api/following?user_id=${userID}`)
+  return res.data.data ?? []
+}

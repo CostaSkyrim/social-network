@@ -1,6 +1,7 @@
 .PHONY: backend-run backend-run-reseed backend-vet-populate \
 	frontend-dev frontend-build frontend-check frontend-install \
-	check dev kill-ports redis-start redis-stop
+	check dev kill-ports redis-start redis-stop \
+	db-reset db-delete db-seed
 
 # ── Redis ───────────────────────────────────────────────
 redis-start:
@@ -79,3 +80,26 @@ dev: kill-ports redis-start
 	cd frontend && npm run dev & \
 	go run ./backend/cmd/main.go & \
 	wait
+
+# ── Database ──────────────────────────────────────────
+DB_FILE := backend/db/social-network.db
+DB_SHARED := $(DB_FILE)-shm $(DB_FILE)-wal
+
+db-delete:
+	@echo "==> Deleting database files..."
+	rm -f $(DB_FILE) $(DB_SHARED)
+	@echo "   Database deleted"
+
+db-seed: db-delete
+	@echo "==> Starting backend to seed fresh database..."
+	@go run ./backend/cmd/main.go &
+	@sleep 3
+	@echo "   Seed complete — stop the server with Ctrl+C"
+	@wait
+
+db-reset: db-delete
+	@echo "==> Reseeding database with --reseed flag..."
+	@go run ./backend/cmd/main.go --reseed &
+	@sleep 3
+	@echo "   Reseed complete — stop the server with Ctrl+C"
+	@wait

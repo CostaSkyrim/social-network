@@ -14,7 +14,6 @@ export default function SignupPage() {
     first_name: '',
     last_name: '',
     date_of_birth: '',
-    nickname: '',
     about_me: '',
   })
   const [errors, set_errors] = useState<Record<string, string>>({})
@@ -51,7 +50,6 @@ export default function SignupPage() {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         date_of_birth: new Date(form.date_of_birth).toISOString(),
-        nickname: form.nickname.trim() || undefined,
         about_me: form.about_me.trim() || undefined,
       })
     } catch (err: any) {
@@ -115,13 +113,6 @@ export default function SignupPage() {
         onChange={(e) => set('date_of_birth', e.target.value)}
         error={errors.date_of_birth}
         required
-      />
-
-      <Input
-        id="nickname"
-        label="Nickname (optional)"
-        value={form.nickname}
-        onChange={(e) => set('nickname', e.target.value)}
       />
 
       <Input
