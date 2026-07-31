@@ -75,15 +75,15 @@ export default function ChatPage() {
   useEffect(() => {
     if (!targetUserID || !dms.length) return
 
-    const targetID = Number(targetUserID)
-    const dm = dms.find((d) => d.other_user.id === targetID)
+    const dm = dms.find((d) => d.other_user.id === targetUserID)
     if (!dm) return
+    const dmID = dm.id
 
     let cancelled = false
     set_is_loading_msgs(true)
     async function load() {
       try {
-        const msgs = await fetchMessages(dm.id)
+        const msgs = await fetchMessages(dmID)
         if (!cancelled) {
           set_messages(msgs)
           scrollToBottom()
@@ -326,7 +326,7 @@ export default function ChatPage() {
             const isMine = msg.sender_id === Number(user?.id ?? 0)
             return (
               <div
-                key={msg.id}
+                key={msg.uuid}
                 className={cn('flex', isMine ? 'justify-end' : 'justify-start')}
               >
                 {!isMine && (
