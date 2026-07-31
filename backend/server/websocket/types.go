@@ -37,10 +37,14 @@ type GroupChatPayload struct {
 }
 
 type NotificationPayload struct {
-	ID        int64  `json:"id"`
-	Type      string `json:"type"`
-	Content   string `json:"content"`
-	RelatedID *int64 `json:"related_id,omitempty"`
+	ID          int64  `json:"id"`
+	Type        string `json:"type"`
+	Content     string `json:"content"`
+	RelatedID   *int64 `json:"related_id,omitempty"`
+	FromUserID  *int64 `json:"from_user_id,omitempty"`
+	TargetID    int64  `json:"-"`
+	IsRead      bool   `json:"is_read"`
+	CreatedAt   string `json:"created_at"`
 }
 
 type PresencePayload struct {

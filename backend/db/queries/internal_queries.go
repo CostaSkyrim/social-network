@@ -150,6 +150,12 @@ const (
 		WHERE f.following_id = ? AND f.status = 'pending'
 		ORDER BY f.created_at DESC
 	`
+
+	GetFollowerIDs = `
+		SELECT follower_id
+		FROM followers
+		WHERE following_id = ? AND status = 'accepted'
+	`
 )
 
 // Post queries

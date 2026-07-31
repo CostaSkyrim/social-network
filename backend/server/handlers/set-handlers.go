@@ -96,6 +96,12 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/reject", true, RejectGroupMemberHandler),
 		makeEndpoint("/api/groups/{id}/leave", true, LeaveGroupHandler),
 		makeEndpoint("/api/groups/{id}/members", false, GetGroupMembersHandler),
+
+		// Notification endpoints
+		makeEndpoint("/api/notifications", true, GetNotificationsHandler),
+		makeEndpoint("/api/notifications/unread-count", true, GetUnreadNotificationCountHandler),
+		makeEndpoint("/api/notifications/{id}/read", true, MarkNotificationReadHandler),
+		makeEndpoint("/api/notifications/read-all", true, MarkAllNotificationsReadHandler),
 	}
 
 	for _, ep := range endpoints {

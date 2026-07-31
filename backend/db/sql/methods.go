@@ -537,6 +537,34 @@ func (db *DataBase) GetPendingFollowRequests(ctx context.Context, userID int64) 
 	return users, nil
 }
 
+// GetFollowerIDs retrieves just the IDs of followers for a user
+func (db *DataBase) GetFollowerIDs(ctx context.Context, userID int64) ([]int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowerIDs, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query follower IDs: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan follower id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return ids, nil
+}
+
 //====================================
 // POST METHODS
 //====================================
@@ -1392,4 +1420,39 @@ func (db *DataBase) MarkNotificationAsRead(ctx context.Context, notificationID, 
 	}
 
 	return nil
+}
+
+// MarkAllNotificationsAsRead marks all notifications for a user as read
+func (db *DataBase) MarkAllNotificationsAsRead(ctx context.Context, userID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		`UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to mark all notifications as read: %w", err)
+	}
+
+	return nil
+}
+
+// GetUnreadNotificationCount returns the number of unread notifications for a user
+func (db *DataBase) GetUnreadNotificationCount(ctx context.Context, userID int64) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx, queries.GetUnreadCount, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unread notifications: %w", err)
+	}
+
+	return count, nil
 }

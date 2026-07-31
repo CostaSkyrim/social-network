@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	database "social-network/backend/db/sql"
 	"strconv"
@@ -69,6 +71,9 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		RespondError(w, http.StatusInternalServerError, "Failed to create post")
 		return
 	}
+
+	post.ID = id
+	notifyFollowersOfNewPost(db, userID, post)
 
 	RespondSuccess(w, http.StatusCreated, "Post created", map[string]any{
 		"id":            id,
@@ -191,4 +196,17 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 	}
 
 	RespondSuccess(w, http.StatusOK, "Post updated", nil)
+}
+
+func notifyFollowersOfNewPost(db *database.DataBase, authorID int64, post *database.Post) {
+	followerIDs, err := db.GetFollowerIDs(context.Background(), authorID)
+	if err != nil || len(followerIDs) == 0 {
+		return
+	}
+
+	for _, followerID := range followerIDs {
+		sendNotification(db, followerID, authorID, NotifNewPost, "shared a new post", &post.ID)
+	}
+
+	fmt.Printf("Sent new_post notification to %d followers\n", len(followerIDs))
 }

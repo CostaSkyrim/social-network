@@ -318,13 +318,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	db.CreateNotification(r.Context(), &database.Notification{
-		UserID:     req.UserID,
-		FromUserID: &currentUserID,
-		Type:       "group_invitation",
-		Content:    "invited you to join group: " + group.Title,
-		RelatedID:  &groupID,
-	})
+	sendNotification(db, req.UserID, currentUserID, NotifGroupInvitation, "invited you to join group: "+group.Title, &groupID)
 
 	RespondSuccess(w, http.StatusOK, "Invitation sent", nil)
 }
@@ -371,13 +365,7 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 		return
 	}
 
-	db.CreateNotification(r.Context(), &database.Notification{
-		UserID:     group.CreatorID,
-		FromUserID: &currentUserID,
-		Type:       "group_join_request",
-		Content:    "requested to join group: " + group.Title,
-		RelatedID:  &groupID,
-	})
+	sendNotification(db, group.CreatorID, currentUserID, NotifGroupJoinRequest, "requested to join group: "+group.Title, &groupID)
 
 	RespondSuccess(w, http.StatusOK, "Join request sent", nil)
 }
@@ -423,13 +411,7 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	db.CreateNotification(r.Context(), &database.Notification{
-		UserID:     req.UserID,
-		FromUserID: &currentUserID,
-		Type:       "group_accepted",
-		Content:    "accepted your request to join group: " + group.Title,
-		RelatedID:  &groupID,
-	})
+	sendNotification(db, req.UserID, currentUserID, NotifGroupAccepted, "accepted your request to join group: "+group.Title, &groupID)
 
 	RespondSuccess(w, http.StatusOK, "Member accepted", nil)
 }

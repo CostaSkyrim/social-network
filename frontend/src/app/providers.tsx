@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthProvider'
 import { UIProvider } from '@/context/UIProvider'
+import { NotificationProvider } from '@/context/NotificationProvider'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { ToastContainer } from '@/components/ui/Toast'
 
@@ -26,8 +27,10 @@ export function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={query_client}>
         <AuthProvider>
           <UIProvider>
-            {children}
-            <ToastContainer />
+            <NotificationProvider>
+              {children}
+              <ToastContainer />
+            </NotificationProvider>
           </UIProvider>
         </AuthProvider>
       </QueryClientProvider>

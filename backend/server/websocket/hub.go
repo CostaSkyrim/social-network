@@ -273,7 +273,11 @@ func (h *Hub) dispatchMessage(msg *WSMessage) {
 		}
 
 	case TypeNotification:
-		h.BroadcastToAll(msg)
+		var payload NotificationPayload
+		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+			return
+		}
+		h.SendToUser(payload.TargetID, msg)
 
 	case TypePresenceUpdate:
 		h.BroadcastToAll(msg)

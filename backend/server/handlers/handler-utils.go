@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 
 	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
+	ws "social-network/backend/server/websocket"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +29,39 @@ func setGlobalRedis(rc *cache.RedisClient) {
 
 func getRedis() *cache.RedisClient {
 	return globalRedis
+}
+
+func sendNotification(db *database.DataBase, userID int64, fromUserID int64, notifType string, content string, relatedID *int64) {
+	notif, err := db.CreateNotification(context.Background(), &database.Notification{
+		UserID:     userID,
+		FromUserID: &fromUserID,
+		Type:       notifType,
+		Content:    content,
+		RelatedID:  relatedID,
+	})
+	if err != nil {
+		fmt.Printf("Error creating notification: %v\n", err)
+		return
+	}
+
+	if GlobalHub != nil {
+		payload, _ := json.Marshal(ws.NotificationPayload{
+			ID:         notif,
+			Type:       notifType,
+			Content:    content,
+			RelatedID:  relatedID,
+			FromUserID: &fromUserID,
+			TargetID:   userID,
+			IsRead:     false,
+			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		})
+		GlobalHub.SendToUser(userID, &ws.WSMessage{
+			Type:      ws.TypeNotification,
+			Payload:   payload,
+			SenderID:  fromUserID,
+			Timestamp: time.Now(),
+		})
+	}
 }
 
 type JSONResponse struct {
