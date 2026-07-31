@@ -1,7 +1,11 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useUI } from '@/context/UIProvider'
 import { useNotifications } from '@/context/NotificationProvider'
 import { Avatar } from '@/components/ui/Avatar'
+import { useMessageBadge } from '@/hooks/useMessageBadge'
 
 export function TopBar() {
   const { toggle_sidebar } = useUI()
@@ -22,6 +26,7 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3">
+        <NavFollowersBadge />
         <NavNotificationBell />
         <Avatar
           src={user?.avatar_path}
@@ -33,11 +38,43 @@ export function TopBar() {
   )
 }
 
-function NavNotificationBell() {
-  const { unread_count } = useNotifications()
+function NavFollowersBadge() {
+  const { message_count } = useMessageBadge()
+  const router = useRouter()
+  const { user } = useAuth()
 
   return (
-    <button className="relative rounded-lg p-1 text-gray-500 hover:bg-gray-100">
+    <button
+      onClick={() => router.push('/followers')}
+      className="relative rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+      title="Followers & Messages"
+    >
+      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+        />
+      </svg>
+      {message_count > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
+          {message_count > 99 ? '99+' : message_count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function NavNotificationBell() {
+  const { unread_count } = useNotifications()
+  const router = useRouter()
+
+  return (
+    <button
+      onClick={() => router.push('/notifications')}
+      className="relative rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+    >
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"

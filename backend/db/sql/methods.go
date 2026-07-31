@@ -97,6 +97,42 @@ func (db *DataBase) GetUserByEmail(ctx context.Context, email string) (*User, er
 	return user, nil
 }
 
+// GetUserByNickname retrieves a user by nickname
+func (db *DataBase) GetUserByNickname(ctx context.Context, nickname string) (*User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	user := &User{}
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetUserByNickname,
+		nickname,
+	).Scan(
+		&user.ID,
+		&user.UUID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.FirstName,
+		&user.LastName,
+		&user.Nickname,
+		&user.DateOfBirth,
+		&user.AboutMe,
+		&user.AvatarPath,
+		&user.IsPublic,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+
+	return user, nil
+}
+
 // GetUserByID retrieves a user by ID
 func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error) {
 	if ctx == nil {
@@ -1327,6 +1363,212 @@ func (db *DataBase) CreateOrGetDirectMessage(ctx context.Context, dm *DirectMess
 	}
 
 	return dmID, nil
+}
+
+// GetUnreadMessageCount returns total unread DM message count for a user
+func (db *DataBase) GetUnreadMessageCount(ctx context.Context, userID int64) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx, queries.GetUnreadDMCount, userID, userID, userID, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unread messages: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetUnreadCountForDM returns unread message count for a specific DM
+func (db *DataBase) GetUnreadCountForDM(ctx context.Context, dmID, userID int64) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx, queries.GetUnreadCountForDM, dmID, userID, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unread for dm: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetAllDMs retrieves all DM conversations for a user with the other user's info
+func (db *DataBase) GetAllDMs(ctx context.Context, userID int64) ([]*DirectMessage, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetAllDMs, userID, userID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query DMs: %w", err)
+	}
+	defer rows.Close()
+
+	var dms []*DirectMessage
+	for rows.Next() {
+		var dm DirectMessage
+		var otherUserID int64
+		var dmLastMessageAt sql.NullTime
+		err := rows.Scan(
+			&dm.ID,
+			&otherUserID,
+			&dm.CreatedAt,
+			&dmLastMessageAt,
+			&dm.LastMessage,
+			&dm.LastMessageAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan DM: %w", err)
+		}
+
+		otherUser, err := db.GetUserByID(ctx, otherUserID)
+		if err == nil {
+			dm.OtherUser = otherUser
+		}
+
+		if dm.OtherUser != nil {
+			dm.OtherUser.IsOnline = false
+		}
+
+		dms = append(dms, &dm)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return dms, nil
+}
+
+// GetMessages retrieves messages for a direct message conversation
+func (db *DataBase) GetMessages(ctx context.Context, dmID int64, limit int) ([]*Message, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetPrivateMessages, dmID, nil, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query messages: %w", err)
+	}
+	defer rows.Close()
+
+	var messages []*Message
+	for rows.Next() {
+		var msg Message
+		var senderUser User
+		var firstName, lastName string
+		var nickname, avatarPath *string
+		err := rows.Scan(
+			&msg.ID, &msg.UUID, &msg.SenderID, &msg.Content,
+			&msg.IsRead, &msg.CreatedAt,
+			&firstName, &lastName, &nickname, &avatarPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan message: %w", err)
+		}
+		senderUser.FirstName = firstName
+		senderUser.LastName = lastName
+		senderUser.Nickname = nickname
+		senderUser.AvatarPath = avatarPath
+		senderUser.ID = msg.SenderID
+		msg.Sender = &senderUser
+		messages = append(messages, &msg)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return messages, nil
+}
+
+// GetDMByUsers finds the DM between two users
+func (db *DataBase) GetDMByUsers(ctx context.Context, user1ID, user2ID int64) (*DirectMessage, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var dm DirectMessage
+	err := db.conn.QueryRowContext(ctx, queries.GetDMid, user1ID, user2ID, user2ID, user1ID).Scan(
+		&dm.ID, &dm.User1ID, &dm.User2ID, &dm.CreatedAt, &dm.LastMessageAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get DM: %w", err)
+	}
+
+	return &dm, nil
+}
+
+// MarkMessageRead marks a message as read by a user
+func (db *DataBase) MarkMessageRead(ctx context.Context, messageID, userID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx, queries.MarkMessageRead, messageID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to mark message read: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateDMTime updates the last message time for a direct message
+func (db *DataBase) UpdateDMTime(ctx context.Context, dmID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx, queries.UpdateLastDM, dmID)
+	if err != nil {
+		return fmt.Errorf("failed to update DM time: %w", err)
+	}
+
+	return nil
+}
+
+// GetFollowersWithDM retrieves followers sorted by last DM time then alphabetically
+func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]FollowerWithDM, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowersWithDM, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query followers with DM: %w", err)
+	}
+	defer rows.Close()
+
+	var followers []FollowerWithDM
+	for rows.Next() {
+		var f FollowerWithDM
+		err := rows.Scan(
+			&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
+			&f.Nickname, &f.AvatarPath, &f.IsPublic, &f.LastDMAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan follower: %w", err)
+		}
+		followers = append(followers, f)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return followers, nil
 }
 
 //====================================

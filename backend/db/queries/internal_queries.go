@@ -17,6 +17,14 @@ const (
 		WHERE email = ? AND is_active = 1
 	`
 
+	GetUserByNickname = `
+		SELECT id, uuid, email, password_hash, first_name,
+		 last_name, nickname, date_of_birth, about_me, avatar_path,
+		 is_public, is_active, created_at, updated_at
+		FROM users
+		WHERE nickname = ? AND is_active = 1
+	`
+
 	GetUserByID = `
 		SELECT id, uuid, email, first_name, last_name, nickname,
 		 date_of_birth, about_me, avatar_path, is_public, created_at
@@ -124,6 +132,19 @@ const (
 		JOIN users u ON u.id = f.follower_id
 		WHERE f.following_id = ? AND f.status = 'accepted' AND u.is_active = 1
 		ORDER BY f.created_at DESC
+	`
+
+	GetFollowersWithDM = `
+		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name,
+		 u.nickname, u.avatar_path, u.is_public,
+		 COALESCE(dm.last_message_at, '1970-01-01') as last_dm_at
+		FROM followers f
+		JOIN users u ON u.id = f.follower_id
+		LEFT JOIN direct_messages dm ON
+			(dm.user1_id = f.follower_id AND dm.user2_id = f.following_id)
+			OR (dm.user1_id = f.following_id AND dm.user2_id = f.follower_id)
+		WHERE f.following_id = ? AND f.status = 'accepted' AND u.is_active = 1
+		ORDER BY last_dm_at DESC, u.first_name ASC, u.last_name ASC
 	`
 
 	GetFollowing = `
@@ -383,6 +404,27 @@ const (
 		UPDATE direct_messages
 		SET last_message_at = CURRENT_TIMESTAMP
 		WHERE id = ?
+	`
+
+	GetUnreadDMCount = `
+		SELECT COUNT(*)
+		FROM messages m
+		JOIN direct_messages dm ON dm.id = m.direct_message_id
+		WHERE (dm.user1_id = ? OR dm.user2_id = ?)
+			AND m.sender_id != ?
+			AND m.id NOT IN (
+				SELECT message_id FROM message_reads WHERE user_id = ?
+			)
+	`
+
+	GetUnreadCountForDM = `
+		SELECT COUNT(*)
+		FROM messages m
+		WHERE m.direct_message_id = ?
+			AND m.sender_id != ?
+			AND m.id NOT IN (
+				SELECT message_id FROM message_reads WHERE user_id = ?
+			)
 	`
 )
 

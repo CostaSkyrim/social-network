@@ -27,8 +27,9 @@ type WSMessage struct {
 }
 
 type ChatPayload struct {
-	DMID    int64  `json:"dm_id"`
-	Content string `json:"content"`
+	DMID     int64  `json:"dm_id"`
+	DMUserID int64  `json:"dm_user_id"`
+	Content  string `json:"content"`
 }
 
 type GroupChatPayload struct {

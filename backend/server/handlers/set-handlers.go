@@ -102,6 +102,12 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/notifications/unread-count", true, GetUnreadNotificationCountHandler),
 		makeEndpoint("/api/notifications/{id}/read", true, MarkNotificationReadHandler),
 		makeEndpoint("/api/notifications/read-all", true, MarkAllNotificationsReadHandler),
+
+		// Chat/DM endpoints
+		makeEndpoint("/api/chat/dms", true, GetDMsHandler),
+		makeEndpoint("/api/chat/dms/{id}/messages", true, GetMessagesHandler),
+		makeEndpoint("/api/chat/send/{id}", true, SendMessageHandler),
+		makeEndpoint("/api/chat/unread-count", true, GetUnreadMessageCountHandler),
 	}
 
 	for _, ep := range endpoints {
