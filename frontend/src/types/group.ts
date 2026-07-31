@@ -21,10 +21,15 @@ export interface CreateEventInput {
 }
 
 export interface GroupMember {
-  group_id: number
-  user_id: number
+  user: {
+    id: string
+    first_name: string
+    last_name: string
+    nickname?: string
+    avatar_path?: string
+  }
   status: 'pending' | 'accepted' | 'declined' | 'invited'
-  invited_by?: number
+  invited_by?: string
   joined_at?: string
 }
 

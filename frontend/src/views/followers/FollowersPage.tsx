@@ -28,12 +28,13 @@ export default function FollowersPage() {
   const [is_loading, set_is_loading] = useState(true)
 
   useEffect(() => {
-    if (!user?.id) return
+    const userID = user?.id ?? ''
+    if (!userID) return
 
     let cancelled = false
     async function load() {
       try {
-        const data = await fetchFollowers(user.id)
+        const data = await fetchFollowers(userID)
         if (!cancelled) {
           set_followers(data)
         }

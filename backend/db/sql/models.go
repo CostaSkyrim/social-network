@@ -144,13 +144,15 @@ type Group struct {
 }
 
 type GroupMember struct {
-	ID        int64     `json:"-"`
-	GroupID   int64     `json:"group_id"`
-	UserID    int64     `json:"user_id"`
-	Status    string    `json:"status"`
-	InvitedBy int64     `json:"invited_by,omitempty"`
-	JoinedAt  time.Time `json:"joined_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            int64     `json:"-"`
+	GroupID       int64     `json:"-"`
+	UserID        int64     `json:"-"`
+	User          *User     `json:"user,omitempty"`
+	Status        string    `json:"status"`
+	InvitedBy     int64     `json:"-"`
+	InvitedByUUID *string   `json:"invited_by,omitempty"`
+	JoinedAt      time.Time `json:"joined_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type GroupQueries struct {

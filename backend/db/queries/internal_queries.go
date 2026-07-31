@@ -323,9 +323,10 @@ const (
 
 	GetGroupMembers = `
 		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name, u.nickname,
-		 u.avatar_path, gm.status, gm.joined_at
+		 u.avatar_path, gm.status, gm.joined_at, inv.uuid as invited_by_uuid
 		FROM group_members gm
 		JOIN users u ON u.id = gm.user_id
+		LEFT JOIN users inv ON inv.id = gm.invited_by
 		WHERE gm.group_id = ? AND u.is_active = 1
 		ORDER BY gm.joined_at DESC
 	`
