@@ -5,6 +5,9 @@
 *.sqlite
 *.sqlite3
 
+# Redis
+dump.rdb
+
 # Build artifacts
 main
 backend/main
