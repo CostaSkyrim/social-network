@@ -30,11 +30,20 @@ export function useMessageBadge() {
     if (!is_authenticated) return
 
     const unsub = subscribe('chat_message', () => {
-      set_message_count((prev) => prev + 1)
+      refresh()
     })
 
-    return unsub
-  }, [is_authenticated, subscribe])
+    const onFocus = () => refresh()
+
+    window.addEventListener('messages-read', onFocus)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      unsub()
+      window.removeEventListener('messages-read', onFocus)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [is_authenticated, subscribe, refresh])
 
   return { message_count, refresh }
 }
