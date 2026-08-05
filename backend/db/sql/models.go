@@ -134,7 +134,8 @@ type PostQueries struct {
 type Group struct {
 	ID            int64      `json:"-"`
 	UUID          string     `json:"id"`
-	CreatorID     int64      `json:"creator_id"`
+	CreatorID     int64      `json:"-"`
+	CreatorUUID   string     `json:"creator_id"`
 	Title         string     `json:"title"`
 	Description   string     `json:"description"`
 	AvatarPath    *string    `json:"avatar_path,omitempty"`

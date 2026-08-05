@@ -9,8 +9,12 @@ import {
   rsvpEvent as apiRsvpEvent,
   acceptGroupMember as apiAcceptGroupMember,
   rejectGroupMember as apiRejectGroupMember,
+  joinGroup as apiJoinGroup,
+  leaveGroup as apiLeaveGroup,
+  inviteGroupMember as apiInviteGroupMember,
 } from '@/api/groups'
 import { useUI } from '@/context/UIProvider'
+import { useNotifications } from '@/context/NotificationProvider'
 import type { CreateEventInput, GroupEvent } from '@/types/group'
 
 export function useGroups() {
@@ -29,11 +33,11 @@ export function useGroup(id: string) {
   })
 }
 
-export function useGroupEvents(groupId: string) {
+export function useGroupEvents(groupId: string, enabled = true) {
   return useQuery({
     queryKey: ['group-events', groupId],
     queryFn: () => getGroupEvents(groupId),
-    enabled: !!groupId,
+    enabled: !!groupId && enabled,
   })
 }
 
@@ -59,11 +63,13 @@ export function useCreateEvent(groupId: string) {
 export function useAcceptGroupMember(groupId: string) {
   const query_client = useQueryClient()
   const { show_toast } = useUI()
+  const { refresh: refresh_notifications } = useNotifications()
 
   return useMutation({
     mutationFn: (userId: string) => apiAcceptGroupMember(groupId, userId),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      refresh_notifications()
       show_toast({ message: 'Member accepted', type: 'success' })
     },
     onError: (err: any) => {
@@ -78,11 +84,13 @@ export function useAcceptGroupMember(groupId: string) {
 export function useRejectGroupMember(groupId: string) {
   const query_client = useQueryClient()
   const { show_toast } = useUI()
+  const { refresh: refresh_notifications } = useNotifications()
 
   return useMutation({
     mutationFn: (userId: string) => apiRejectGroupMember(groupId, userId),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      refresh_notifications()
       show_toast({ message: 'Member declined', type: 'success' })
     },
     onError: (err: any) => {
@@ -137,6 +145,63 @@ export function useRSVP(eventId: string, groupId: string) {
     },
     onSettled: () => {
       query_client.invalidateQueries({ queryKey: ['group-events', groupId] })
+    },
+  })
+}
+
+export function useJoinGroup(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: () => apiJoinGroup(groupId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Join request sent', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to join group',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useLeaveGroup(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: () => apiLeaveGroup(groupId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Left the group', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to leave group',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useInviteGroupMember(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (nickname: string) => apiInviteGroupMember(groupId, nickname),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Invitation sent', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to send invitation',
+        type: 'error',
+      })
     },
   })
 }

@@ -51,3 +51,15 @@ export async function acceptGroupMember(groupId: string, userId: string): Promis
 export async function rejectGroupMember(groupId: string, userId: string): Promise<void> {
   await client.post(`/api/groups/${groupId}/reject`, { user_id: userId })
 }
+
+export async function joinGroup(groupId: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/join`)
+}
+
+export async function leaveGroup(groupId: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/leave`)
+}
+
+export async function inviteGroupMember(groupId: string, nickname: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/invite`, { nickname })
+}
