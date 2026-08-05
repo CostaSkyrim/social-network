@@ -2,26 +2,26 @@
 
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
-import { useUI } from '@/context/UIProvider'
 import { useNotifications } from '@/context/NotificationProvider'
 import { Avatar } from '@/components/ui/Avatar'
 import { useMessageBadge } from '@/hooks/useMessageBadge'
+import { NavMenu } from '@/components/layout/NavMenu'
 
 export function TopBar() {
-  const { toggle_sidebar } = useUI()
   const { user } = useAuth()
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
       <div className="flex items-center gap-3">
-        <button
-          onClick={toggle_sidebar}
-          className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 md:hidden"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <NavMenu
+          trigger={
+            <button className="rounded-lg p-1 text-gray-500 hover:bg-gray-100">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          }
+        />
         <h1 className="text-lg font-bold text-blue-600">Social</h1>
       </div>
 
@@ -41,7 +41,6 @@ export function TopBar() {
 function NavFollowersBadge() {
   const { message_count } = useMessageBadge()
   const router = useRouter()
-  const { user } = useAuth()
 
   return (
     <button

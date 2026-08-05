@@ -5,7 +5,6 @@ import { useEffect, type ReactNode } from 'react'
 export const dynamic = 'force-dynamic'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
-import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { Spinner } from '@/components/ui/Spinner'
@@ -30,7 +29,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
       <div className="flex flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">

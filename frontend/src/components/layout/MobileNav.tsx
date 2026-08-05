@@ -1,19 +1,13 @@
 'use client'
 
+import { NAV_ITEMS } from '@/lib/nav'
 import { NavLink } from '@/lib/nav-link'
 import { cn } from '@/lib/cn'
-
-const items = [
-  { to: '/home', label: 'Home', icon: '🏠' },
-  { to: '/profile/me', label: 'Profile', icon: '👤' },
-  { to: '/groups', label: 'Groups', icon: '👥' },
-  { to: '/followers', label: 'Followers', icon: '💬' },
-]
 
 export function MobileNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 flex border-t border-gray-200 bg-white md:hidden">
-      {items.map((item) => (
+      {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}
           href={item.to}
