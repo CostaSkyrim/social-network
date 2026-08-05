@@ -194,6 +194,7 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	if GlobalHub != nil {
 		sender, _ := db.GetUserByID(r.Context(), currentUserID)
 		senderInfo := map[string]interface{}{
+			"id":          sender.UUID,
 			"first_name":  sender.FirstName,
 			"last_name":   sender.LastName,
 			"nickname":    sender.Nickname,

@@ -18,11 +18,12 @@ const (
 )
 
 type Client struct {
-	Hub    *Hub
-	Conn   *websocket.Conn
-	UserID int64
-	Send   chan []byte
-	mu     sync.Mutex
+	Hub      *Hub
+	Conn     *websocket.Conn
+	UserID   int64
+	UserUUID string
+	Send     chan []byte
+	mu       sync.Mutex
 }
 
 func NewClient(hub *Hub, conn *websocket.Conn, userID int64) *Client {

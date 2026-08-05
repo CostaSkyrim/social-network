@@ -50,8 +50,9 @@ type NotificationPayload struct {
 }
 
 type PresencePayload struct {
-	UserID   int64 `json:"user_id"`
-	IsOnline bool  `json:"is_online"`
+	UserID   int64  `json:"user_id"`
+	UserUUID string `json:"user_uuid"`
+	IsOnline bool   `json:"is_online"`
 }
 
 type TypingPayload struct {

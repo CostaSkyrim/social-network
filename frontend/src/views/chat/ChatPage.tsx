@@ -14,6 +14,7 @@ interface MessageData {
   uuid: string
   sender_id: number
   sender?: {
+    id?: string
     first_name: string
     last_name: string
     nickname?: string
@@ -80,17 +81,22 @@ export default function ChatPage() {
             scrollToBottom()
           }
         } else {
-          const userRes = await client.get(`/api/users/${targetUserID}`)
-          const other = userRes.data.data
-          if (other) {
-            set_partner({
-              id: other.id,
-              first_name: other.first_name,
-              last_name: other.last_name,
-              nickname: other.nickname,
-              avatar_path: other.avatar_path,
-              is_online: other.is_online ?? false,
-            })
+          try {
+            const userRes = await client.get(`/api/users/${targetUserID}`)
+            const profile = userRes.data.data ?? userRes.data
+            const other = profile?.user ?? profile
+            if (other && !cancelled) {
+              set_partner({
+                id: typeof other.id === 'number' ? String(other.id) : other.id,
+                first_name: other.first_name,
+                last_name: other.last_name,
+                nickname: other.nickname,
+                avatar_path: other.avatar_path,
+                is_online: other.is_online ?? false,
+              })
+            }
+          } catch {
+            // silently fail
           }
         }
       } catch {
@@ -122,18 +128,21 @@ export default function ChatPage() {
       }
       if (!payload || payload.dm_id !== dmIDRef.current) return
 
-      set_messages((prev) => [
-        ...prev,
-        {
-          id: payload.message_id,
-          uuid: crypto.randomUUID(),
-          sender_id: msg.sender_id ?? 0,
-          sender: payload.sender,
-          content: payload.content,
-          is_read: false,
-          created_at: payload.created_at,
-        },
-      ])
+      set_messages((prev) => {
+        if (prev.some((m) => m.id === payload.message_id)) return prev
+        return [
+          ...prev,
+          {
+            id: payload.message_id,
+            uuid: crypto.randomUUID(),
+            sender_id: msg.sender_id ?? 0,
+            sender: payload.sender,
+            content: payload.content,
+            is_read: false,
+            created_at: payload.created_at,
+          },
+        ]
+      })
       setTimeout(scrollToBottom, 100)
     })
 
@@ -143,9 +152,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!partner) return
     const unsub = subscribe('presence_update', (msg) => {
-      const payload = msg.payload as { user_id: number; is_online: boolean } | undefined
+      const payload = msg.payload as { user_id: number; user_uuid: string; is_online: boolean } | undefined
       if (!payload) return
-      if (String(payload.user_id) === partner.id) {
+      if (payload.user_uuid === partner.id) {
         set_partner((prev) => (prev ? { ...prev, is_online: payload.is_online } : null))
       }
     })
@@ -166,6 +175,7 @@ export default function ChatPage() {
         uuid: crypto.randomUUID(),
         sender_id: user?.id ? Number(user.id) : 0,
         sender: {
+          id: user?.id,
           first_name: user?.first_name ?? '',
           last_name: user?.last_name ?? '',
           nickname: user?.nickname,
@@ -242,7 +252,7 @@ export default function ChatPage() {
           </div>
         ) : (
           messages.map((msg) => {
-            const isMine = String(msg.sender_id) === String(user?.id ?? '')
+            const isMine = (msg.sender?.id ?? String(msg.sender_id)) === String(user?.id ?? '')
             return (
               <div
                 key={msg.uuid}

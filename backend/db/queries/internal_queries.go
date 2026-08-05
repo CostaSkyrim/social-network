@@ -137,13 +137,14 @@ const (
 	GetFollowersWithDM = `
 		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name,
 		 u.nickname, u.avatar_path, u.is_public,
-		 COALESCE(dm.last_message_at, '1970-01-01') as last_dm_at
+		 COALESCE(MAX(dm.last_message_at), '1970-01-01') as last_dm_at
 		FROM followers f
 		JOIN users u ON u.id = f.follower_id
 		LEFT JOIN direct_messages dm ON
 			(dm.user1_id = f.follower_id AND dm.user2_id = f.following_id)
 			OR (dm.user1_id = f.following_id AND dm.user2_id = f.follower_id)
 		WHERE f.following_id = ? AND f.status = 'accepted' AND u.is_active = 1
+		GROUP BY u.id
 		ORDER BY last_dm_at DESC, u.first_name ASC, u.last_name ASC
 	`
 
@@ -344,17 +345,25 @@ const (
 
 // Message queries
 const (
-	GetOrCreateDM = `
-		INSERT INTO direct_messages (user1_id, user2_id)
-		SELECT ?, ? 
-		ON CONFLICT(user1_id, user2_id) DO UPDATE SET user1_id = user1_id
-		RETURNING id
-	`
 	GetDMid = `
 		SELECT id, user1_id, user2_id, created_at, last_message_at
 		FROM direct_messages
 		WHERE (user1_id = ? AND user2_id = ?) 
 		OR (user1_id = ? AND user2_id = ?)
+	`
+
+	GetDMidScalar = `
+		SELECT id
+		FROM direct_messages
+		WHERE (user1_id = ? AND user2_id = ?) 
+		OR (user1_id = ? AND user2_id = ?)
+	`
+
+	GetOrCreateDM = `
+		INSERT INTO direct_messages (user1_id, user2_id)
+		SELECT ?, ? 
+		ON CONFLICT(user1_id, user2_id) DO UPDATE SET user1_id = user1_id
+		RETURNING id
 	`
 
 	CreateMessage = `
@@ -364,7 +373,7 @@ const (
 
 	GetGroupMessages = `
 		SELECT m.id, m.uuid, m.sender_id, m.content, m.is_read,
-		 m.created_at, u.first_name, u.last_name, u.nickname, u.avatar_path
+		 m.created_at, u.first_name, u.last_name, u.nickname, u.avatar_path, u.uuid
 		FROM messages m
 		JOIN users u ON u.id = m.sender_id
 		WHERE m.group_id = ? AND m.created_at > COALESCE(?, '1970-01-01')
@@ -400,7 +409,7 @@ const (
 
 	GetPrivateMessages = `
 		SELECT m.id, m.uuid, m.sender_id, m.content, m.is_read, m.created_at,
-			u.first_name, u.last_name, u.nickname, u.avatar_path
+			u.first_name, u.last_name, u.nickname, u.avatar_path, u.uuid
 		FROM messages m
 		JOIN users u ON u.id = m.sender_id
 		WHERE m.direct_message_id = ? 

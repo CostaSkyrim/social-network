@@ -75,11 +75,11 @@ export default function FollowersPage() {
 
   useEffect(() => {
     const unsub = subscribe('presence_update', (msg) => {
-      const payload = msg.payload as { user_id: number; is_online: boolean } | undefined
+      const payload = msg.payload as { user_id: number; user_uuid: string; is_online: boolean } | undefined
       if (!payload) return
       const update = (prev: FollowerItem[]) =>
         prev.map((f) =>
-          f.id === String(payload.user_id)
+          f.id === payload.user_uuid
             ? { ...f, is_online: payload.is_online }
             : f,
         )
@@ -88,6 +88,16 @@ export default function FollowersPage() {
     })
     return unsub
   }, [subscribe])
+
+  useEffect(() => {
+    const unsub = subscribe('chat_message', () => {
+      const userID = user?.id ?? ''
+      if (!userID) return
+      fetchFollowers(userID).then(set_followers).catch(() => {})
+      fetchFollowing(userID).then(set_following).catch(() => {})
+    })
+    return unsub
+  }, [user?.id, subscribe])
 
   const list = tab === 'followers' ? followers : following
   const title = tab === 'followers' ? 'Followers' : 'Following'

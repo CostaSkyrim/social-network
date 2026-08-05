@@ -1458,30 +1458,27 @@ func (db *DataBase) CreateOrGetDirectMessage(ctx context.Context, dm *DirectMess
 	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// First try to get existing DM
+	// Normalize user IDs so that user1 is always the smaller ID
+	u1, u2 := dm.User1ID, dm.User2ID
+	if u1 > u2 {
+		u1, u2 = u2, u1
+	}
+
+	// Try to find or create with normalized order
 	var dmID int64
 	err := db.conn.QueryRowContext(dbCtx,
 		queries.GetOrCreateDM,
-		dm.User1ID, dm.User2ID, dm.User2ID, dm.User1ID,
+		u1, u2,
 	).Scan(&dmID)
-
-	if err != nil && err != sql.ErrNoRows {
-		return 0, fmt.Errorf("failed to query direct message: %w", err)
-	}
-
-	if err == sql.ErrNoRows {
-		// Create new DM
-		result, err := db.conn.ExecContext(dbCtx,
-			queries.GetOrCreateDM,
-			dm.User1ID, dm.User2ID,
-		)
+	if err != nil {
+		// If the normalized insert fails (e.g., old reversed-order DM exists),
+		// try the reverse order which matches the old record
+		err = db.conn.QueryRowContext(dbCtx,
+			queries.GetDMidScalar,
+			u1, u2, u2, u1,
+		).Scan(&dmID)
 		if err != nil {
-			return 0, fmt.Errorf("failed to create direct message: %w", err)
-		}
-
-		dmID, err = result.LastInsertId()
-		if err != nil {
-			return 0, fmt.Errorf("failed to get dm id: %w", err)
+			return 0, fmt.Errorf("failed to create or get direct message: %w", err)
 		}
 	}
 
@@ -1587,7 +1584,7 @@ func (db *DataBase) GetMessages(ctx context.Context, dmID int64, limit int) ([]*
 		err := rows.Scan(
 			&msg.ID, &msg.UUID, &msg.SenderID, &msg.Content,
 			&msg.IsRead, &msg.CreatedAt,
-			&firstName, &lastName, &nickname, &avatarPath,
+			&firstName, &lastName, &nickname, &avatarPath, &senderUser.UUID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan message: %w", err)

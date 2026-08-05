@@ -12,6 +12,7 @@ interface Message {
   uuid: string
   sender_id: number
   sender?: {
+    id?: string
     first_name: string
     last_name: string
     nickname?: string

@@ -184,6 +184,7 @@ func (h *Hub) handleUserOnline(client *Client) {
 
 			presencePayload, _ := json.Marshal(PresencePayload{
 				UserID:   client.UserID,
+				UserUUID: getClientUUID(h, client),
 				IsOnline: true,
 			})
 			h.redisClient.Publish(client.Context(), cache.ChannelUserOnline, presencePayload)
@@ -207,6 +208,7 @@ func (h *Hub) handleUserOffline(client *Client) {
 
 			presencePayload, _ := json.Marshal(PresencePayload{
 				UserID:   client.UserID,
+				UserUUID: getClientUUID(h, client),
 				IsOnline: false,
 			})
 			h.redisClient.Publish(client.Context(), cache.ChannelUserOffline, presencePayload)
@@ -245,6 +247,18 @@ func (h *Hub) BroadcastToAll(msg *WSMessage) {
 			client.SendMessage(msg)
 		}
 	}
+}
+
+func getClientUUID(h *Hub, client *Client) string {
+	if client.UserUUID != "" {
+		return client.UserUUID
+	}
+	user, err := h.db.GetUserByID(client.Context(), client.UserID)
+	if err != nil {
+		return ""
+	}
+	client.UserUUID = user.UUID
+	return client.UserUUID
 }
 
 func (h *Hub) dispatchMessage(msg *WSMessage) {
