@@ -79,6 +79,7 @@ export default function ChatPage() {
           if (!cancelled) {
             set_messages(msgs)
             scrollToBottom()
+            window.dispatchEvent(new Event('messages-read'))
           }
         } else {
           try {

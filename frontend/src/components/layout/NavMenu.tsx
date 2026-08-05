@@ -5,6 +5,7 @@ import { NAV_ITEMS } from '@/lib/nav'
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown'
 import { useAuth } from '@/context/AuthProvider'
 import { useLogout } from '@/hooks/useAuth'
+import { disconnectWebSocket } from '@/hooks/useWebSocket'
 import { Avatar } from '@/components/ui/Avatar'
 import type { ReactNode } from 'react'
 
@@ -21,6 +22,7 @@ export function NavMenu({
 
   async function handle_logout() {
     await logout_mutation.mutateAsync()
+    disconnectWebSocket()
     router.push('/login')
   }
 
