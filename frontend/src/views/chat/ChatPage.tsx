@@ -119,7 +119,7 @@ export default function ChatPage() {
         dm_id: number
         content: string
         sender: {
-          id?: number
+          id?: string
           first_name: string
           last_name: string
           nickname?: string
@@ -129,21 +129,21 @@ export default function ChatPage() {
       }
       if (!payload || payload.dm_id !== dmIDRef.current) return
 
-      set_messages((prev) => {
-        if (prev.some((m) => m.id === payload.message_id)) return prev
-        return [
-          ...prev,
-          {
-            id: payload.message_id,
-            uuid: crypto.randomUUID(),
-            sender_id: msg.sender_id ?? 0,
-            sender: payload.sender,
-            content: payload.content,
-            is_read: false,
-            created_at: payload.created_at,
-          },
-        ]
-      })
+      const new_msg: MessageData = {
+        id: payload.message_id,
+        uuid: crypto.randomUUID(),
+        sender_id: msg.sender_id ?? 0,
+        sender: payload.sender,
+        content: payload.content,
+        is_read: false,
+        created_at: payload.created_at,
+      }
+
+      set_messages((prev) =>
+        prev.some((m) => m.id === payload.message_id)
+          ? prev
+          : [...prev, new_msg],
+      )
       setTimeout(scrollToBottom, 100)
     })
 
