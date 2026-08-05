@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn'
 import { NavLink } from '@/lib/nav-link'
 import { useAuth } from '@/context/AuthProvider'
 import { useLogout } from '@/hooks/useAuth'
+import { disconnectWebSocket } from '@/hooks/useWebSocket'
 import { Avatar } from '@/components/ui/Avatar'
 
 const nav_items = [
@@ -24,6 +25,7 @@ export function Sidebar() {
 
   async function handle_logout() {
     await logout_mutation.mutateAsync()
+    disconnectWebSocket()
     router.push('/login')
   }
 

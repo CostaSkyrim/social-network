@@ -7,6 +7,7 @@ import (
 
 	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
+	ws "social-network/backend/server/websocket"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -105,6 +106,23 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if ok && GlobalHub != nil {
+		user, err := db.GetUserByID(r.Context(), userID)
+		if err == nil {
+			payload, _ := json.Marshal(map[string]interface{}{
+				"user_id":   user.ID,
+				"user_uuid": user.UUID,
+				"is_online": false,
+			})
+			GlobalHub.BroadcastToAll(&ws.WSMessage{
+				Type:      ws.TypePresenceUpdate,
+				Payload:   payload,
+				Timestamp: time.Now(),
+			})
+		}
 	}
 
 	cookie, err := r.Cookie("session_token")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
@@ -20,22 +21,28 @@ type Hub struct {
 	db          *database.DataBase
 	redisClient *cache.RedisClient
 
+	offlineTimers map[int64]*time.Timer
+	timersMu      sync.Mutex
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
+
+const offlineDebounce = 3 * time.Second
 
 func NewHub(db *database.DataBase, redisClient *cache.RedisClient) *Hub {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Hub{
-		clients:     make(map[int64]map[*Client]bool),
-		register:    make(chan *Client),
-		Unregister:  make(chan *Client),
-		broadcast:   make(chan *WSMessage, 256),
-		db:          db,
-		redisClient: redisClient,
-		ctx:         ctx,
-		cancel:      cancel,
+		clients:       make(map[int64]map[*Client]bool),
+		register:      make(chan *Client),
+		Unregister:    make(chan *Client),
+		broadcast:     make(chan *WSMessage, 256),
+		db:            db,
+		redisClient:   redisClient,
+		offlineTimers: make(map[int64]*time.Timer),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 }
 
@@ -43,17 +50,22 @@ func NewHubForTest(db *database.DataBase) *Hub {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Hub{
-		clients:    make(map[int64]map[*Client]bool),
-		register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		broadcast:  make(chan *WSMessage, 256),
-		db:         db,
-		ctx:        ctx,
-		cancel:     cancel,
+		clients:       make(map[int64]map[*Client]bool),
+		register:      make(chan *Client),
+		Unregister:    make(chan *Client),
+		broadcast:     make(chan *WSMessage, 256),
+		db:            db,
+		offlineTimers: make(map[int64]*time.Timer),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 }
 
 func (h *Hub) Run() {
+	if h.redisClient != nil {
+		go h.listenRedisPresence()
+	}
+
 	for {
 		select {
 		case client := <-h.register:
@@ -79,9 +91,12 @@ func (h *Hub) Run() {
 					}
 				}
 			}
+			stillConnected := h.isUserConnectedLocked(client.UserID)
 			h.mu.Unlock()
 
-			h.handleUserOffline(client)
+			if !stillConnected {
+				h.scheduleOffline(client)
+			}
 
 			log.Printf("WebSocket client disconnected: user %d (total clients: %d)", client.UserID, h.ClientCount())
 
@@ -96,6 +111,13 @@ func (h *Hub) Run() {
 
 func (h *Hub) Shutdown() {
 	h.cancel()
+
+	h.timersMu.Lock()
+	for _, t := range h.offlineTimers {
+		t.Stop()
+	}
+	h.offlineTimers = nil
+	h.timersMu.Unlock()
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -171,6 +193,14 @@ func (h *Hub) HandleMessage(client *Client, msg *WSMessage) {
 }
 
 func (h *Hub) handleUserOnline(client *Client) {
+	// Cancel any pending offline timer
+	h.timersMu.Lock()
+	if t, ok := h.offlineTimers[client.UserID]; ok {
+		t.Stop()
+		delete(h.offlineTimers, client.UserID)
+	}
+	h.timersMu.Unlock()
+
 	clientCount := 0
 	h.mu.RLock()
 	if c, ok := h.clients[client.UserID]; ok {
@@ -179,14 +209,19 @@ func (h *Hub) handleUserOnline(client *Client) {
 	h.mu.RUnlock()
 
 	if clientCount == 1 {
+		presencePayload, _ := json.Marshal(PresencePayload{
+			UserID:   client.UserID,
+			UserUUID: getClientUUID(h, client),
+			IsOnline: true,
+		})
+		h.BroadcastToAll(&WSMessage{
+			Type:      TypePresenceUpdate,
+			Payload:   presencePayload,
+			Timestamp: time.Now(),
+		})
+
 		if h.redisClient != nil {
 			h.redisClient.SetUserOnline(client.Context(), client.UserID)
-
-			presencePayload, _ := json.Marshal(PresencePayload{
-				UserID:   client.UserID,
-				UserUUID: getClientUUID(h, client),
-				IsOnline: true,
-			})
 			h.redisClient.Publish(client.Context(), cache.ChannelUserOnline, presencePayload)
 		}
 
@@ -194,28 +229,53 @@ func (h *Hub) handleUserOnline(client *Client) {
 	}
 }
 
-func (h *Hub) handleUserOffline(client *Client) {
-	stillConnected := false
-	h.mu.RLock()
-	if c, ok := h.clients[client.UserID]; ok {
-		stillConnected = len(c) > 0
+func (h *Hub) isUserConnectedLocked(userID int64) bool {
+	if c, ok := h.clients[userID]; ok {
+		return len(c) > 0
 	}
-	h.mu.RUnlock()
+	return false
+}
 
-	if !stillConnected {
-		if h.redisClient != nil {
-			h.redisClient.SetUserOffline(client.Context(), client.UserID)
+func (h *Hub) scheduleOffline(client *Client) {
+	userUUID := getClientUUID(h, client)
+	userID := client.UserID
 
-			presencePayload, _ := json.Marshal(PresencePayload{
-				UserID:   client.UserID,
-				UserUUID: getClientUUID(h, client),
-				IsOnline: false,
-			})
-			h.redisClient.Publish(client.Context(), cache.ChannelUserOffline, presencePayload)
+	h.timersMu.Lock()
+	if t, ok := h.offlineTimers[userID]; ok {
+		t.Stop()
+	}
+	h.offlineTimers[userID] = time.AfterFunc(offlineDebounce, func() {
+		h.mu.RLock()
+		stillConnected := h.isUserConnectedLocked(userID)
+		h.mu.RUnlock()
+
+		if stillConnected {
+			return
 		}
 
-		log.Printf("User %d is now offline", client.UserID)
-	}
+		presencePayload, _ := json.Marshal(PresencePayload{
+			UserID:   userID,
+			UserUUID: userUUID,
+			IsOnline: false,
+		})
+		h.BroadcastToAll(&WSMessage{
+			Type:      TypePresenceUpdate,
+			Payload:   presencePayload,
+			Timestamp: time.Now(),
+		})
+
+		if h.redisClient != nil {
+			h.redisClient.SetUserOffline(context.Background(), userID)
+			h.redisClient.Publish(context.Background(), cache.ChannelUserOffline, presencePayload)
+		}
+
+		h.timersMu.Lock()
+		delete(h.offlineTimers, userID)
+		h.timersMu.Unlock()
+
+		log.Printf("User %d is now offline", userID)
+	})
+	h.timersMu.Unlock()
 }
 
 func (h *Hub) SendToUser(userID int64, msg *WSMessage) {
@@ -328,4 +388,40 @@ func (h *Hub) HeartbeatUser(userID int64) {
 	if h.redisClient != nil {
 		h.redisClient.SetUserOnline(context.Background(), userID)
 	}
+}
+
+func (h *Hub) listenRedisPresence() {
+	ps := h.redisClient.Subscribe(context.Background(), cache.ChannelUserOnline, cache.ChannelUserOffline)
+	defer ps.Close()
+
+	ch := ps.Channel()
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			var presence PresencePayload
+			if err := json.Unmarshal([]byte(msg.Payload), &presence); err != nil {
+				continue
+			}
+			h.broadcastPresence(&presence, msg.Channel == cache.ChannelUserOnline)
+		case <-h.ctx.Done():
+			return
+		}
+	}
+}
+
+func (h *Hub) broadcastPresence(p *PresencePayload, isOnline bool) {
+	payload, _ := json.Marshal(PresencePayload{
+		UserID:   p.UserID,
+		UserUUID: p.UserUUID,
+		IsOnline: isOnline,
+	})
+	msg := &WSMessage{
+		Type:      TypePresenceUpdate,
+		Payload:   payload,
+		Timestamp: time.Now(),
+	}
+	h.BroadcastToAll(msg)
 }
