@@ -3,10 +3,13 @@
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
 import type { GroupMember } from '@/types/group'
 
 interface MemberListProps {
   members: GroupMember[]
+  groupId: string
+  isCreator: boolean
 }
 
 const status_meta: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' }> = {
@@ -16,13 +19,17 @@ const status_meta: Record<string, { label: string; variant: 'default' | 'success
   declined: { label: 'Declined', variant: 'danger' },
 }
 
-export function MemberList({ members }: MemberListProps) {
+export function MemberList({ members, groupId, isCreator }: MemberListProps) {
   const accepted = members.filter((m) => m.status === 'accepted')
-  const pending = members.filter((m) => m.status !== 'accepted')
+  const pending = members.filter(
+    (m) => m.status === 'pending' || m.status === 'invited',
+  )
 
   function render_member(m: GroupMember) {
     const name = `${m.user.first_name} ${m.user.last_name}`
     const meta = status_meta[m.status] ?? status_meta.accepted
+    const show_actions =
+      isCreator && (m.status === 'pending' || m.status === 'invited')
 
     return (
       <li key={m.user.id} className="flex items-center gap-3 py-2">
@@ -40,9 +47,13 @@ export function MemberList({ members }: MemberListProps) {
             <p className="text-xs text-gray-500">@{m.user.nickname}</p>
           )}
         </div>
-        {m.status !== 'accepted' && (
+        {show_actions ? (
+          <div className="flex items-center gap-1.5">
+            <AcceptDeclineButtons member={m} groupId={groupId} />
+          </div>
+        ) : m.status !== 'accepted' ? (
           <Badge variant={meta.variant}>{meta.label}</Badge>
-        )}
+        ) : null}
       </li>
     )
   }
@@ -67,5 +78,30 @@ export function MemberList({ members }: MemberListProps) {
         </div>
       )}
     </div>
+  )
+}
+
+function AcceptDeclineButtons({ member, groupId }: { member: GroupMember; groupId: string }) {
+  const accept_mutation = useAcceptGroupMember(groupId)
+  const reject_mutation = useRejectGroupMember(groupId)
+  const is_pending = accept_mutation.isPending || reject_mutation.isPending
+
+  return (
+    <>
+      <button
+        onClick={() => accept_mutation.mutate(member.user.id)}
+        disabled={is_pending}
+        className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+      >
+        Accept
+      </button>
+      <button
+        onClick={() => reject_mutation.mutate(member.user.id)}
+        disabled={is_pending}
+        className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+      >
+        Decline
+      </button>
+    </>
   )
 }

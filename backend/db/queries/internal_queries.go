@@ -279,17 +279,21 @@ const (
 	`
 
 	GetGroupByID = `
-		SELECT id, uuid, creator_id, title, description, avatar_path,
-		 created_at, updated_at, last_message_at
-		FROM groups
-		WHERE id = ?
+		SELECT g.id, g.uuid, g.creator_id, cu.uuid as creator_uuid,
+		 g.title, g.description, g.avatar_path, g.created_at, g.updated_at,
+		 g.last_message_at
+		FROM groups g
+		LEFT JOIN users cu ON cu.id = g.creator_id
+		WHERE g.id = ?
 	`
 
 	GetGroupByUUID = `
-		SELECT id, uuid, creator_id, title, description, avatar_path,
-		 created_at, updated_at, last_message_at
-		FROM groups
-		WHERE uuid = ?
+		SELECT g.id, g.uuid, g.creator_id, cu.uuid as creator_uuid,
+		 g.title, g.description, g.avatar_path, g.created_at, g.updated_at,
+		 g.last_message_at
+		FROM groups g
+		LEFT JOIN users cu ON cu.id = g.creator_id
+		WHERE g.uuid = ?
 	`
 
 	GetUserGroups = `
@@ -539,6 +543,14 @@ const (
 		WHERE id = ? AND user_id = ?
 	`
 
+	UpdateGroupJoinNotification = `
+		UPDATE notifications
+		SET content = ?, is_read = 1, read_at = CURRENT_TIMESTAMP
+		WHERE type = 'group_join_request'
+			AND related_uuid = ?
+			AND from_user_id = ?
+	`
+
 	GetUnreadCount = `
 		SELECT COUNT(*)
 		FROM notifications
@@ -595,9 +607,11 @@ const (
 	`
 
 	GetEventResponseCounts = `
-		SELECT response, COUNT(*)
-		FROM event_responses
-		WHERE event_id = ?
-		GROUP BY response
+		SELECT r.response, COUNT(*)
+		FROM event_responses r
+		JOIN events e ON e.id = r.event_id
+		JOIN group_members gm ON gm.group_id = e.group_id AND gm.user_id = r.user_id
+		WHERE r.event_id = ? AND gm.status = 'accepted'
+		GROUP BY r.response
 	`
 )

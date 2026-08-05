@@ -1,10 +1,13 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import { useAuth } from '@/context/AuthProvider'
 import { useGroup, useGroupEvents } from '@/hooks/useGroups'
 import { EventList } from '@/components/group/EventList'
 import { EventForm } from '@/components/group/EventForm'
 import { MemberList } from '@/components/group/MemberList'
+import { GroupActions } from '@/components/group/GroupActions'
+import { InviteMember } from '@/components/group/InviteMember'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -12,6 +15,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 export default function GroupDetailPage() {
   const params = useParams()
   const uuid = (params?.uuid as string) || ''
+  const { user } = useAuth()
 
   const {
     data: group_data,
@@ -40,6 +44,11 @@ export default function GroupDetailPage() {
 
   const { group, members } = group_data
   const accepted_count = members.filter((m) => m.status === 'accepted').length
+  const currentUserId = user?.id ?? ''
+  const is_creator = group.creator_id === currentUserId
+  const is_member = members.some(
+    (m) => m.user.id === currentUserId && m.status === 'accepted',
+  )
 
   return (
     <div className="space-y-6">
@@ -54,6 +63,14 @@ export default function GroupDetailPage() {
             </div>
             <span className="text-xs text-gray-400">{accepted_count} members</span>
           </div>
+          <div className="mt-3">
+            <GroupActions
+              groupId={group.id}
+              creatorId={group.creator_id}
+              members={members}
+              currentUserId={currentUserId}
+            />
+          </div>
         </CardHeader>
       </Card>
 
@@ -61,15 +78,28 @@ export default function GroupDetailPage() {
         <CardHeader>
           <h3 className="text-sm font-semibold text-gray-900">Members</h3>
         </CardHeader>
-        <CardContent>
-          <MemberList members={members} />
+        <CardContent className="space-y-3">
+          {is_member && <InviteMember groupId={group.id} />}
+          <MemberList members={members} groupId={group.id} isCreator={is_creator} />
         </CardContent>
       </Card>
 
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900">Events</h3>
-        <EventForm groupId={group.id} />
-        <EventList events={events ?? []} groupId={group.id} is_loading={events_loading} />
+        {is_member ? (
+          <>
+            <EventForm groupId={group.id} />
+            <EventList
+              events={events ?? []}
+              groupId={group.id}
+              is_loading={events_loading}
+            />
+          </>
+        ) : (
+          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+            Join this group to see its events.
+          </p>
+        )}
       </div>
     </div>
   )

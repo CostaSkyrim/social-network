@@ -1158,6 +1158,7 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 		&group.ID,
 		&group.UUID,
 		&group.CreatorID,
+		&group.CreatorUUID,
 		&group.Title,
 		&group.Description,
 		&group.AvatarPath,
@@ -1189,6 +1190,7 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 		&group.ID,
 		&group.UUID,
 		&group.CreatorID,
+		&group.CreatorUUID,
 		&group.Title,
 		&group.Description,
 		&group.AvatarPath,
@@ -1266,7 +1268,7 @@ func (db *DataBase) UpdateGroup(ctx context.Context, groupID int64, title, descr
 }
 
 // AddGroupMember adds a user to a group
-func (db *DataBase) AddGroupMember(ctx context.Context, groupID, userID, invitedBy int64, status string) error {
+func (db *DataBase) AddGroupMember(ctx context.Context, groupID, userID int64, invitedBy *int64, status string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1833,6 +1835,28 @@ func (db *DataBase) MarkNotificationAsRead(ctx context.Context, notificationID, 
 	)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification as read: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateGroupJoinNotification updates a user's join-request notification for a
+// group with the accept/decline outcome, marking it read so the bell/notifications
+// stay in sync after accept/decline.
+func (db *DataBase) UpdateGroupJoinNotification(ctx context.Context, groupUUID string, requesterID int64, content string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateGroupJoinNotification,
+		content, groupUUID, requesterID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update group join notification: %w", err)
 	}
 
 	return nil
