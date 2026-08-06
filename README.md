@@ -22,22 +22,26 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 ## Current Status
 
 **Working:**
-- Full auth flow (signup, login, logout, session cookies, CORS, rate limiting)
+- Full auth flow (signup, login, logout, session cookies, CORS, rate limiting, auto-generated nicknames)
 - Paginated privacy-filtered news feed
 - Post + comment CRUD with ownership checks
 - Reddit-style soft deletes (`[deleted]` placeholders, nested replies preserved)
 - Follow system (request / accept / decline / unfollow)
-- User profiles (view + edit)
-- Group management (CRUD, browse, invite, join, accept, reject, leave, members)
+- User profiles with functional follow button (view + edit + privacy toggle)
+- Group management (CRUD, browse, invite by nickname, join, accept, reject, leave, members)
+- Group membership UI — role-aware join/leave actions, accept/decline in the member list
 - Events (create, list with going/not_going counts, single event detail, RSVP upsert) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
-- Groups browse list + group detail page (header, member count, events)
+- Groups browse list + group detail page (header, member count, membership actions, events)
 - Notifications (list, unread count, mark read / mark all) with real-time WebSocket push
+- Actionable group-join notifications — accept/decline inline, outcome shown in the notification
+- Direct messages (send, history, unread count) with real-time delivery over WebSocket
+- Burger navigation menu (desktop + mobile) replacing the sidebar
 - Emoji picker + `:shortcode:` autocomplete in the post composer
-- WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive
+- WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive (singleton connection per tab)
 - Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels
 - All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
 
-**Planned:** CreateGroupPage, group member/join/invite UI, Chat UI (WebSocket frontend), Redis session store migration, cross-instance pub/sub, Docker.
+**Planned:** Group chat REST endpoints, CreateGroupPage, Following/Search page wiring, group posts feed, Redis session store migration, cross-instance pub/sub, Docker.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 

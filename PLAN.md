@@ -17,7 +17,7 @@
 - Language: Go 1.24
 - Database: SQLite (all persistent data)
 - Cache / ephemeral storage: Redis 7 (presence tracking, caching, rate limiting — session migration + cross-instance pub/sub planned)
-- Migrations: golang-migrate (15 migrations)
+- Migrations: golang-migrate (17 migrations)
 - Real-time: WebSocket hub at `/api/ws` (gorilla/websocket) with Redis presence tracking
 - WebSocket: gorilla/websocket
 
@@ -58,14 +58,14 @@ social-network/
 │   │   │   └── UIProvider.tsx   ✅
 │   │   ├── components/
 │   │   │   ├── ui/             ✅ (Avatar, Badge, Button, Card, Dropdown, EmojiPicker, EmojiSuggestions, Input, Modal, Spinner, Tabs, Toast)
-│   │   │   ├── layout/         ✅ (Sidebar, TopBar, MobileNav)
+│   │   │   ├── layout/         ✅ (NavMenu, TopBar, MobileNav — Sidebar removed)
 │   │   │   ├── common/         ✅ (EmptyState, ErrorBoundary, ImageUpload, InfiniteScroll, LoadingScreen, LoadingSkeleton)
 │   │   │   ├── post/           ✅ (PostCard, PostForm, PostList, PrivacySelector)
 │   │   │   ├── comment/        ✅ (CommentItem, CommentList)
-│   │   │   ├── group/          ✅ (EventCard, EventList, EventForm)
-│   │   │   ├── user/           # empty — Phase 5
-│   │   │   ├── chat/           # empty — Phase 8
-│   │   │   └── notification/   # empty — Phase 7
+│   │   │   ├── group/          ✅ (EventCard, EventList, EventForm, GroupActions, InviteMember, MemberList)
+│   │   │   ├── user/           # empty — Phase 6
+│   │   │   ├── chat/           # empty — Phase 9
+│   │   │   └── notification/   # empty — Phase 8
 │   │   ├── views/              ✅ (page components — renamed from pages/ to avoid Next.js conflict)
 │   │   │   ├── auth/           ✅ (LoginPage, SignupPage)
 │   │   │   ├── home/           ✅ (HomePage — feed + PostForm)
@@ -76,7 +76,7 @@ social-network/
 │   │   │   ├── notifications/  ✅ (NotificationsPage)
 │   │   │   ├── followers/      ✅ (FollowersPage, FollowingPage)
 │   │   │   └── search/         ✅ (SearchPage)
-│   │   └── lib/                ✅ (cn, format, validators, nav-link)
+│   │   └── lib/                ✅ (cn, format, validators, nav-link, nav)
 │   │   └── ws/                 # empty — Phase 7
 ├── backend/
 │   ├── Dockerfile              # not yet created
@@ -108,7 +108,7 @@ social-network/
 │   │   ├── handler.go          ✅ (ServeWS — connection upgrade)
 │   │   └── types.go            ✅ (WSMessage types + payloads)
 │   ├── db/
-│   │   ├── migrations/         ✅ (15 migrations up/down)
+│   │   ├── migrations/         ✅ (17 migrations up/down)
 │   │   ├── queries/            ✅ (all SQL constants)
 │   │   ├── sql/
 │   │   │   ├── models.go       ✅ (all structs incl. is_deleted flags)
@@ -131,7 +131,7 @@ social-network/
 | Component | Status |
 |-----------|--------|
 | Go module + dependencies (`go.mod`) | ✅ |
-| Database migrations (15 up/down pairs) | ✅ |
+| Database migrations (17 up/down pairs) | ✅ |
 | All SQL query constants (`internal_queries.go`) | ✅ |
 | All data models (`models.go`) | ✅ |
 | Database init + migration runner (`sqlite.go`) | ✅ |
@@ -148,18 +148,20 @@ social-network/
 | Group handlers (CRUD, browse, invite, join, accept, reject, leave, members) | ✅ |
 | Event handlers (create, list, get, RSVP going/not_going with counts) | ✅ |
 | Notification handlers (list, unread count, mark read, mark all) | ✅ |
+| Actionable notifications (accept/decline group-join outcome) | ✅ |
+| Direct message handlers (get DMs, messages, send, unread count) | ✅ |
 | Soft delete support (is_deleted on posts + comments) | ✅ |
 | Seed data JSON + loader (with deleted entries) | ✅ |
 | Redis client + connection (degrades gracefully if unavailable) | ✅ |
 | Presence tracking (online/offline via Redis TTL keys + pub/sub) | ✅ |
 | Redis caching (sessions, users, posts, groups) + rate limiting | ✅ |
-| WebSocket hub (`/api/ws`) — register/unregister, broadcast, typing | ✅ |
+| WebSocket hub (`/api/ws`) — register/unregister, broadcast, typing, singleton per tab | ✅ |
 | WS message dispatch (chat, group, notification, presence) | ✅ |
+| Group chat REST handlers | ⬜ (WS support exists, no HTTP endpoint yet) |
 | Redis session store migration (SQLite → Redis) | ⬜ |
-| Message/DM handlers | ⬜ |
 | Docker | ⬜ |
 
-### ✅ Frontend — Auth, Feed, Posts, Comments, Emoji Autocomplete
+### ✅ Frontend — Auth, Feed, Posts, Comments, Groups, Events, Notifications, Chat
 
 | Component | Status |
 |-----------|--------|
@@ -177,9 +179,12 @@ social-network/
 | CommentList — nested replies via parent_comment_id, [deleted] placeholders | ✅ |
 | Emoji picker button (emoji-picker-react) | ✅ |
 | Emoji :shortcode: autocomplete (@emoji-mart/data) | ✅ |
-| Profile pages | ⬜ wiring (stubs) |
-| Groups pages | ⬜ wiring (stubs) |
-| Notifications / Chat / Search | ⬜ stubs |
+| Burger navigation menu (NavMenu, TopBar, MobileNav — sidebar removed) | ✅ |
+| Profile pages (view + edit + follow button) | ✅ |
+| Groups pages (browse, detail, membership actions, events) | ✅ |
+| Notifications (list + actionable accept/decline buttons) | ✅ |
+| Chat (DMs, real-time via WebSocket) | ✅ |
+| Search / Following / CreateGroup pages | ⬜ stubs |
 | Docker | ⬜ |
 
 ## Implementation Plan
@@ -272,7 +277,7 @@ Backend Dockerfile (multi-stage Go build), frontend Dockerfile (nginx), docker-c
 Next.js App Router scaffold, types, Axios client, auth/UI contexts, route groups with auth guards, UI kit (incl. emoji), 404/error pages.
 
 ### Phase 2 — Auth ✅
-api/auth.ts + useAuth hooks, LoginPage + SignupPage with validation, session check with dedupe, Sidebar logout.
+api/auth.ts + useAuth hooks, LoginPage + SignupPage with validation, session check with dedupe, logout (now in NavMenu).
 
 ### Phase 3 — Feed & Posts ✅
 api/posts.ts + usePosts hooks, PostCard (edit/delete/[deleted]), PostForm (emoji + privacy), PostList, HomePage with infinite scroll, PostDetailPage.
@@ -283,22 +288,25 @@ api/comments.ts + useComments hooks, CommentItem/CommentList with nested replies
 ### Phase 5 — Emoji Support ✅
 Emoji picker button + `:shortcode:` autocomplete with keyboard navigation (Arrow keys, Enter, Escape).
 
-### Phase 6 — Profiles & Followers 🔜
-Wire ProfilePage / EditProfilePage, FollowButton, UserCard/UserList, Followers/Following pages, SearchPage. Uses Backend Phase C.
+### Phase 6 — Profiles & Followers ✅
+ProfilePage (view + edit + privacy toggle + follow button), FollowersPage (accepted followers + chat entry). Remaining: FollowingPage, SearchPage wiring. Uses Backend Phase C.
 
-### Phase 7 — Groups 🔜
-GroupDetailPage is wired (group header + member count + EventForm + EventList). Remaining: CreateGroupPage, member management UI, join/invite UI. Uses Backend Phase E. GroupsPage browse list already wired.
+### Phase 7 — Groups ✅
+GroupDetailPage (header, member count, role-aware GroupActions, MemberList with accept/decline, InviteMember by nickname, EventForm, EventList). GroupsPage browse list. Remaining: CreateGroupPage. Uses Backend Phase E.
 
 ### Phase 7b — Events ✅
-Event API/hooks/components done and wired into GroupDetailPage: `api/groups.ts`, `useGroups.ts`, `EventCard` (going/not_going buttons + counts, optimistic RSVP), `EventList`, `EventForm`. Uses Backend Phase F.
+Event API/hooks/components wired into GroupDetailPage: `api/groups.ts`, `useGroups.ts`, `EventCard` (going/not_going buttons + counts, optimistic RSVP), `EventList`, `EventForm`. Event counts exclude non-members. Uses Backend Phase F.
 
 ### Phase 8 — Notifications ✅ + WebSocket frontend
-NotificationsPage, TopBar bell, `NotificationProvider`, `useWebSocket` connection to `/api/ws` — all done. Real-time notification push works.
+NotificationsPage, TopBar bell, `NotificationProvider`, `useWebSocket` connection to `/api/ws` — all done. Real-time notification push + actionable accept/decline on group-join requests. Outcome text updated on accept/decline.
 
-### Phase 9 — Chat 🔜
-ChatPage, ChatList/ChatWindow/MessageBubble/MessageInput, real-time via WebSocket. Uses Backend Phases H + I.
+### Phase 9 — Chat 🔜 (mostly done)
+DM chat works end-to-end: ChatPage, send/receive via WebSocket, unread count, message history. **Remaining:** group chat REST endpoints + group chat UI.
 
-### Phase 10 — Docker & Polish 🔜
+### Phase 10 — Navigation ✅
+Sidebar removed and replaced with a burger-style `NavMenu` dropdown (user info + all nav items + logout) in the sticky TopBar. Shared `NAV_ITEMS` in `lib/nav.ts`; MobileNav shows all destinations. Logout disconnects the WebSocket.
+
+### Phase 11 — Docker & Polish 🔜
 Dockerfile + nginx, production build testing, responsive polish.
 
 ## Backend API Endpoints
@@ -367,7 +375,9 @@ Chat (conversations/messages/send), moderation endpoints (from configs.json rate
 - **Chat access:** Users can only start a DM if at least one of them follows the other (or the recipient has a public profile).
 - **Groups:** Invite/request with statuses `pending`, `accepted`, `declined`, `invited`. Only accepted members see group content and chat. Group events have RSVP options: `going`, `not_going`.
 - **Emoji:** Picker button + `:shortcode:` autocomplete backed by `@emoji-mart/data`. Emojis are plain Unicode — stored as TEXT in SQLite.
-- **WebSocket:** single shared connection at `/api/ws` (auth required). Hub dispatches `chat_message`, `group_message`, `notification`, `presence_update`, `typing`, `ping`/`pong`. Presence tracked in Redis with 30s TTL keys. Frontend `ws/websocket.ts` connection manager planned.
+- **WebSocket:** single shared connection at `/api/ws` (auth required), singleton per tab. Hub dispatches `chat_message`, `group_message`, `notification`, `presence_update`, `typing`, `ping`/`pong`. Presence tracked in Redis with 30s TTL keys. Logout disconnects the socket.
+- **Nicknames:** mandatory, auto-generated from the email prefix at signup (sanitized, padded, de-duplicated). Used for group invites (`invite by nickname`).
+- **Navigation:** no sidebar — a burger `NavMenu` dropdown in the sticky TopBar holds all nav items + logout on desktop and mobile. Mobile bottom nav mirrors the same destinations.
 - **Pagination:** `limit`/`offset` query params. TanStack `useInfiniteQuery` on the frontend.
 - **Images:** multipart/form-data, max 20MB, jpg/png/gif (planned).
 - **Validation:** Mirror backend limits client-side (in `lib/validators.ts`).
