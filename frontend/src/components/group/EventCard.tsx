@@ -4,6 +4,7 @@ import { useRSVP } from '@/hooks/useGroups'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { format_datetime } from '@/lib/format'
+import { get_media_url } from '@/lib/media'
 import { cn } from '@/lib/cn'
 import type { GroupEvent } from '@/types/group'
 
@@ -40,6 +41,15 @@ export function EventCard({ event, groupId }: EventCardProps) {
 
         {event.description && (
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{event.description}</p>
+        )}
+
+        {event.image_path && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={get_media_url(event.image_path)}
+            alt="Event image"
+            className="max-h-64 w-full rounded-lg object-cover"
+          />
         )}
 
         <div className="flex items-center gap-2">

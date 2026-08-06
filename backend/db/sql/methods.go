@@ -1960,6 +1960,7 @@ func (db *DataBase) CreateEvent(ctx context.Context, event *Event) (int64, error
 		event.CreatorID,
 		event.Title,
 		event.Description,
+		event.ImagePath,
 		event.EventDateTime,
 	)
 	if err != nil {
@@ -1983,6 +1984,7 @@ func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, er
 	event := &Event{}
 	var firstName, lastName string
 	var nickname sql.NullString
+	var imagePath *string
 
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetEventByID,
@@ -1994,6 +1996,7 @@ func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, er
 		&event.CreatorID,
 		&event.Title,
 		&event.Description,
+		&imagePath,
 		&event.EventDateTime,
 		&event.CreatedAt,
 		&event.UpdatedAt,
@@ -2008,6 +2011,7 @@ func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, er
 		return nil, fmt.Errorf("failed to query event: %w", err)
 	}
 
+	event.ImagePath = imagePath
 	event.Creator = &User{
 		FirstName: firstName,
 		LastName:  lastName,
@@ -2028,6 +2032,7 @@ func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, er
 	event := &Event{}
 	var firstName, lastName string
 	var nickname sql.NullString
+	var imagePath *string
 
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetEventByUUID,
@@ -2039,6 +2044,7 @@ func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, er
 		&event.CreatorID,
 		&event.Title,
 		&event.Description,
+		&imagePath,
 		&event.EventDateTime,
 		&event.CreatedAt,
 		&event.UpdatedAt,
@@ -2053,6 +2059,7 @@ func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, er
 		return nil, fmt.Errorf("failed to query event: %w", err)
 	}
 
+	event.ImagePath = imagePath
 	event.Creator = &User{
 		FirstName: firstName,
 		LastName:  lastName,
@@ -2084,6 +2091,7 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 		event := &Event{}
 		var firstName, lastName string
 		var nickname sql.NullString
+		var imagePath *string
 
 		err := rows.Scan(
 			&event.ID,
@@ -2092,6 +2100,7 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 			&event.CreatorID,
 			&event.Title,
 			&event.Description,
+			&imagePath,
 			&event.EventDateTime,
 			&event.CreatedAt,
 			&event.UpdatedAt,
@@ -2102,6 +2111,7 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan event: %w", err)
 		}
+		event.ImagePath = imagePath
 
 		event.Creator = &User{
 			FirstName: firstName,

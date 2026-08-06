@@ -174,6 +174,7 @@ type Event struct {
 	Creator       *User     `json:"creator,omitempty"`
 	Title         string    `json:"title"`
 	Description   string    `json:"description"`
+	ImagePath     *string   `json:"image_path,omitempty"`
 	EventDateTime time.Time `json:"event_datetime"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

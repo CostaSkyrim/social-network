@@ -46,7 +46,14 @@ export async function getGroupEvents(groupId: string): Promise<GroupEvent[]> {
 }
 
 export async function createEvent(groupId: string, input: CreateEventInput): Promise<void> {
-  await client.post(`/api/groups/${groupId}/events`, input)
+  const form = new FormData()
+  form.append('title', input.title)
+  if (input.description) form.append('description', input.description)
+  form.append('event_datetime', input.event_datetime)
+  if (input.image) form.append('image', input.image)
+  await client.post(`/api/groups/${groupId}/events`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }
 
 export async function rsvpEvent(

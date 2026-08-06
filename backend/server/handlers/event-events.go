@@ -11,9 +11,10 @@ import (
 )
 
 type CreateEventRequest struct {
-	Title         string `json:"title"`
-	Description   string `json:"description"`
-	EventDatetime string `json:"event_datetime"`
+	Title         string  `json:"title"`
+	Description   string  `json:"description"`
+	EventDatetime string  `json:"event_datetime"`
+	ImagePath     *string `json:"image_path,omitempty"`
 }
 
 type EventRSVPRequest struct {
@@ -165,9 +166,24 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	var req CreateEventRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Title = r.FormValue("title")
+		req.Description = r.FormValue("description")
+		req.EventDatetime = r.FormValue("event_datetime")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		req.ImagePath = imgPath
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
 	eventDatetime, validationErr := validateEventRequest(&req)
@@ -182,6 +198,7 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		CreatorID:     userID,
 		Title:         req.Title,
 		Description:   req.Description,
+		ImagePath:     req.ImagePath,
 		EventDateTime: eventDatetime,
 	}
 

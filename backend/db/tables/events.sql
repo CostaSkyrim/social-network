@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS events (
     creator_id INTEGER NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    image_path VARCHAR(500),
     event_datetime TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

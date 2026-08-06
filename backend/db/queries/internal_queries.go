@@ -574,8 +574,8 @@ const (
 const (
 	CreateEvent = `
 		INSERT INTO events (uuid, group_id, creator_id,
-		 title, description, event_datetime)
-		VALUES (?, ?, ?, ?, ?, ?)
+		 title, description, image_path, event_datetime)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
 	CreateEventRSVP = `
@@ -586,7 +586,7 @@ const (
 
 	GetEventByID = `
 		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.event_datetime, e.created_at, e.updated_at,
+			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
@@ -595,7 +595,7 @@ const (
 
 	GetEventByUUID = `
 		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.event_datetime, e.created_at, e.updated_at,
+			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
@@ -604,7 +604,7 @@ const (
 
 	GetGroupEvents = `
 		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.event_datetime, e.created_at, e.updated_at,
+			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id

@@ -73,12 +73,13 @@ type seedComment struct {
 }
 
 type seedEvent struct {
-	UUID          string `json:"uuid"`
-	GroupID       int64  `json:"group_id"`
-	CreatorID     int64  `json:"creator_id"`
-	Title         string `json:"title"`
-	Description   string `json:"description"`
-	EventDatetime string `json:"event_datetime"`
+	UUID          string  `json:"uuid"`
+	GroupID       int64   `json:"group_id"`
+	CreatorID     int64   `json:"creator_id"`
+	Title         string  `json:"title"`
+	Description   string  `json:"description"`
+	ImagePath     *string `json:"image_path"`
+	EventDatetime string  `json:"event_datetime"`
 }
 
 type seedEventResponse struct {
@@ -93,6 +94,7 @@ type seedMessage struct {
 	DirectMessageID *int64 `json:"direct_message_id"`
 	GroupID         *int64 `json:"group_id"`
 	Content         string `json:"content"`
+	ImagePath       *string `json:"image_path"`
 }
 
 type seedNotification struct {
@@ -347,7 +349,7 @@ func insertEvents(db *sql.DB, events []seedEvent) error {
 		}
 
 		_, err = db.Exec(queries.CreateEvent,
-			e.UUID, e.GroupID, e.CreatorID, e.Title, e.Description, dt)
+			e.UUID, e.GroupID, e.CreatorID, e.Title, e.Description, e.ImagePath, dt)
 		if err != nil {
 			return fmt.Errorf("insert event %s: %w", e.Title, err)
 		}
@@ -408,13 +410,13 @@ func insertMessages(db *sql.DB, messages []seedMessage) error {
 			}
 
 			_, err := db.Exec(queries.CreateMessage,
-				m.UUID, m.SenderID, realDMID, nil, m.Content)
+				m.UUID, m.SenderID, realDMID, nil, m.Content, m.ImagePath)
 			if err != nil {
 				return fmt.Errorf("insert message %s: %w", m.UUID, err)
 			}
 		} else if m.GroupID != nil {
 			_, err := db.Exec(queries.CreateMessage,
-				m.UUID, m.SenderID, nil, m.GroupID, m.Content)
+				m.UUID, m.SenderID, nil, m.GroupID, m.Content, m.ImagePath)
 			if err != nil {
 				return fmt.Errorf("insert group message %s: %w", m.UUID, err)
 			}

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import { Card, CardContent } from '@/components/ui/Card'
 import { useCreateEvent } from '@/hooks/useGroups'
 
@@ -14,8 +15,22 @@ export function EventForm({ groupId }: EventFormProps) {
   const [title, set_title] = useState('')
   const [description, set_description] = useState('')
   const [datetime, set_datetime] = useState('')
+  const [image, set_image] = useState<File | null>(null)
+  const [preview_url, set_preview_url] = useState<string | null>(null)
   const [errors, set_errors] = useState<Record<string, string>>({})
   const create_event = useCreateEvent(groupId)
+
+  const clear_image = useCallback(() => {
+    if (preview_url) URL.revokeObjectURL(preview_url)
+    set_image(null)
+    set_preview_url(null)
+  }, [preview_url])
+
+  const handle_select_image = (file: File) => {
+    if (preview_url) URL.revokeObjectURL(preview_url)
+    set_image(file)
+    set_preview_url(URL.createObjectURL(file))
+  }
 
   async function handle_submit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,10 +60,12 @@ export function EventForm({ groupId }: EventFormProps) {
         title: title.trim(),
         description: description.trim() || undefined,
         event_datetime: new Date(datetime).toISOString(),
+        image: image ?? undefined,
       })
       set_title('')
       set_description('')
       set_datetime('')
+      clear_image()
       set_errors({})
     } catch {
       // error toast handled by mutation
@@ -60,6 +77,23 @@ export function EventForm({ groupId }: EventFormProps) {
       <CardContent>
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Create an event</h3>
         <form onSubmit={handle_submit} className="space-y-3">
+          {preview_url && (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={preview_url}
+                alt="Event image preview"
+                className="max-h-48 w-full rounded-lg object-cover"
+              />
+              <button
+                type="button"
+                onClick={clear_image}
+                className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+              >
+                Remove
+              </button>
+            </div>
+          )}
           <Input
             id="event-title"
             label="Title"
@@ -83,6 +117,26 @@ export function EventForm({ groupId }: EventFormProps) {
             onChange={(e) => set_datetime(e.target.value)}
             error={errors.datetime}
           />
+          <div className="flex items-center gap-3">
+            <ImageUpload on_select={handle_select_image}>
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                title="Add event image"
+              >
+                📷 Add image
+              </button>
+            </ImageUpload>
+            {image && (
+              <button
+                type="button"
+                onClick={clear_image}
+                className="text-sm text-red-600 hover:text-red-700"
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
           <Button type="submit" loading={create_event.isPending} disabled={!title.trim()}>
             Create event
           </Button>

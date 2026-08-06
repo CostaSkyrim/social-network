@@ -18,6 +18,7 @@ export interface CreateEventInput {
   title: string
   description?: string
   event_datetime: string
+  image?: File
 }
 
 export interface GroupMember {
@@ -44,6 +45,7 @@ export interface GroupEvent {
   }
   title: string
   description?: string
+  image_path?: string
   event_datetime: string
   created_at: string
   updated_at: string
