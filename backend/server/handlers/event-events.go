@@ -48,7 +48,7 @@ func requireGroupMember(w http.ResponseWriter, r *http.Request, db *database.Dat
 		}
 	}
 
-	RespondError(w, http.StatusForbidden, "Must be a group member to access events")
+	RespondError(w, http.StatusForbidden, "Must be a group member to access this content")
 	return false
 }
 

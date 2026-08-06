@@ -12,7 +12,11 @@ import { useCreatePost } from '@/hooks/usePosts'
 import { useAuth } from '@/context/AuthProvider'
 import { Avatar } from '@/components/ui/Avatar'
 
-export function PostForm() {
+interface PostFormProps {
+  groupId?: string
+}
+
+export function PostForm({ groupId }: PostFormProps = {}) {
   const [content, set_content] = useState('')
   const [privacy, set_privacy] = useState('public')
   const [image, set_image] = useState<File | null>(null)
@@ -95,6 +99,7 @@ export function PostForm() {
     await create_post.mutateAsync({
       content: content.trim(),
       privacy_level: privacy,
+      group_id: groupId,
       image: image ?? undefined,
     })
     set_content('')
@@ -154,29 +159,29 @@ export function PostForm() {
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <EmojiPicker on_select={handle_emoji} />
-              <ImageUpload on_select={handle_select_image} className="[&>div]:inline-flex">
-                <button
-                  type="button"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                  title="Add image"
-                >
-                  📷
-                </button>
-              </ImageUpload>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <EmojiPicker on_select={handle_emoji} />
+                <ImageUpload on_select={handle_select_image} className="[&>div]:inline-flex">
+                  <button
+                    type="button"
+                    className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    title="Add image"
+                  >
+                    📷
+                  </button>
+                </ImageUpload>
+              </div>
+              {!groupId && <PrivacySelector value={privacy} onChange={set_privacy} />}
+              <Button
+                type="submit"
+                size="sm"
+                loading={create_post.isPending}
+                disabled={!content.trim() && !image}
+              >
+                Post
+              </Button>
             </div>
-            <PrivacySelector value={privacy} onChange={set_privacy} />
-            <Button
-              type="submit"
-              size="sm"
-              loading={create_post.isPending}
-              disabled={!content.trim() && !image}
-            >
-              Post
-            </Button>
-          </div>
         </form>
       </CardContent>
     </Card>

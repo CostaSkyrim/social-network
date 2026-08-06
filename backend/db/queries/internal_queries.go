@@ -246,6 +246,19 @@ const (
 		LIMIT ? OFFSET ?
 	`
 
+	GetGroupPosts = `
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted,
+		 u.first_name, u.last_name, u.nickname, u.avatar_path,
+		 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
+		WHERE p.group_id = ?
+		ORDER BY p.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
 	DeletePost = `
 		UPDATE posts
 		SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP

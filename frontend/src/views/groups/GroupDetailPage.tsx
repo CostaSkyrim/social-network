@@ -3,11 +3,14 @@
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useGroup, useGroupEvents, useUpdateGroupAvatar } from '@/hooks/useGroups'
+import { useGroupPosts } from '@/hooks/usePosts'
 import { EventList } from '@/components/group/EventList'
 import { EventForm } from '@/components/group/EventForm'
 import { MemberList } from '@/components/group/MemberList'
 import { GroupActions } from '@/components/group/GroupActions'
 import { InviteMember } from '@/components/group/InviteMember'
+import { PostForm } from '@/components/post/PostForm'
+import { PostList } from '@/components/post/PostList'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
@@ -27,6 +30,7 @@ export default function GroupDetailPage() {
 
   const { data: events, isLoading: events_loading } = useGroupEvents(uuid)
   const upload_avatar = useUpdateGroupAvatar(uuid)
+  const group_posts = useGroupPosts(uuid)
 
   if (group_loading) {
     return (
@@ -111,6 +115,25 @@ export default function GroupDetailPage() {
           <MemberList members={members} groupId={group.id} isCreator={is_creator} />
         </CardContent>
       </Card>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900">Posts</h3>
+        {is_member ? (
+          <>
+            <PostForm groupId={group.id} />
+            <PostList
+              posts={group_posts.data?.pages.flatMap((page) => page) ?? []}
+              is_loading={group_posts.isLoading}
+              has_next={group_posts.hasNextPage}
+              on_load_more={() => group_posts.fetchNextPage()}
+            />
+          </>
+        ) : (
+          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+            Join this group to see its posts.
+          </p>
+        )}
+      </div>
 
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900">Events</h3>

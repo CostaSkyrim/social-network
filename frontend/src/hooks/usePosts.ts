@@ -1,7 +1,7 @@
 'use client'
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getFeed, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
+import { getFeed, getGroupPosts, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
 import { useUI } from '@/context/UIProvider'
 
 const FEED_PAGE_SIZE = 10
@@ -15,6 +15,20 @@ export function useFeed() {
       return allPages.length + 1
     },
     initialPageParam: 1,
+    staleTime: 30_000,
+  })
+}
+
+export function useGroupPosts(groupId: string) {
+  return useInfiniteQuery({
+    queryKey: ['group-posts', groupId],
+    queryFn: ({ pageParam }) => getGroupPosts(groupId, pageParam, FEED_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < FEED_PAGE_SIZE) return undefined
+      return allPages.length + 1
+    },
+    initialPageParam: 1,
+    enabled: !!groupId,
     staleTime: 30_000,
   })
 }
@@ -34,8 +48,11 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: (data: { content: string; privacy_level: string; group_id?: string; image?: File }) =>
       apiCreatePost(data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
+      if (variables.group_id) {
+        query_client.invalidateQueries({ queryKey: ['group-posts', variables.group_id] })
+      }
       show_toast({ message: 'Post created', type: 'success' })
     },
     onError: (err: any) => {

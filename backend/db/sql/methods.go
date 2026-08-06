@@ -824,6 +824,64 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 	return posts, nil
 }
 
+// GetGroupPosts retrieves posts within a group
+func (db *DataBase) GetGroupPosts(ctx context.Context, groupID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetGroupPosts,
+		groupID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []*Post
+	for rows.Next() {
+		post := &Post{Author: &User{}}
+		var nickname, avatarPath sql.NullString
+
+		err := rows.Scan(
+			&post.ID,
+			&post.UUID,
+			&post.AuthorID,
+			&post.AuthorUUID,
+			&post.GroupID,
+			&post.GroupUUID,
+			&post.Content,
+			&post.ImagePath,
+			&post.PrivacyLevel,
+			&post.CreatedAt,
+			&post.UpdatedAt,
+			&post.IsDeleted,
+			&post.Author.FirstName,
+			&post.Author.LastName,
+			&nickname,
+			&avatarPath,
+			&post.CommentCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan group post: %w", err)
+		}
+		if nickname.Valid {
+			post.Author.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			post.Author.AvatarPath = &avatarPath.String
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return posts, nil
+}
+
 // GetPostWithAuthor retrieves a single post with author info
 func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64) (*Post, error) {
 	if ctx == nil {

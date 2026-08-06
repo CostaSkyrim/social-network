@@ -99,6 +99,9 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 			RespondError(w, http.StatusNotFound, "Group not found")
 			return
 		}
+		if !requireGroupMember(w, r, db, group.ID, userID) {
+			return
+		}
 		groupID = &group.ID
 	}
 
@@ -165,6 +168,53 @@ func GetUserPostsHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 	}
 
 	RespondSuccess(w, http.StatusOK, "Posts retrieved", posts)
+}
+
+func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
+		return
+	}
+
+	if !requireGroupMember(w, r, db, groupID, userID) {
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 20
+	offset := 0
+
+	if limitStr != "" {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+			limit = v
+		}
+	}
+	if offsetStr != "" {
+		if v, err := strconv.Atoi(offsetStr); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	posts, err := db.GetGroupPosts(r.Context(), groupID, limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to fetch group posts")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Group posts retrieved", posts)
 }
 
 func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
