@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import { format_date } from '@/lib/format'
+import { get_media_url } from '@/lib/media'
 import { useAuth } from '@/context/AuthProvider'
 import { useEditPost, useDeletePost } from '@/hooks/usePosts'
 import { PrivacySelector } from './PrivacySelector'
@@ -23,6 +25,9 @@ export function PostCard({ post }: PostCardProps) {
   const [is_editing, set_editing] = useState(false)
   const [edit_content, set_edit_content] = useState(post.content ?? '')
   const [edit_privacy, set_edit_privacy] = useState(post.privacy_level)
+  const [edit_image, set_edit_image] = useState<File | null>(null)
+  const [edit_preview_url, set_edit_preview_url] = useState<string | null>(null)
+  const [edit_remove_image, set_edit_remove_image] = useState(false)
 
   const author_name = post.author
     ? `${post.author.first_name} ${post.author.last_name}`
@@ -36,9 +41,29 @@ export function PostCard({ post }: PostCardProps) {
       id: post.id,
       content: edit_content,
       privacy_level: edit_privacy,
+      image: edit_image ?? undefined,
+      remove_image: edit_remove_image,
     })
     set_editing(false)
+    set_edit_image(null)
+    set_edit_remove_image(false)
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_preview_url(null)
   }
+
+  const handle_edit_image = (file: File) => {
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_image(file)
+    set_edit_preview_url(URL.createObjectURL(file))
+    set_edit_remove_image(false)
+  }
+
+  const handle_edit_remove_image = useCallback(() => {
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_image(null)
+    set_edit_preview_url(null)
+    set_edit_remove_image(true)
+  }, [edit_preview_url])
 
   const handle_delete = () => {
     if (confirm('Delete this post?')) {
@@ -110,8 +135,32 @@ export function PostCard({ post }: PostCardProps) {
               rows={3}
               disabled={edit_mutation.isPending}
             />
+            {(edit_preview_url || (post.image_path && !edit_remove_image && !edit_image)) && (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={edit_preview_url ?? get_media_url(post.image_path)}
+                  alt="Post image"
+                  className="max-h-64 w-full rounded-lg object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={handle_edit_remove_image}
+                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
             <div className="flex items-center justify-between">
-              <PrivacySelector value={edit_privacy} onChange={(v) => set_edit_privacy(v as typeof edit_privacy)} />
+              <div className="flex items-center gap-2">
+                <ImageUpload on_select={handle_edit_image}>
+                  <Button type="button" variant="ghost" size="sm">
+                    {post.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
+                  </Button>
+                </ImageUpload>
+                <PrivacySelector value={edit_privacy} onChange={(v) => set_edit_privacy(v as typeof edit_privacy)} />
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -124,7 +173,7 @@ export function PostCard({ post }: PostCardProps) {
                 <Button
                   size="sm"
                   onClick={handle_edit}
-                  disabled={edit_mutation.isPending || edit_content.trim() === ''}
+                  disabled={edit_mutation.isPending || (edit_content.trim() === '' && !edit_image && !(post.image_path && !edit_remove_image))}
                 >
                   Save
                 </Button>
@@ -137,9 +186,10 @@ export function PostCard({ post }: PostCardProps) {
           </Link>
         )}
 
-        {!is_deleted && post.image_path && (
+        {!is_deleted && !is_editing && post.image_path && (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={post.image_path}
+            src={get_media_url(post.image_path)}
             alt="Post image"
             className="w-full rounded-lg object-cover max-h-96"
           />

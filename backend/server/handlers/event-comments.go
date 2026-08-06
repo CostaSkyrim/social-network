@@ -47,12 +47,29 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 	}
 
 	var req CreateCommentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.PostID = r.FormValue("post_id")
+		if pc := r.FormValue("parent_comment_id"); pc != "" {
+			req.ParentCommentID = &pc
+		}
+		req.Content = r.FormValue("content")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		req.ImagePath = imgPath
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
-	if strings.TrimSpace(req.Content) == "" {
+	if strings.TrimSpace(req.Content) == "" && req.ImagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
 	}
@@ -158,18 +175,47 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	var req EditCommentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
+	comment, err := db.GetCommentByUUID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Comment not found")
 		return
 	}
 
-	if strings.TrimSpace(req.Content) == "" {
+	var req EditCommentRequest
+	var imagePath *string
+
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Content = r.FormValue("content")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		switch {
+		case imgPath != nil:
+			imagePath = imgPath
+		case removeImageRequested(r):
+			imagePath = nil
+		default:
+			imagePath = comment.ImagePath // keep existing image
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		imagePath = req.ImagePath
+	}
+
+	if strings.TrimSpace(req.Content) == "" && imagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
 	}
 
-	if err := db.UpdateComment(r.Context(), commentID, userID, req.Content, req.ImagePath); err != nil {
+	if err := db.UpdateComment(r.Context(), commentID, userID, req.Content, imagePath); err != nil {
 		RespondError(w, http.StatusNotFound, "Comment not found or not authorized")
 		return
 	}

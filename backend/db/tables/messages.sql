@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS messages (
     direct_message_id INTEGER, -- NULL if group chat
     group_id INTEGER, -- NULL if private chat
     content TEXT NOT NULL,
+    image_path VARCHAR(500),
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_message_at TIMESTAMP,

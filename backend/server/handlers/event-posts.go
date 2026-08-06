@@ -61,12 +61,29 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 	}
 
 	var req CreatePostRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Content = r.FormValue("content")
+		req.PrivacyLevel = r.FormValue("privacy_level")
+		if g := r.FormValue("group_id"); g != "" {
+			req.GroupID = &g
+		}
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		req.ImagePath = imgPath
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
-	if strings.TrimSpace(req.Content) == "" {
+	if strings.TrimSpace(req.Content) == "" && req.ImagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
 	}
@@ -198,13 +215,43 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		return
 	}
 
-	var req EditPostRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
+	post, err := db.GetPostByUUID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Post not found")
 		return
 	}
 
-	if strings.TrimSpace(req.Content) == "" {
+	var req EditPostRequest
+	var imagePath *string
+
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Content = r.FormValue("content")
+		req.PrivacyLevel = r.FormValue("privacy_level")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		switch {
+		case imgPath != nil:
+			imagePath = imgPath
+		case removeImageRequested(r):
+			imagePath = nil
+		default:
+			imagePath = post.ImagePath // keep existing image
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		imagePath = req.ImagePath
+	}
+
+	if strings.TrimSpace(req.Content) == "" && imagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
 	}
@@ -213,7 +260,7 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		req.PrivacyLevel = "public"
 	}
 
-	if err := db.UpdatePost(r.Context(), postID, userID, req.Content, req.ImagePath, req.PrivacyLevel); err != nil {
+	if err := db.UpdatePost(r.Context(), postID, userID, req.Content, imagePath, req.PrivacyLevel); err != nil {
 		RespondError(w, http.StatusNotFound, "Post not found or not authorized")
 		return
 	}

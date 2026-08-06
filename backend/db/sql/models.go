@@ -202,6 +202,7 @@ type Message struct {
 	DirectMessageID *int64    `json:"direct_message_id,omitempty"`
 	GroupID         *int64    `json:"group_id,omitempty"`
 	Content         string    `json:"content"`
+	ImagePath       *string   `json:"image_path,omitempty"`
 	IsRead          bool      `json:"is_read"`
 	CreatedAt       time.Time `json:"created_at"`
 }

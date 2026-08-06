@@ -15,6 +15,7 @@ interface CreatePostData {
   content: string
   privacy_level: string
   group_id?: string
+  image?: File
 }
 
 export async function getFeed(page: number, limit: number = 10): Promise<Post[]> {
@@ -30,13 +31,27 @@ export async function getPost(id: string): Promise<Post> {
 }
 
 export async function createPost(data: CreatePostData): Promise<void> {
-  await client.post('/api/posts', data)
+  const form = new FormData()
+  form.append('content', data.content)
+  form.append('privacy_level', data.privacy_level)
+  if (data.group_id) form.append('group_id', data.group_id)
+  if (data.image) form.append('image', data.image)
+  await client.post('/api/posts', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }
 
 export async function deletePost(id: string): Promise<void> {
   await client.delete(`/api/posts/${id}`)
 }
 
-export async function editPost(id: string, data: { content: string; image_path?: string; privacy_level: string }): Promise<void> {
-  await client.put(`/api/posts/${id}/edit`, data)
+export async function editPost(id: string, data: { content: string; privacy_level: string; image?: File; remove_image?: boolean }): Promise<void> {
+  const form = new FormData()
+  form.append('content', data.content)
+  form.append('privacy_level', data.privacy_level)
+  if (data.image) form.append('image', data.image)
+  if (data.remove_image) form.append('remove_image', '1')
+  await client.put(`/api/posts/${id}/edit`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }

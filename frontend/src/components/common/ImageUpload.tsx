@@ -31,6 +31,7 @@ export function ImageUpload({
     }
 
     on_select(file)
+    e.target.value = ''
   }
 
   return (

@@ -24,6 +24,22 @@ export async function getGroup(id: string): Promise<GroupDetail> {
   return res.data.data
 }
 
+export async function createGroup(input: {
+  title: string
+  description?: string
+  image?: File
+}): Promise<string> {
+  const form = new FormData()
+  form.append('title', input.title)
+  if (input.description) form.append('description', input.description)
+  if (input.image) form.append('image', input.image)
+  const res = await client.post<SingleResponse<{ id: string }>>('/api/groups', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  if (!res.data.data?.id) throw new Error('Failed to create group')
+  return res.data.data.id
+}
+
 export async function getGroupEvents(groupId: string): Promise<GroupEvent[]> {
   const res = await client.get<ListResponse<GroupEvent>>(`/api/groups/${groupId}/events`)
   return res.data.data ?? []
@@ -62,4 +78,16 @@ export async function leaveGroup(groupId: string): Promise<void> {
 
 export async function inviteGroupMember(groupId: string, nickname: string): Promise<void> {
   await client.post(`/api/groups/${groupId}/invite`, { nickname })
+}
+
+export async function uploadGroupAvatar(groupId: string, file: File): Promise<string> {
+  const form = new FormData()
+  form.append('image', file)
+  const res = await client.post<SingleResponse<{ avatar_path: string }>>(
+    `/api/groups/${groupId}/avatar`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  if (!res.data.data?.avatar_path) throw new Error('Failed to upload avatar')
+  return res.data.data.avatar_path
 }

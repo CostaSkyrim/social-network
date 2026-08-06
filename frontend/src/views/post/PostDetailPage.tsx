@@ -5,6 +5,7 @@ import { usePost } from '@/hooks/usePosts'
 import { useComments } from '@/hooks/useComments'
 import { PostCard } from '@/components/post/PostCard'
 import { CommentList } from '@/components/comment/CommentList'
+import { CommentForm } from '@/components/comment/CommentForm'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -40,7 +41,8 @@ export default function PostDetailPage() {
             Comments {comments ? `(${comments.length})` : ''}
           </h3>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <CommentForm postId={id} />
           <CommentList
             comments={comments ?? []}
             is_loading={comments_loading}

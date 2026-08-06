@@ -17,7 +17,7 @@ export function useCreateComment() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: (data: { post_id: string; parent_comment_id?: string; content: string; image_path?: string }) =>
+    mutationFn: (data: { post_id: string; parent_comment_id?: string; content: string; image?: File }) =>
       apiCreateComment(data),
     onSuccess: (_data, variables) => {
       query_client.invalidateQueries({ queryKey: ['comments', variables.post_id] })
@@ -57,8 +57,8 @@ export function useEditComment() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: ({ id, content, image_path }: { id: string; content: string; image_path?: string }) =>
-      apiEditComment(id, { content, image_path }),
+    mutationFn: ({ id, content, image, remove_image }: { id: string; content: string; image?: File; remove_image?: boolean }) =>
+      apiEditComment(id, { content, image, remove_image }),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['comments'] })
       show_toast({ message: 'Comment updated', type: 'success' })

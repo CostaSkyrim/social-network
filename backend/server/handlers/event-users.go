@@ -161,3 +161,47 @@ func UpdateUserProfileHandler(w http.ResponseWriter, r *http.Request, db *databa
 
 	RespondSuccess(w, http.StatusOK, "Profile updated", updatedUser)
 }
+
+func UpdateUserAvatarHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	userUUID := r.PathValue("id")
+	if userUUID == "" {
+		RespondError(w, http.StatusBadRequest, "User ID is required")
+		return
+	}
+
+	targetUser, err := db.GetUserByUUID(r.Context(), userUUID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	if targetUser.ID != userID {
+		RespondError(w, http.StatusForbidden, "You can only change your own avatar")
+		return
+	}
+
+	avatarPath, ok := SaveMultipartImage(w, r)
+	if !ok {
+		return
+	}
+
+	if err := db.UpdateUserAvatar(r.Context(), userID, avatarPath); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to update avatar")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Avatar updated", map[string]interface{}{
+		"avatar_path": avatarPath,
+	})
+}

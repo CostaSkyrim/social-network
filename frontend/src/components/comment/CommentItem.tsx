@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import { format_date } from '@/lib/format'
+import { get_media_url } from '@/lib/media'
 import { useAuth } from '@/context/AuthProvider'
 import { useEditComment, useDeleteComment } from '@/hooks/useComments'
 import type { Comment } from '@/types/comment'
@@ -21,6 +23,9 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
 
   const [is_editing, set_editing] = useState(false)
   const [edit_content, set_edit_content] = useState(comment.content ?? '')
+  const [edit_image, set_edit_image] = useState<File | null>(null)
+  const [edit_preview_url, set_edit_preview_url] = useState<string | null>(null)
+  const [edit_remove_image, set_edit_remove_image] = useState(false)
 
   const author_name = comment.author
     ? `${comment.author.first_name} ${comment.author.last_name}`
@@ -33,9 +38,29 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
     await edit_mutation.mutateAsync({
       id: comment.id,
       content: edit_content,
+      image: edit_image ?? undefined,
+      remove_image: edit_remove_image,
     })
     set_editing(false)
+    set_edit_image(null)
+    set_edit_remove_image(false)
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_preview_url(null)
   }
+
+  const handle_edit_image = (file: File) => {
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_image(file)
+    set_edit_preview_url(URL.createObjectURL(file))
+    set_edit_remove_image(false)
+  }
+
+  const handle_edit_remove_image = useCallback(() => {
+    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+    set_edit_image(null)
+    set_edit_preview_url(null)
+    set_edit_remove_image(true)
+  }, [edit_preview_url])
 
   const handle_delete = () => {
     if (confirm('Delete this comment?')) {
@@ -99,26 +124,60 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
                 rows={2}
                 disabled={edit_mutation.isPending}
               />
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => set_editing(false)}
-                  disabled={edit_mutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handle_edit}
-                  disabled={edit_mutation.isPending || edit_content.trim() === ''}
-                >
-                  Save
-                </Button>
+              {(edit_preview_url || (comment.image_path && !edit_remove_image && !edit_image)) && (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={edit_preview_url ?? get_media_url(comment.image_path)}
+                    alt="Comment image"
+                    className="max-h-48 w-full rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handle_edit_remove_image}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <ImageUpload on_select={handle_edit_image}>
+                  <Button type="button" variant="ghost" size="sm">
+                    {comment.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
+                  </Button>
+                </ImageUpload>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => set_editing(false)}
+                    disabled={edit_mutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handle_edit}
+                    disabled={edit_mutation.isPending || (edit_content.trim() === '' && !edit_image && !(comment.image_path && !edit_remove_image))}
+                  >
+                    Save
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
-            <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+            <div>
+              <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+              {comment.image_path && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={get_media_url(comment.image_path)}
+                  alt="Comment image"
+                  className="mt-2 max-h-48 w-full rounded-lg object-cover"
+                />
+              )}
+            </div>
           )}
         </div>
       </div>

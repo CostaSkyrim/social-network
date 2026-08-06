@@ -19,6 +19,7 @@ interface Message {
     avatar_path?: string
   }
   content: string
+  image_path?: string
   is_read: boolean
   created_at: string
 }
@@ -49,8 +50,14 @@ export async function fetchMessages(
 export async function sendMessage(
   targetUserID: string,
   content: string,
+  image?: File,
 ): Promise<{ id: number; dm_id: number; content: string; sender_id: number }> {
-  const res = await client.post(`/api/chat/send/${targetUserID}`, { content })
+  const form = new FormData()
+  form.append('content', content)
+  if (image) form.append('image', image)
+  const res = await client.post(`/api/chat/send/${targetUserID}`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return res.data.data
 }
 

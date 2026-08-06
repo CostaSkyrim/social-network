@@ -6,7 +6,9 @@ import { useAuth } from '@/context/AuthProvider'
 import client from '@/api/client'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import { Input } from '@/components/ui/Input'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 
 interface ProfileData {
@@ -39,7 +41,7 @@ interface ProfileData {
 export default function ProfilePage() {
   const params = useParams()
   const router = useRouter()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, set_user: set_auth_user } = useAuth()
   const uuid = params?.uuid as string
 
   const [profile, set_profile] = useState<ProfileData | null>(null)
@@ -54,6 +56,8 @@ export default function ProfilePage() {
   })
   const [edit_error, set_edit_error] = useState('')
   const [edit_saving, set_edit_saving] = useState(false)
+  const [avatar_loading, set_avatar_loading] = useState(false)
+  const [avatar_error, set_avatar_error] = useState('')
 
   const is_own = uuid === 'me' || uuid === currentUser?.id
   const resolved_uuid = is_own ? currentUser?.id : uuid
@@ -147,6 +151,32 @@ export default function ProfilePage() {
     }
   }
 
+  const handle_avatar_upload = async (file: File) => {
+    if (!currentUser || avatar_loading) return
+    set_avatar_loading(true)
+    set_avatar_error('')
+    try {
+      const form = new FormData()
+      form.append('image', file)
+      const res = await client.post(
+        `/api/users/${currentUser.id}/avatar`,
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      const avatar_path: string = res.data.data.avatar_path
+      set_profile((prev) =>
+        prev
+          ? { ...prev, user: { ...prev.user, avatar_path } }
+          : prev,
+      )
+      set_auth_user(currentUser ? { ...currentUser, avatar_path } : currentUser)
+    } catch (err: any) {
+      set_avatar_error(err?.response?.data?.error || 'Failed to update avatar')
+    } finally {
+      set_avatar_loading(false)
+    }
+  }
+
   if (is_loading) {
     return (
       <div className="space-y-4">
@@ -181,11 +211,36 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="relative">
-              <Avatar
-                src={profile.user.avatar_path}
-                alt={`${profile.user.first_name} ${profile.user.last_name}`}
-                size="xl"
-              />
+              {is_own ? (
+                <ImageUpload on_select={handle_avatar_upload}>
+                  <button
+                    type="button"
+                    className="group relative block overflow-hidden rounded-full"
+                    title="Change profile photo"
+                  >
+                    <Avatar
+                      src={profile.user.avatar_path}
+                      alt={`${profile.user.first_name} ${profile.user.last_name}`}
+                      size="xl"
+                    />
+                    {avatar_loading ? (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <Spinner size="sm" />
+                      </span>
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        Change
+                      </span>
+                    )}
+                  </button>
+                </ImageUpload>
+              ) : (
+                <Avatar
+                  src={profile.user.avatar_path}
+                  alt={`${profile.user.first_name} ${profile.user.last_name}`}
+                  size="xl"
+                />
+              )}
               {profile.user.is_online && (
                 <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500" />
               )}
@@ -228,7 +283,13 @@ export default function ProfilePage() {
               </Button>
             ) : null}
           </div>
-        </div>
+          </div>
+
+        {avatar_error && (
+          <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {avatar_error}
+          </div>
+        )}
 
         <div className="mt-4 flex gap-6">
           {is_own ? (

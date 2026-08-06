@@ -64,9 +64,23 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	var req CreateGroupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Title = r.FormValue("title")
+		req.Description = r.FormValue("description")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		req.AvatarPath = imgPath
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
 	req.Title = strings.TrimSpace(req.Title)
@@ -530,6 +544,49 @@ func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 	}
 
 	RespondSuccess(w, http.StatusOK, "Left the group", nil)
+}
+
+func UpdateGroupAvatarHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	if group.CreatorID != currentUserID {
+		RespondError(w, http.StatusForbidden, "Only the group creator can change the avatar")
+		return
+	}
+
+	avatarPath, ok := SaveMultipartImage(w, r)
+	if !ok {
+		return
+	}
+
+	if err := db.UpdateGroupAvatar(r.Context(), groupID, avatarPath); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to update group avatar")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Group avatar updated", map[string]interface{}{
+		"avatar_path": avatarPath,
+	})
 }
 
 func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {

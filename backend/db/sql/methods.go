@@ -222,6 +222,27 @@ func (db *DataBase) UpdateUserProfile(ctx context.Context, userID int64, user *U
 	return nil
 }
 
+// UpdateUserAvatar updates a user's avatar path
+func (db *DataBase) UpdateUserAvatar(ctx context.Context, userID int64, avatarPath string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateUserAvatar,
+		avatarPath,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update user avatar: %w", err)
+	}
+
+	return nil
+}
+
 // UpdateUserPrivacy updates user privacy settings
 func (db *DataBase) UpdateUserPrivacy(ctx context.Context, userID int64, isPublic bool) error {
 	if ctx == nil {
@@ -1267,6 +1288,26 @@ func (db *DataBase) UpdateGroup(ctx context.Context, groupID int64, title, descr
 	return nil
 }
 
+// UpdateGroupAvatar updates a group's avatar path
+func (db *DataBase) UpdateGroupAvatar(ctx context.Context, groupID int64, avatarPath string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateGroupAvatar,
+		avatarPath, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update group avatar: %w", err)
+	}
+
+	return nil
+}
+
 // AddGroupMember adds a user to a group
 func (db *DataBase) AddGroupMember(ctx context.Context, groupID, userID int64, invitedBy *int64, status string) error {
 	if ctx == nil {
@@ -1438,6 +1479,7 @@ func (db *DataBase) CreateMessage(ctx context.Context, message *Message) (int64,
 		message.DirectMessageID,
 		message.GroupID,
 		message.Content,
+		message.ImagePath,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create message: %w", err)
@@ -1582,15 +1624,16 @@ func (db *DataBase) GetMessages(ctx context.Context, dmID int64, limit int) ([]*
 		var msg Message
 		var senderUser User
 		var firstName, lastName string
-		var nickname, avatarPath *string
+		var nickname, avatarPath, imagePath *string
 		err := rows.Scan(
 			&msg.ID, &msg.UUID, &msg.SenderID, &msg.Content,
-			&msg.IsRead, &msg.CreatedAt,
+			&imagePath, &msg.IsRead, &msg.CreatedAt,
 			&firstName, &lastName, &nickname, &avatarPath, &senderUser.UUID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan message: %w", err)
 		}
+		msg.ImagePath = imagePath
 		senderUser.FirstName = firstName
 		senderUser.LastName = lastName
 		senderUser.Nickname = nickname

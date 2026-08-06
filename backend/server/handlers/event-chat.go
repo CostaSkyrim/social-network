@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	database "social-network/backend/db/sql"
@@ -152,12 +153,27 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	var req SendMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	var imagePath *string
+
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Content = r.FormValue("content")
+		imgPath, ok := multipartImage(w, r)
+		if !ok {
+			return
+		}
+		imagePath = imgPath
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
-	if req.Content == "" {
+	if strings.TrimSpace(req.Content) == "" && imagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
 	}
@@ -178,6 +194,7 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		SenderID:        currentUserID,
 		DirectMessageID: &dmID,
 		Content:         req.Content,
+		ImagePath:       imagePath,
 	}
 
 	msgID, err := db.CreateMessage(r.Context(), msg)
@@ -205,6 +222,7 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 			"message_id": msgID,
 			"dm_id":      dmID,
 			"content":    req.Content,
+			"image_path": imagePath,
 			"sender":     senderInfo,
 			"created_at": now.Format(time.RFC3339),
 		})
@@ -218,10 +236,11 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	RespondSuccess(w, http.StatusCreated, "Message sent", map[string]interface{}{
-		"id":        msgID,
-		"dm_id":     dmID,
-		"content":   req.Content,
-		"sender_id": currentUserID,
+		"id":         msgID,
+		"dm_id":      dmID,
+		"content":    req.Content,
+		"image_path": imagePath,
+		"sender_id":  currentUserID,
 	})
 }
 

@@ -54,6 +54,12 @@ const (
 		WHERE id = ?
 	`
 
+	UpdateUserAvatar = `
+		UPDATE users
+		SET avatar_path = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
 	DeleteUser = `
 		UPDATE users 
 		SET is_active = 0,
@@ -345,6 +351,12 @@ const (
 		ORDER BY g.created_at DESC
 		LIMIT ? OFFSET ?
 	`
+
+	UpdateGroupAvatar = `
+		UPDATE groups
+		SET avatar_path = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
 )
 
 // Message queries
@@ -371,12 +383,12 @@ const (
 	`
 
 	CreateMessage = `
-		INSERT INTO messages (uuid, sender_id, direct_message_id, group_id, content)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO messages (uuid, sender_id, direct_message_id, group_id, content, image_path)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
 	GetGroupMessages = `
-		SELECT m.id, m.uuid, m.sender_id, m.content, m.is_read,
+		SELECT m.id, m.uuid, m.sender_id, m.content, m.image_path, m.is_read,
 		 m.created_at, u.first_name, u.last_name, u.nickname, u.avatar_path, u.uuid
 		FROM messages m
 		JOIN users u ON u.id = m.sender_id
@@ -412,7 +424,7 @@ const (
 	`
 
 	GetPrivateMessages = `
-		SELECT m.id, m.uuid, m.sender_id, m.content, m.is_read, m.created_at,
+		SELECT m.id, m.uuid, m.sender_id, m.content, m.image_path, m.is_read, m.created_at,
 			u.first_name, u.last_name, u.nickname, u.avatar_path, u.uuid
 		FROM messages m
 		JOIN users u ON u.id = m.sender_id

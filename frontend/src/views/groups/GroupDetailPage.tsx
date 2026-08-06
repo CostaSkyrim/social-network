@@ -2,15 +2,17 @@
 
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
-import { useGroup, useGroupEvents } from '@/hooks/useGroups'
+import { useGroup, useGroupEvents, useUpdateGroupAvatar } from '@/hooks/useGroups'
 import { EventList } from '@/components/group/EventList'
 import { EventForm } from '@/components/group/EventForm'
 import { MemberList } from '@/components/group/MemberList'
 import { GroupActions } from '@/components/group/GroupActions'
 import { InviteMember } from '@/components/group/InviteMember'
+import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
+import { ImageUpload } from '@/components/common/ImageUpload'
 
 export default function GroupDetailPage() {
   const params = useParams()
@@ -24,6 +26,7 @@ export default function GroupDetailPage() {
   } = useGroup(uuid)
 
   const { data: events, isLoading: events_loading } = useGroupEvents(uuid)
+  const upload_avatar = useUpdateGroupAvatar(uuid)
 
   if (group_loading) {
     return (
@@ -55,11 +58,36 @@ export default function GroupDetailPage() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{group.title}</h2>
-              {group.description && (
-                <p className="mt-1 text-sm text-gray-500">{group.description}</p>
+            <div className="flex items-start gap-4">
+              {is_creator ? (
+                <ImageUpload on_select={(file) => upload_avatar.mutate(file)}>
+                  <button
+                    type="button"
+                    className="group relative block overflow-hidden rounded-full"
+                    disabled={upload_avatar.isPending}
+                    title="Change group photo"
+                  >
+                    <Avatar src={group.avatar_path} alt={group.title} size="lg" />
+                    {upload_avatar.isPending ? (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <Spinner size="sm" />
+                      </span>
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        Change
+                      </span>
+                    )}
+                  </button>
+                </ImageUpload>
+              ) : (
+                <Avatar src={group.avatar_path} alt={group.title} size="lg" />
               )}
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{group.title}</h2>
+                {group.description && (
+                  <p className="mt-1 text-sm text-gray-500">{group.description}</p>
+                )}
+              </div>
             </div>
             <span className="text-xs text-gray-400">{accepted_count} members</span>
           </div>

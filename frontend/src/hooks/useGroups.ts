@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   browseGroups,
   getGroup,
+  createGroup as apiCreateGroup,
   getGroupEvents,
   createEvent as apiCreateEvent,
   rsvpEvent as apiRsvpEvent,
@@ -12,6 +13,7 @@ import {
   joinGroup as apiJoinGroup,
   leaveGroup as apiLeaveGroup,
   inviteGroupMember as apiInviteGroupMember,
+  uploadGroupAvatar as apiUploadGroupAvatar,
 } from '@/api/groups'
 import { useUI } from '@/context/UIProvider'
 import { useNotifications } from '@/context/NotificationProvider'
@@ -22,6 +24,26 @@ export function useGroups() {
     queryKey: ['groups'],
     queryFn: () => browseGroups(),
     staleTime: 60_000,
+  })
+}
+
+export function useCreateGroup() {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (input: { title: string; description?: string; image?: File }) => apiCreateGroup(input),
+    onSuccess: (id) => {
+      query_client.invalidateQueries({ queryKey: ['groups'] })
+      query_client.invalidateQueries({ queryKey: ['group', id] })
+      show_toast({ message: 'Group created', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to create group',
+        type: 'error',
+      })
+    },
   })
 }
 
@@ -200,6 +222,26 @@ export function useInviteGroupMember(groupId: string) {
     onError: (err: any) => {
       show_toast({
         message: err?.response?.data?.error || 'Failed to send invitation',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useUpdateGroupAvatar(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (file: File) => apiUploadGroupAvatar(groupId, file),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      query_client.invalidateQueries({ queryKey: ['groups'] })
+      show_toast({ message: 'Avatar updated', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to update avatar',
         type: 'error',
       })
     },

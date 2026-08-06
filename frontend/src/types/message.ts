@@ -13,6 +13,7 @@ export interface Message {
   direct_message_id?: number
   group_id?: number
   content: string
+  image_path?: string
   is_read: boolean
   created_at: string
 }

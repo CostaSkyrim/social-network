@@ -8,6 +8,7 @@ import (
 	"social-network/backend/cache"
 	"social-network/backend/config"
 	database "social-network/backend/db/sql"
+	"social-network/backend/global"
 	ws "social-network/backend/server/websocket"
 )
 
@@ -41,7 +42,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 	mux := http.NewServeMux()
 
 	staticDirCss := path.Join("web", "static")
-	staticDirImg := path.Join("web", "images")
+	staticDirImg := global.GetImagePath(config.GetConfig().Handlers.Image.PathPrefix)
 	staticDirJs := path.Join("web", "js")
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDirCss))))
@@ -82,6 +83,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		// User profile endpoints
 		makeEndpoint("/api/users/{id}", false, GetUserProfileHandler),
 		makeEndpoint("/api/users/{id}/edit", true, UpdateUserProfileHandler),
+		makeEndpoint("/api/users/{id}/avatar", true, UpdateUserAvatarHandler),
 
 		// Group endpoints
 		makeEndpoint("/api/groups", true, CreateGroupHandler),
@@ -96,6 +98,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/reject", true, RejectGroupMemberHandler),
 		makeEndpoint("/api/groups/{id}/leave", true, LeaveGroupHandler),
 		makeEndpoint("/api/groups/{id}/members", false, GetGroupMembersHandler),
+		makeEndpoint("/api/groups/{id}/avatar", true, UpdateGroupAvatarHandler),
 
 		// Notification endpoints
 		makeEndpoint("/api/notifications", true, GetNotificationsHandler),

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn'
+import { get_media_url } from '@/lib/media'
 import { useState } from 'react'
 
 interface AvatarProps {
@@ -21,7 +22,7 @@ export function Avatar({ src, alt, size = 'md', className }: AvatarProps) {
   if (src && !error) {
     return (
       <img
-        src={src}
+        src={get_media_url(src)}
         alt={alt}
         onError={() => setError(true)}
         className={cn('rounded-full object-cover', size_map[size], className)}

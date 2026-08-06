@@ -32,7 +32,7 @@ export function useCreatePost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: (data: { content: string; privacy_level: string; group_id?: string }) =>
+    mutationFn: (data: { content: string; privacy_level: string; group_id?: string; image?: File }) =>
       apiCreatePost(data),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
@@ -71,8 +71,8 @@ export function useEditPost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: ({ id, content, image_path, privacy_level }: { id: string; content: string; image_path?: string; privacy_level: string }) =>
-      apiEditPost(id, { content, image_path, privacy_level }),
+    mutationFn: ({ id, content, privacy_level, image, remove_image }: { id: string; content: string; privacy_level: string; image?: File; remove_image?: boolean }) =>
+      apiEditPost(id, { content, privacy_level, image, remove_image }),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
       query_client.invalidateQueries({ queryKey: ['post'] })

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { PrivacySelector } from './PrivacySelector'
 import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { EmojiSuggestions } from '@/components/ui/EmojiSuggestions'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import { useEmojiAutocomplete } from '@/hooks/useEmojiAutocomplete'
 import { useCreatePost } from '@/hooks/usePosts'
 import { useAuth } from '@/context/AuthProvider'
@@ -14,6 +15,8 @@ import { Avatar } from '@/components/ui/Avatar'
 export function PostForm() {
   const [content, set_content] = useState('')
   const [privacy, set_privacy] = useState('public')
+  const [image, set_image] = useState<File | null>(null)
+  const [preview_url, set_preview_url] = useState<string | null>(null)
   const [cursor_pos, set_cursor_pos] = useState(0)
   const create_post = useCreatePost()
   const { user } = useAuth()
@@ -23,6 +26,18 @@ export function PostForm() {
     useEmojiAutocomplete(content, cursor_pos)
 
   const show_suggestions = matches.length > 0 && word !== null
+
+  const clear_image = useCallback(() => {
+    if (preview_url) URL.revokeObjectURL(preview_url)
+    set_image(null)
+    set_preview_url(null)
+  }, [preview_url])
+
+  const handle_select_image = (file: File) => {
+    if (preview_url) URL.revokeObjectURL(preview_url)
+    set_image(file)
+    set_preview_url(URL.createObjectURL(file))
+  }
 
   function insert_at_cursor(text: string) {
     const ta = textarea_ref.current
@@ -76,10 +91,15 @@ export function PostForm() {
 
   async function handle_submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!content.trim()) return
-    await create_post.mutateAsync({ content: content.trim(), privacy_level: privacy })
+    if (!content.trim() && !image) return
+    await create_post.mutateAsync({
+      content: content.trim(),
+      privacy_level: privacy,
+      image: image ?? undefined,
+    })
     set_content('')
     set_privacy('public')
+    clear_image()
   }
 
   return (
@@ -116,14 +136,43 @@ export function PostForm() {
             </div>
           </div>
 
+          {preview_url && (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={preview_url}
+                alt="Selected image"
+                className="max-h-64 w-full rounded-lg object-cover"
+              />
+              <button
+                type="button"
+                onClick={clear_image}
+                className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
-            <EmojiPicker on_select={handle_emoji} />
+            <div className="flex items-center gap-2">
+              <EmojiPicker on_select={handle_emoji} />
+              <ImageUpload on_select={handle_select_image} className="[&>div]:inline-flex">
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  title="Add image"
+                >
+                  📷
+                </button>
+              </ImageUpload>
+            </div>
             <PrivacySelector value={privacy} onChange={set_privacy} />
             <Button
               type="submit"
               size="sm"
               loading={create_post.isPending}
-              disabled={!content.trim()}
+              disabled={!content.trim() && !image}
             >
               Post
             </Button>
