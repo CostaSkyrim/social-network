@@ -1,0 +1,22 @@
+FROM golang:1.24-alpine AS build
+
+RUN apk add --no-cache gcc musl-dev sqlite-dev
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+FROM golang:1.24-alpine
+
+RUN apk add --no-cache gcc musl-dev sqlite-dev
+
+RUN go install github.com/air-verse/air@latest
+
+WORKDIR /app
+COPY --from=build /go/pkg/mod /go/pkg/mod
+COPY . .
+
+# Use Docker-specific config
+RUN cp backend/configs.docker.json backend/configs.json
+
+ENTRYPOINT ["air"]

@@ -110,16 +110,24 @@ func GenerateSessionID() string {
 	return uuid.New().String()
 }
 
-func SetSessionCookie(w http.ResponseWriter, sessionID string, expiration time.Time) {
+func SetSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string, expiration time.Time) {
+	isTLS := r.TLS != nil
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // we need to set this to true once we have https
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isTLS,
+		SameSite: sameSiteMode(isTLS),
 		Expires:  expiration,
 	})
+}
+
+func sameSiteMode(isTLS bool) http.SameSite {
+	if isTLS {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteLaxMode
 }
 
 func ClearSessionCookie(w http.ResponseWriter) {
@@ -155,7 +163,7 @@ func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.Data
 		}
 	}
 
-	SetSessionCookie(w, sessionID, session.ExpiresAt)
+	SetSessionCookie(w, r, sessionID, session.ExpiresAt)
 	return nil
 }
 

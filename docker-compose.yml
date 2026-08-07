@@ -1,0 +1,58 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: social-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - go_mod_cache:/go/pkg/mod
+      - backend_db:/app/backend/db
+      - backend_images:/app/backend/data/images
+    networks:
+      - social-net
+    depends_on:
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: social-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/next.config.ts:/app/next.config.ts
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - WATCHPACK_POLLING=true
+    networks:
+      - social-net
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: social-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - social-net
+    restart: unless-stopped
+
+volumes:
+  go_mod_cache:
+  backend_db:
+  backend_images:
+  redis_data:
+
+networks:
+  social-net:
+    driver: bridge

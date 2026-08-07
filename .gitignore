@@ -40,4 +40,5 @@ frontend/.next/
 frontend/out/
 frontend/tsconfig.tsbuildinfo
 
-AGENTS.md
+# TLS certificates
+certs/

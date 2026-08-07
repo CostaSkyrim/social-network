@@ -138,13 +138,15 @@ func setupServer(cfg *config.Config, db *database.DataBase, redisClient *cache.R
 	return server
 }
 
-// startServer launches the HTTP or HTTPS server
+// startServer launches the HTTP and/or HTTPS servers
 func startServer(server *http.Server, useHTTPS bool, cfg *config.Config) {
-	var err error
+	protocol := "http"
 
 	if useHTTPS {
-		certFile := global.GetCertPath(cfg.Certifications.File)
-		keyFile := global.GetKeyPath(cfg.Certifications.Key)
+		protocol = "https"
+
+		certPath := global.GetCertPath(cfg.Certifications.File)
+		keyPath := global.GetKeyPath(cfg.Certifications.Key)
 
 		server.TLSConfig = &tls.Config{
 			MinVersion:               tls.VersionTLS12,
@@ -152,15 +154,17 @@ func startServer(server *http.Server, useHTTPS bool, cfg *config.Config) {
 			PreferServerCipherSuites: true,
 		}
 
-		log.Printf("🚀 Server starting on https://localhost%s", server.Addr)
-		err = server.ListenAndServeTLS(certFile, keyFile)
-	} else {
-		log.Printf("🚀 Server starting on http://localhost%s", server.Addr)
+		log.Printf("🚀 Server starting on %s://localhost%s", protocol, server.Addr)
 
-		err = server.ListenAndServe()
+		if err := server.ListenAndServeTLS(certPath, keyPath); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed to start: %v", err)
+		}
+		return
 	}
 
-	if err != nil && err != http.ErrServerClosed {
+	log.Printf("🚀 Server starting on %s://localhost%s", protocol, server.Addr)
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
