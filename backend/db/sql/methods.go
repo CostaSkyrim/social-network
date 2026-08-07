@@ -543,6 +543,65 @@ func (db *DataBase) GetFollowing(ctx context.Context, userID int64) ([]User, err
 	return users, nil
 }
 
+// GetFollowingWithDM retrieves the users a user is following with DM unread counts
+func (db *DataBase) GetFollowingWithDM(ctx context.Context, userID int64) ([]FollowerWithDM, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowingWithDM, userID, userID, userID)
+	if err != nil {
+		rows, err = db.conn.QueryContext(ctx, queries.GetFollowing, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query following: %w", err)
+		}
+		defer rows.Close()
+
+		var following []FollowerWithDM
+		for rows.Next() {
+			var f FollowerWithDM
+			if scanErr := rows.Scan(
+				&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
+				&f.Nickname, &f.AvatarPath, &f.IsPublic,
+			); scanErr != nil {
+				return nil, fmt.Errorf("failed to scan following user: %w", scanErr)
+			}
+			following = append(following, f)
+		}
+
+		if scanErr := rows.Err(); scanErr != nil {
+			return nil, fmt.Errorf("row iteration error: %w", scanErr)
+		}
+
+		return following, nil
+	}
+	defer rows.Close()
+
+	var following []FollowerWithDM
+	for rows.Next() {
+		var f FollowerWithDM
+		var lastDMAtStr sql.NullString
+		if scanErr := rows.Scan(
+			&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
+			&f.Nickname, &f.AvatarPath, &f.IsPublic, &lastDMAtStr, &f.UnreadCount,
+		); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan following user: %w", scanErr)
+		}
+		if lastDMAtStr.Valid {
+			if t, err := time.Parse("2006-01-02 15:04:05", lastDMAtStr.String); err == nil {
+				f.LastDMAt = t
+			}
+		}
+		following = append(following, f)
+	}
+
+	if scanErr := rows.Err(); scanErr != nil {
+		return nil, fmt.Errorf("row iteration error: %w", scanErr)
+	}
+
+	return following, nil
+}
+
 // CheckFollowing checks if a user is following another user
 func (db *DataBase) CheckFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
 	if ctx == nil {
@@ -1768,7 +1827,7 @@ func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]Fol
 		ctx = context.Background()
 	}
 
-	rows, err := db.conn.QueryContext(ctx, queries.GetFollowersWithDM, userID)
+	rows, err := db.conn.QueryContext(ctx, queries.GetFollowersWithDM, userID, userID, userID)
 	if err != nil {
 		rows, err = db.conn.QueryContext(ctx, queries.GetFollowers, userID)
 		if err != nil {
@@ -1802,7 +1861,7 @@ func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]Fol
 		var lastDMAtStr sql.NullString
 		if scanErr := rows.Scan(
 			&f.ID, &f.UUID, &f.Email, &f.FirstName, &f.LastName,
-			&f.Nickname, &f.AvatarPath, &f.IsPublic, &lastDMAtStr,
+			&f.Nickname, &f.AvatarPath, &f.IsPublic, &lastDMAtStr, &f.UnreadCount,
 		); scanErr != nil {
 			return nil, fmt.Errorf("failed to scan follower: %w", scanErr)
 		}

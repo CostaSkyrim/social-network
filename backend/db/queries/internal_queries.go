@@ -143,12 +143,21 @@ const (
 	GetFollowersWithDM = `
 		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name,
 		 u.nickname, u.avatar_path, u.is_public,
-		 COALESCE(MAX(dm.last_message_at), '1970-01-01') as last_dm_at
+		 COALESCE(MAX(dm.last_message_at), '1970-01-01') as last_dm_at,
+		 COALESCE(unread.cnt, 0) as unread_count
 		FROM followers f
 		JOIN users u ON u.id = f.follower_id
 		LEFT JOIN direct_messages dm ON
 			(dm.user1_id = f.follower_id AND dm.user2_id = f.following_id)
 			OR (dm.user1_id = f.following_id AND dm.user2_id = f.follower_id)
+		LEFT JOIN (
+			SELECT m.direct_message_id, COUNT(*) as cnt
+			FROM messages m
+			WHERE m.sender_id != ? AND m.id NOT IN (
+				SELECT message_id FROM message_reads WHERE user_id = ?
+			)
+			GROUP BY m.direct_message_id
+		) unread ON unread.direct_message_id = dm.id
 		WHERE f.following_id = ? AND f.status = 'accepted' AND u.is_active = 1
 		GROUP BY u.id
 		ORDER BY last_dm_at DESC, u.first_name ASC, u.last_name ASC
@@ -161,6 +170,29 @@ const (
 		JOIN users u ON u.id = f.following_id
 		WHERE f.follower_id = ? AND f.status = 'accepted' AND u.is_active = 1
 		ORDER BY f.created_at DESC
+	`
+
+	GetFollowingWithDM = `
+		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name,
+		 u.nickname, u.avatar_path, u.is_public,
+		 COALESCE(MAX(dm.last_message_at), '1970-01-01') as last_dm_at,
+		 COALESCE(unread.cnt, 0) as unread_count
+		FROM followers f
+		JOIN users u ON u.id = f.following_id
+		LEFT JOIN direct_messages dm ON
+			(dm.user1_id = f.follower_id AND dm.user2_id = f.following_id)
+			OR (dm.user1_id = f.following_id AND dm.user2_id = f.follower_id)
+		LEFT JOIN (
+			SELECT m.direct_message_id, COUNT(*) as cnt
+			FROM messages m
+			WHERE m.sender_id != ? AND m.id NOT IN (
+				SELECT message_id FROM message_reads WHERE user_id = ?
+			)
+			GROUP BY m.direct_message_id
+		) unread ON unread.direct_message_id = dm.id
+		WHERE f.follower_id = ? AND f.status = 'accepted' AND u.is_active = 1
+		GROUP BY u.id
+		ORDER BY last_dm_at DESC, u.first_name ASC, u.last_name ASC
 	`
 
 	CheckFollowing = `

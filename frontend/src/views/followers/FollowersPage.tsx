@@ -186,7 +186,7 @@ export default function FollowersPage() {
               </div>
               <div className="flex items-center gap-2">
                 {f.unread_count > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[11px] font-bold text-white">
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
                     {f.unread_count > 99 ? '99+' : f.unread_count}
                   </span>
                 )}

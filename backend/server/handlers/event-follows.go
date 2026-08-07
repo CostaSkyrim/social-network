@@ -219,14 +219,18 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		return
 	}
 
-	following, err := db.GetFollowing(r.Context(), userID)
+	following, err := db.GetFollowingWithDM(r.Context(), userID)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to get following")
 		return
 	}
 
 	if following == nil {
-		following = []database.User{}
+		following = []database.FollowerWithDM{}
+	}
+
+	for i := range following {
+		following[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(following[i].User.ID)
 	}
 
 	RespondSuccess(w, http.StatusOK, "Following retrieved", following)
