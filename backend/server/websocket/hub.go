@@ -145,6 +145,13 @@ func (h *Hub) ClientCount() int {
 }
 
 func (h *Hub) IsUserConnected(userID int64) bool {
+	if h.redisClient != nil {
+		online, err := h.redisClient.IsUserOnline(context.Background(), userID)
+		if err == nil {
+			return online
+		}
+	}
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
