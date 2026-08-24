@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import OAuthButtons from '@/components/common/OAuthButtons'
 import { useLogin } from '@/hooks/useAuth'
 
 export default function LoginPage() {
@@ -11,6 +13,12 @@ export default function LoginPage() {
   const [password, set_password] = useState('')
   const [error, set_error] = useState<string | null>(null)
   const login = useLogin()
+  const search_params = useSearchParams()
+
+  useEffect(() => {
+    const oauth_error = search_params.get('oauth_error')
+    if (oauth_error) set_error(oauth_error)
+  }, [search_params])
 
   async function handle_submit(e: React.FormEvent) {
     e.preventDefault()
@@ -59,6 +67,8 @@ export default function LoginPage() {
       <Button type="submit" className="w-full" loading={login.isPending}>
         Sign in
       </Button>
+
+      <OAuthButtons />
 
       <p className="text-center text-sm text-gray-500">
         Don't have an account?{' '}

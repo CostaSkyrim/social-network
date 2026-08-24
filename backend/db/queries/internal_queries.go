@@ -672,3 +672,17 @@ const (
 		GROUP BY r.response
 	`
 )
+
+// OAuth account queries
+const (
+	CreateOAuthAccount = `
+		INSERT INTO oauth_accounts (user_id, provider, provider_id)
+		VALUES (?, ?, ?)
+	`
+
+	GetOAuthAccount = `
+		SELECT user_id
+		FROM oauth_accounts
+		WHERE provider = ? AND provider_id = ?
+	`
+)

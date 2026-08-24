@@ -2327,3 +2327,48 @@ func (db *DataBase) GetEventResponseCounts(ctx context.Context, eventID int64) (
 
 	return counts, nil
 }
+
+// CreateOAuthAccount links a user to an OAuth provider account.
+func (db *DataBase) CreateOAuthAccount(ctx context.Context, userID int64, provider, providerID string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.CreateOAuthAccount,
+		userID,
+		provider,
+		providerID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create oauth account: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserIDByOAuthAccount returns the user ID linked to a provider account, or
+// sql.ErrNoRows if no such link exists.
+func (db *DataBase) GetUserIDByOAuthAccount(ctx context.Context, provider, providerID string) (int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var userID int64
+	err := db.conn.QueryRowContext(ctx,
+		queries.GetOAuthAccount,
+		provider,
+		providerID,
+	).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, sql.ErrNoRows
+		}
+		return 0, fmt.Errorf("failed to query oauth account: %w", err)
+	}
+
+	return userID, nil
+}

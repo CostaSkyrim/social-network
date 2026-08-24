@@ -20,6 +20,7 @@ type Config struct {
 	Handlers              HandlersConfig    `json:"handlers"`
 	Frontend              FrontendConfig    `json:"frontend"`
 	Redis                 cache.RedisConfig `json:"redis"`
+	OAuth                 OAuthConfig       `json:"oauth"`
 }
 
 type FrontendConfig struct {
@@ -81,23 +82,22 @@ type RateLimitConfig struct {
 }
 
 type OAuthProvider struct {
-	ClientID        string   `json:"client_id"`
-	ClientSecret    string   `json:"client_secret"`
-	Scopes          []string `json:"scopes"`
-	AuthURL         string   `json:"auth_url"`
-	TokenURL        string   `json:"token_url"`
-	BaseRedirectURI string   `json:"base_redirect_uri"`
+	ClientID     string   `json:"client_id"`
+	ClientSecret string   `json:"client_secret"`
+	Scopes       []string `json:"scopes"`
+	AuthURL      string   `json:"auth_url"`
+	TokenURL     string   `json:"token_url"`
+	UserInfoURL  string   `json:"user_info_url"`
+	RedirectURI  string   `json:"redirect_uri"`
 }
 
 type OAuthConfig struct {
-	Google *OAuthProvider
-	Github *OAuthProvider
+	Google OAuthProvider `json:"google"`
+	Github OAuthProvider `json:"github"`
 }
 
 var (
 	AppConfig   *Config
-	GoogleOAuth *OAuthProvider
-	GithubOAuth *OAuthProvider
 	configMutex sync.RWMutex
 )
 
@@ -175,38 +175,18 @@ func GetUniversalRateLimit() (int, float64) {
 	return 40, 2.0
 }
 
-// InitOAuthConfig initializes the global OAuth configuration
-func InitOAuthConfig(oauthConfig *OAuthConfig, useHTTPS bool) {
-	if oauthConfig == nil {
-		return
-	}
-
-	GoogleOAuth = &OAuthProvider{
-		ClientID:        oauthConfig.Google.ClientID,
-		ClientSecret:    oauthConfig.Google.ClientSecret,
-		Scopes:          oauthConfig.Google.Scopes,
-		AuthURL:         oauthConfig.Google.AuthURL,
-		TokenURL:        oauthConfig.Google.TokenURL,
-		BaseRedirectURI: oauthConfig.Google.BaseRedirectURI,
-	}
-
-	GithubOAuth = &OAuthProvider{
-		ClientID:        oauthConfig.Github.ClientID,
-		ClientSecret:    oauthConfig.Github.ClientSecret,
-		Scopes:          oauthConfig.Github.Scopes,
-		AuthURL:         oauthConfig.Github.AuthURL,
-		TokenURL:        oauthConfig.Github.TokenURL,
-		BaseRedirectURI: oauthConfig.Github.BaseRedirectURI,
-	}
+// IsConfigured reports whether the provider has been set up (client ID/secret present).
+func (c *OAuthProvider) IsConfigured() bool {
+	return c.ClientID != "" && c.ClientSecret != ""
 }
 
-// ExchangeCodeForToken exchanges an authorization code for an access token
+// ExchangeCodeForToken exchanges an authorization code for an access token.
 func (c *OAuthProvider) ExchangeCodeForToken(code string) (string, error) {
 	data := url.Values{}
 	data.Set("code", code)
 	data.Set("client_id", c.ClientID)
 	data.Set("client_secret", c.ClientSecret)
-	data.Set("redirect_uri", c.getRedirectURL(true))
+	data.Set("redirect_uri", c.RedirectURI)
 	data.Set("grant_type", "authorization_code")
 
 	r, err := http.NewRequest("POST", c.TokenURL, strings.NewReader(data.Encode()))
@@ -225,44 +205,60 @@ func (c *OAuthProvider) ExchangeCodeForToken(code string) (string, error) {
 
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)
-		return "", fmt.Errorf("oauth: cannot fetch token %d\nresponse: %s", response.StatusCode, body)
+		return "", fmt.Errorf("oauth: cannot fetch token %d: %s", response.StatusCode, body)
 	}
 
 	var tokenResponse struct {
 		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
 		return "", err
 	}
-
-	if tokenResponse.AccessToken == "" || tokenResponse.TokenType == "" {
-		return "", fmt.Errorf("oauth: missing token in response")
+	if tokenResponse.AccessToken == "" {
+		return "", fmt.Errorf("oauth: missing access token in response")
 	}
 
 	return tokenResponse.AccessToken, nil
 }
 
-// GetAuthURL returns the authorization URL for the OAuth provider
+// GetAuthURL returns the authorization URL for the OAuth provider.
 func (c *OAuthProvider) GetAuthURL(state string) string {
 	u, _ := url.Parse(c.AuthURL)
 	q := u.Query()
 	q.Set("client_id", c.ClientID)
-	q.Set("redirect_uri", c.getRedirectURL(true))
+	q.Set("redirect_uri", c.RedirectURI)
 	q.Set("response_type", "code")
 	q.Set("state", state)
-	q.Set("scope", strings.Join(c.Scopes, " "))
+	if len(c.Scopes) > 0 {
+		q.Set("scope", strings.Join(c.Scopes, " "))
+	}
 	u.RawQuery = q.Encode()
 	return u.String()
 }
 
-// getRedirectURL constructs the redirect URL (supports both HTTP and HTTPS)
-func (c *OAuthProvider) getRedirectURL(useHTTPS bool) string {
-	protocol := "http"
-	if useHTTPS {
-		protocol = "https"
+// FetchUserInfo retrieves the authenticated user's profile from the provider's
+// user info endpoint using the provided access token.
+func (c *OAuthProvider) FetchUserInfo(accessToken string) ([]byte, error) {
+	r, err := http.NewRequest("GET", c.UserInfoURL, nil)
+	if err != nil {
+		return nil, err
 	}
-	return fmt.Sprintf("%s://%s", protocol, c.BaseRedirectURI)
+	r.Header.Set("Authorization", "Bearer "+accessToken)
+	r.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	response, err := client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		return nil, fmt.Errorf("oauth: cannot fetch user info %d: %s", response.StatusCode, body)
+	}
+
+	return io.ReadAll(response.Body)
 }
 
 func GetCookieExpiration() time.Duration {

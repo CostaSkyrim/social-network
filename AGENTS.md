@@ -110,6 +110,7 @@ Endpoints are registered in `SetHandlers()` via `makeEndpoint(path, requireAuth,
 
 **Registered endpoints** (current, all prefixed `/api`):
 - Auth: `POST /signup`, `POST /login`, `GET /auth/check`, `POST /logout`, `POST /logout-all`
+- OAuth: `GET /auth/{provider}` (redirect to Google/GitHub), `GET /auth/{provider}/callback` (exchange + login)
 - Posts: `GET /feed`, `POST /posts`, `GET /post/{id}`, `DELETE /posts/{id}`, `POST /posts/{id}/edit`, `GET /user/posts`
 - Comments: `POST /comments`, `GET /posts/{id}/comments`, `DELETE /comments/{id}`, `POST /comments/{id}/edit`
 - Follows: `POST /follow/request`, `POST /follow/accept`, `POST /follow/decline`, `POST /follow/remove`, `GET /followers`, `GET /following`, `GET /follow/pending`
@@ -152,13 +153,14 @@ Config lives at `backend/configs.json` (local) or `backend/configs.docker.json` 
 - `redis` — Redis address, pool, timeouts
 - `database_configuration` — path, WAL, session cleanup interval, validation limits, system images
 - `server` — Addr (`:8080`)
+- `oauth` — Google/GitHub OAuth provider config (client_id, client_secret, scopes, URLs, redirect_uri)
 - `handlers` — rate limits per path, image config, cookie expiration
 
 **Note**: HTTPS is terminated by Caddy, so there is no `certifications` config in the backend.
 
 ### Database
 
-SQLite with WAL mode, foreign keys enforced, 5s busy timeout. 19 migration files covering the full schema. `DataBase` exposes `GetDB() *sql.DB` for the populate package and any future advanced operations.
+SQLite with WAL mode, foreign keys enforced, 5s busy timeout. 20 migration files covering the full schema (including `oauth_accounts`). `DataBase` exposes `GetDB() *sql.DB` for the populate package and any future advanced operations.
 
 The `methods.go` file provides typed CRUD methods: `AddUser`, `GetUserByEmail`, `GetUserByID`, `GetUserByUUID`, `UpdateUserProfile`, `UpdateUserPrivacy`, `DeleteUser`, `CreateSession`, `GetSession`, `DeleteSession`, `DeleteAllUserSessions`, `CreatePost`, `GetPost`, `GetUserPosts`, `DeletePost`, `CreateGroup`, `GetGroup`, `GetUserGroups`, `CreateMessage`, `CreateOrGetDirectMessage`, `CreateNotification`, `GetUserNotifications`, `MarkNotificationAsRead`.
 

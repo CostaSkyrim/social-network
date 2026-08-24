@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import OAuthButtons from '@/components/common/OAuthButtons'
 import { useSignup } from '@/hooks/useAuth'
 import { VALIDATION, validate_length } from '@/lib/validators'
 
@@ -125,6 +126,8 @@ export default function SignupPage() {
       <Button type="submit" className="w-full" loading={signup.isPending}>
         Create account
       </Button>
+
+      <OAuthButtons />
 
       <p className="text-center text-sm text-gray-500">
         Already have an account?{' '}
