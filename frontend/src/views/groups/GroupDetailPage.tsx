@@ -8,6 +8,7 @@ import { EventList } from '@/components/group/EventList'
 import { EventForm } from '@/components/group/EventForm'
 import { MemberList } from '@/components/group/MemberList'
 import { GroupActions } from '@/components/group/GroupActions'
+import { GroupChat } from '@/components/group/GroupChat'
 import { InviteMember } from '@/components/group/InviteMember'
 import { PostForm } from '@/components/post/PostForm'
 import { PostList } from '@/components/post/PostList'
@@ -149,6 +150,25 @@ export default function GroupDetailPage() {
         ) : (
           <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
             Join this group to see its events.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900">Chat</h3>
+        {is_member ? (
+          <Card>
+            <CardContent>
+              <GroupChat
+                groupId={group.id}
+                groupTitle={group.title}
+                groupAvatar={group.avatar_path}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+            Join this group to participate in the chat.
           </p>
         )}
       </div>

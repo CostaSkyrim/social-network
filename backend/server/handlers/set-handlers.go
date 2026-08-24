@@ -104,6 +104,8 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/members", false, GetGroupMembersHandler),
 		makeEndpoint("/api/groups/{id}/posts", true, GetGroupPostsHandler),
 		makeEndpoint("/api/groups/{id}/avatar", true, UpdateGroupAvatarHandler),
+		makeEndpoint("/api/groups/{id}/messages", true, GetGroupMessagesHandler),
+		makeEndpoint("/api/groups/{id}/messages/send", true, SendGroupMessageHandler),
 
 		// Notification endpoints
 		makeEndpoint("/api/notifications", true, GetNotificationsHandler),

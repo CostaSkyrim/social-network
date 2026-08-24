@@ -1821,6 +1821,23 @@ func (db *DataBase) UpdateDMTime(ctx context.Context, dmID int64) error {
 	return nil
 }
 
+// UpdateGroupLastMessageTime bumps the group's last_message_at timestamp.
+func (db *DataBase) UpdateGroupLastMessageTime(ctx context.Context, groupID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx, queries.UpdateLastMessage, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to update group last message time: %w", err)
+	}
+
+	return nil
+}
+
 // GetFollowersWithDM retrieves followers sorted by last DM time then alphabetically
 func (db *DataBase) GetFollowersWithDM(ctx context.Context, userID int64) ([]FollowerWithDM, error) {
 	if ctx == nil {
@@ -2371,4 +2388,47 @@ func (db *DataBase) GetUserIDByOAuthAccount(ctx context.Context, provider, provi
 	}
 
 	return userID, nil
+}
+
+// GetGroupMessages retrieves messages for a group chat.
+func (db *DataBase) GetGroupMessages(ctx context.Context, groupID int64, limit int) ([]*Message, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetGroupMessages, groupID, nil, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group messages: %w", err)
+	}
+	defer rows.Close()
+
+	var messages []*Message
+	for rows.Next() {
+		var msg Message
+		var senderUser User
+		var firstName, lastName string
+		var nickname, avatarPath, imagePath *string
+		err := rows.Scan(
+			&msg.ID, &msg.UUID, &msg.SenderID, &msg.Content,
+			&imagePath, &msg.IsRead, &msg.CreatedAt,
+			&firstName, &lastName, &nickname, &avatarPath, &senderUser.UUID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan group message: %w", err)
+		}
+		msg.ImagePath = imagePath
+		senderUser.FirstName = firstName
+		senderUser.LastName = lastName
+		senderUser.Nickname = nickname
+		senderUser.AvatarPath = avatarPath
+		senderUser.ID = msg.SenderID
+		msg.Sender = &senderUser
+		messages = append(messages, &msg)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return messages, nil
 }

@@ -98,3 +98,48 @@ export async function uploadGroupAvatar(groupId: string, file: File): Promise<st
   if (!res.data.data?.avatar_path) throw new Error('Failed to upload avatar')
   return res.data.data.avatar_path
 }
+
+export interface GroupMessage {
+  id: number
+  uuid: string
+  sender_id: number
+  sender?: {
+    id?: string
+    first_name: string
+    last_name: string
+    nickname?: string
+    avatar_path?: string
+  }
+  content: string
+  image_path?: string
+  is_read: boolean
+  created_at: string
+}
+
+export async function fetchGroupMessages(
+  groupId: string,
+  limit = 50,
+): Promise<GroupMessage[]> {
+  const res = await client.get<SingleResponse<GroupMessage[]>>(
+    `/api/groups/${groupId}/messages`,
+    { params: { limit } },
+  )
+  return res.data.data ?? []
+}
+
+export async function sendGroupMessage(
+  groupId: string,
+  content: string,
+  image?: File,
+): Promise<{ id: number; group_id: number; content: string; sender_id: number }> {
+  const form = new FormData()
+  form.append('content', content)
+  if (image) form.append('image', image)
+  const res = await client.post<SingleResponse<{ id: number; group_id: number; content: string; sender_id: number }>>(
+    `/api/groups/${groupId}/messages/send`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  if (!res.data.data) throw new Error('Failed to send message')
+  return res.data.data
+}

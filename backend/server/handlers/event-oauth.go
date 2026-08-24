@@ -36,12 +36,22 @@ func getOAuthProvider(name string) *config.OAuthProvider {
 	}
 }
 
+// isKnownOAuthProvider reports whether the given provider name is recognized
+// (google/github) even if its credentials are not yet configured.
+func isKnownOAuthProvider(name string) bool {
+	return name == "google" || name == "github"
+}
+
 // OAuthLoginHandler redirects the user to the provider's authorization page.
 func OAuthLoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	providerName := r.PathValue("provider")
+	if !isKnownOAuthProvider(providerName) {
+		RespondError(w, http.StatusNotFound, "Unknown OAuth provider")
+		return
+	}
 	provider := getOAuthProvider(providerName)
 	if provider == nil || !provider.IsConfigured() {
-		RespondError(w, http.StatusNotFound, "OAuth provider not configured")
+		RespondError(w, http.StatusServiceUnavailable, "OAuth provider not configured")
 		return
 	}
 
@@ -67,9 +77,13 @@ func OAuthLoginHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 // the frontend.
 func OAuthCallbackHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	providerName := r.PathValue("provider")
+	if !isKnownOAuthProvider(providerName) {
+		RespondError(w, http.StatusNotFound, "Unknown OAuth provider")
+		return
+	}
 	provider := getOAuthProvider(providerName)
 	if provider == nil || !provider.IsConfigured() {
-		RespondError(w, http.StatusNotFound, "OAuth provider not configured")
+		RespondError(w, http.StatusServiceUnavailable, "OAuth provider not configured")
 		return
 	}
 

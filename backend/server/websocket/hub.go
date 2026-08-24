@@ -305,6 +305,21 @@ func (h *Hub) SendToUsers(userIDs []int64, msg *WSMessage) {
 	}
 }
 
+// BroadcastGroup sends a message to all accepted members of a group except the
+// sender (who is the origin of the message and already has it locally).
+func (h *Hub) BroadcastGroup(groupID int64, excludeUserID int64, msg *WSMessage) {
+	members, err := h.db.GetGroupMembers(context.Background(), groupID)
+	if err != nil {
+		return
+	}
+
+	for _, member := range members {
+		if member.UserID != excludeUserID && member.Status == "accepted" {
+			h.SendToUser(member.UserID, msg)
+		}
+	}
+}
+
 func (h *Hub) BroadcastToAll(msg *WSMessage) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
