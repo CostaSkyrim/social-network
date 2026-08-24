@@ -1,6 +1,6 @@
 {
     "frontend": {
-        "url": "http://localhost:3000"
+        "url": "https://localhost"
     },
     "redis": {
         "addr": "redis:6379",
@@ -63,17 +63,6 @@
     },
     "server": {
         "Addr": ":8080"
-    },
-    "certifications": {
-        "use_https": false,
-        "file": [
-            "certs",
-            "certs.pem"
-        ],
-        "key": [
-            "certs",
-            "key.pem"
-        ]
     },
     "handlers": {
         "image": {

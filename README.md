@@ -73,16 +73,22 @@ See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Frontend   │     │   Backend    │     │    Redis    │
-│  :3000      │────▶│   :8080      │────▶│   :6379     │
-│  Next.js    │     │   Go API     │     │  presence,  │
-│  App Router │     │   SQLite     │     │  cache, rl  │
-│  nginx(prod)│     │   WS :/api/ws│     │  pub/sub    │
-└─────────────┘     └──────────────┘     └─────────────┘
+│  Caddy      │     │   Backend    │     │    Redis    │
+│  :443 (TLS) │────▶│   :8080      │────▶│   :6379     │
+│  reverse    │     │   Go API     │     │  presence,  │
+│  proxy      │     │   SQLite     │     │  cache, rl  │
+│      │      │     │   WS :/api/ws│     │  pub/sub    │
+│      ▼      │     └──────────────┘     └─────────────┘
+│  Frontend   │
+│  :3000      │
+│  Next.js    │
+│  App Router │
+└─────────────┘
 ```
 
 - Frontend: Next.js App Router with route groups `(auth)` and `(main)` — auth guards redirect unauthenticated users to `/login`.
 - Backend: Go REST API with session-cookie auth, rate limiting, and CORS. WebSocket hub on `/api/ws` (auth required).
+- Caddy terminates HTTPS and reverse-proxies `/api/*` to the backend; everything else to the frontend dev server.
 - SQLite stores all persistent data. Redis is optional — presence tracking, JSON caching, rate limiting, and pub/sub channels. If Redis is down, the backend continues with in-memory fallbacks.
 
 ## Database Schema
@@ -123,6 +129,16 @@ make dev
 - Backend: `http://localhost:8080`
 - Frontend: `http://localhost:3000`
 - Log in with a seed account (`alice@example.com` / `password123`)
+
+### Docker (dev environment)
+
+```bash
+make docker-up
+```
+- App over HTTPS (Caddy): `https://localhost`
+- Backend health: `http://localhost:8080/api/health`
+
+Caddy terminates TLS and routes `/api/*` to the backend and everything else to the Next.js dev server. The backend itself serves plain HTTP only.
 
 > **Note:** On first run, the backend automatically creates the database, applies migrations, and populates seed data. Use `make backend-run-reseed` to wipe and reseed.
 
@@ -175,8 +191,6 @@ social-network/
 │   │   ├── types/         # TypeScript interfaces
 │   │   └── views/         # Page components (mirrors route structure)
 │   ├── next.config.ts
-│   ├── Dockerfile         # planned
-│   └── nginx.conf         # planned
 ├── backend/
 │   ├── cmd/main.go        # Entry point
 │   ├── entry/             # Server startup sequence
@@ -192,9 +206,10 @@ social-network/
 │   ├── server/websocket/  # WebSocket hub, client, handler, types
 │   ├── cache/             # Redis client (presence, caching, rate limit)
 │   └── populate/          # Seed data (seed.json + seed.go)
-│   └── db/migrations/     # SQL migration files (15 up/down)
-├── docker-compose.yml     # planned
+├── Dockerfile.backend     # Backend image (dev, air hot-reload)
+├── Dockerfile.frontend    # Frontend image (dev, Next.js dev server)
+├── docker-compose.yml     # dev stack: Caddy + frontend + backend + redis
+├── Caddyfile              # TLS termination + reverse proxy (dev)
 ├── Makefile               # dev, check, build commands
-├── setup-dev.sh           # Distrobox container setup
 └── PLAN.md                # Full implementation plan
 ```

@@ -4,7 +4,6 @@ package entry
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -62,16 +61,7 @@ func Start(reseed bool) error {
 
 	server := setupServer(cfg, db, redisClient)
 
-	// Configure TLS
-	useHTTPS := global.IsHTTPSEnabled(
-		cfg.Certifications.UseHTTPS,
-		cfg.Certifications.File,
-		cfg.Certifications.Key,
-	)
-
-	// cfg.InitOAuthConfig(global.Configs.OAuth, useHTTPS)
-
-	go startServer(server, useHTTPS, cfg)
+	go startServer(server, cfg)
 
 	return waitForShutdown(server, db)
 }
@@ -138,31 +128,10 @@ func setupServer(cfg *config.Config, db *database.DataBase, redisClient *cache.R
 	return server
 }
 
-// startServer launches the HTTP and/or HTTPS servers
-func startServer(server *http.Server, useHTTPS bool, cfg *config.Config) {
-	protocol := "http"
-
-	if useHTTPS {
-		protocol = "https"
-
-		certPath := global.GetCertPath(cfg.Certifications.File)
-		keyPath := global.GetKeyPath(cfg.Certifications.Key)
-
-		server.TLSConfig = &tls.Config{
-			MinVersion:               tls.VersionTLS12,
-			CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256},
-			PreferServerCipherSuites: true,
-		}
-
-		log.Printf("🚀 Server starting on %s://localhost%s", protocol, server.Addr)
-
-		if err := server.ListenAndServeTLS(certPath, keyPath); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed to start: %v", err)
-		}
-		return
-	}
-
-	log.Printf("🚀 Server starting on %s://localhost%s", protocol, server.Addr)
+// startServer launches the HTTP server. HTTPS is terminated at the edge
+// (Caddy) rather than in-process, so no TLS config is needed here.
+func startServer(server *http.Server, cfg *config.Config) {
+	log.Printf("🚀 Server starting on http://localhost%s", server.Addr)
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed to start: %v", err)

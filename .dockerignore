@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Node / frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+
+# Go build artifacts
+bin
+backend/main
+tmp
+main
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Uploaded images / runtime data
+backend/data/images
+
+# Redis dump
+dump.rdb
+
+# Misc
+.env
+.crush

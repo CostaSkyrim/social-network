@@ -15,12 +15,11 @@ import (
 )
 
 type Config struct {
-	DatabaseConfiguration DatabaseConfig      `json:"database_configuration"`
-	Server                ServerConfig        `json:"server"`
-	Certifications        Certifications      `json:"certifications"`
-	Handlers              HandlersConfig      `json:"handlers"`
-	Frontend              FrontendConfig      `json:"frontend"`
-	Redis                 cache.RedisConfig   `json:"redis"`
+	DatabaseConfiguration DatabaseConfig    `json:"database_configuration"`
+	Server                ServerConfig      `json:"server"`
+	Handlers              HandlersConfig    `json:"handlers"`
+	Frontend              FrontendConfig    `json:"frontend"`
+	Redis                 cache.RedisConfig `json:"redis"`
 }
 
 type FrontendConfig struct {
@@ -61,12 +60,6 @@ type LimitsConfig struct {
 
 type ServerConfig struct {
 	Addr string `json:"Addr"`
-}
-
-type Certifications struct {
-	UseHTTPS bool     `json:"use_https"`
-	File     []string `json:"file"`
-	Key      []string `json:"key"`
 }
 
 type HandlersConfig struct {

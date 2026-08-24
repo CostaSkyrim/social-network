@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     container_name: social-backend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     volumes:
       - .:/app
       - go_mod_cache:/go/pkg/mod
@@ -22,18 +22,35 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: social-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
       - ./frontend/next.config.ts:/app/next.config.ts
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_API_URL=https://localhost
       - WATCHPACK_POLLING=true
     networks:
       - social-net
     depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: social-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - social-net
+    depends_on:
+      - frontend
       - backend
 
   redis:
@@ -52,6 +69,8 @@ volumes:
   backend_db:
   backend_images:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   social-net:

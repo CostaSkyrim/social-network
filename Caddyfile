@@ -1,0 +1,18 @@
+{
+	# Development environment: use Caddy's internal CA and self-signed certs
+	# so we avoid Let's Encrypt (which requires a public domain).
+	local_certs
+}
+
+# Frontend (Next.js dev server) + backend API (Go) over HTTPS
+localhost {
+	# Proxy the API to the Go backend, including the WebSocket endpoint.
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# Proxy everything else to the Next.js dev server.
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

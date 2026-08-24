@@ -64,17 +64,6 @@
     "server": {
         "Addr": ":8080"
     },
-    "certifications": {
-        "use_https": true,
-        "file": [
-            "certs",
-            "certs.pem"
-        ],
-        "key": [
-            "certs",
-            "key.pem"
-        ]
-    },
     "handlers": {
         "image": {
             "max_size": "20MB",

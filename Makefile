@@ -1,7 +1,7 @@
 .PHONY: backend-run backend-run-reseed backend-vet-populate \
 	frontend-dev frontend-build frontend-check frontend-install \
-	check dev sdev kill-ports redis-start redis-stop \
-	db-reset db-delete db-seed certs-generate certs-clean \
+	check dev kill-ports redis-start redis-stop \
+	db-reset db-delete db-seed \
 	docker-up docker-down docker-build docker-clean docker-reset
 
 # ── Redis ───────────────────────────────────────────────
@@ -82,18 +82,6 @@ dev: kill-ports redis-start
 	go run ./backend/cmd/main.go & \
 	wait
 
-sdev: kill-ports redis-start certs-generate
-	@echo "==> Starting frontend (http://localhost:3000) + backend (https://localhost:8080)..."
-	@echo "   Requests proxy through Next.js — browser never touches HTTPS"
-	@trap 'kill 0' EXIT; \
-	MKCERT_CA="$$(mkcert -CAROOT 2>/dev/null)/rootCA.pem"; \
-	cd frontend && \
-	NODE_EXTRA_CA_CERTS="$$MKCERT_CA" \
-	NEXT_PUBLIC_API_URL=https://localhost:8080 \
-	npm run dev & \
-	go run ./backend/cmd/main.go & \
-	wait
-
 # ── Database ──────────────────────────────────────────
 DB_FILE := backend/db/social-network.db
 DB_SHARED := $(DB_FILE)-shm $(DB_FILE)-wal
@@ -144,61 +132,6 @@ db-migrate-test:
 	@echo "   ✅ Test passed — NULL nickname was backfilled and NOT NULL constraint applied"
 	@rm -f $(DB_FILE) $(DB_SHARED)
 
-# ── TLS Certificates ──────────────────────────────────
-CERTS_DIR := certs
-CERT_FILE := $(CERTS_DIR)/certs.pem
-KEY_FILE  := $(CERTS_DIR)/key.pem
-
-certs-generate:
-	@echo "==> Generating locally-trusted TLS certificates..."
-	@mkdir -p $(CERTS_DIR)
-	@if command -v mkcert >/dev/null 2>&1; then \
-		cd $(CERTS_DIR) && mkcert -key-file key.pem -cert-file certs.pem localhost 127.0.0.1 ::1; \
-		echo "   ✅ Certificates generated with mkcert (trusted by browser + OS)"; \
-	else \
-		openssl genrsa -out $(CERTS_DIR)/ca-key.pem 4096 2>/dev/null; \
-		openssl req -x509 -new -nodes -key $(CERTS_DIR)/ca-key.pem -sha256 -days 3650 \
-			-out $(CERTS_DIR)/ca-cert.pem -subj "/CN=SocialNetwork Dev CA" 2>/dev/null; \
-		openssl genrsa -out $(KEY_FILE) 2048 2>/dev/null; \
-		openssl req -new -key $(KEY_FILE) -out $(CERTS_DIR)/server.csr \
-			-subj "/CN=localhost" 2>/dev/null; \
-		openssl x509 -req -in $(CERTS_DIR)/server.csr -CA $(CERTS_DIR)/ca-cert.pem \
-			-CAkey $(CERTS_DIR)/ca-key.pem -CAcreateserial -out $(CERT_FILE) \
-			-days 365 -sha256 \
-			-extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1") 2>/dev/null; \
-		rm -f $(CERTS_DIR)/server.csr $(CERTS_DIR)/ca-key.pem; \
-		echo "   ✅ Certificates generated with openssl"; \
-		echo "   ⚠️  Install mkcert for automatic browser trust: https://github.com/FiloSottile/mkcert"; \
-		echo "   Or trust manually: make certs-trust"; \
-	fi
-
-certs-trust:
-	@echo "==> Installing dev CA into system trust store..."
-	@if [ -f $(CERTS_DIR)/ca-cert.pem ]; then \
-		if [ -d /etc/pki/ca-trust/source/anchors ]; then \
-			sudo cp $(CERTS_DIR)/ca-cert.pem /etc/pki/ca-trust/source/anchors/social-network-dev-ca.crt && \
-			sudo update-ca-trust && \
-			echo "   ✅ CA trusted (Fedora/RHEL)"; \
-		elif [ -d /usr/local/share/ca-certificates ]; then \
-			sudo cp $(CERTS_DIR)/ca-cert.pem /usr/local/share/ca-certificates/social-network-dev-ca.crt && \
-			sudo update-ca-certificates && \
-			echo "   ✅ CA trusted (Debian/Ubuntu)"; \
-		elif [ -d /etc/ca-certificates/trust-source/anchors ]; then \
-			sudo cp $(CERTS_DIR)/ca-cert.pem /etc/ca-certificates/trust-source/anchors/social-network-dev-ca.crt && \
-			sudo trust extract-compat && \
-			echo "   ✅ CA trusted (Arch)"; \
-		else \
-			echo "   ⚠️  Could not detect CA trust directory"; \
-		fi; \
-	else \
-		echo "   ⚠️  No openssl CA cert found — install mkcert instead"; \
-	fi
-
-certs-clean:
-	@echo "==> Removing TLS certificates..."
-	@rm -rf $(CERTS_DIR)
-	@echo "   ✅ Certificates removed"
-
 # ── Docker Compose ────────────────────────────────────
 DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
 
@@ -211,8 +144,8 @@ docker-up:
 	@echo "==> Starting Docker Compose stack..."
 	$(DOCKER_COMPOSE) up -d
 	@echo ""
-	@echo "   Frontend:  http://localhost:3000"
-	@echo "   Backend:   http://localhost:8080/api/health"
+	@echo "   App (HTTPS via Caddy): https://localhost"
+	@echo "   Backend health:        http://localhost:8080/api/health"
 	@echo ""
 
 docker-down:
@@ -228,6 +161,6 @@ docker-reset: docker-down
 docker-clean: docker-down
 	@echo "==> Cleaning Docker resources..."
 	-$(DOCKER_COMPOSE) down -v --rmi all 2>/dev/null
-	-docker volume rm social-network_go_mod_cache social-network_backend_db social-network_backend_images social-network_redis_data 2>/dev/null || true
+	-docker volume rm social-network_go_mod_cache social-network_backend_db social-network_backend_images social-network_redis_data social-network_caddy_data social-network_caddy_config 2>/dev/null || true
 	-docker system prune -f 2>/dev/null || true
 	@echo "   ✅ Docker resources cleaned"

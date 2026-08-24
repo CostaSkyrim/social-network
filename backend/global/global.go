@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"time"
 )
@@ -47,47 +46,6 @@ func GetImagePath(pathPrefix []string) string {
 		return filepath.Join("backend", "data", "images")
 	}
 	return filepath.Join(pathPrefix...)
-}
-
-// GetCertPath returns the certificate file path
-func GetCertPath(certFiles []string) string {
-	if len(certFiles) == 0 {
-		return ""
-	}
-	return filepath.Join(certFiles...)
-}
-
-// GetKeyPath returns the certificate key path
-func GetKeyPath(keyfiles []string) string {
-	if len(keyfiles) == 0 {
-		return ""
-	}
-	return filepath.Join(keyfiles...)
-}
-
-// IsHTTPSEnabled returns whether HTTPS is configured and enabled
-func IsHTTPSEnabled(useHTTPS bool, certFiles, keyfiles []string) bool {
-	if !useHTTPS {
-		return false
-	}
-
-	certPath := GetCertPath(certFiles)
-	keyPath := GetKeyPath(keyfiles)
-
-	if certPath == "" || keyPath == "" {
-		return false
-	}
-
-	if _, err := os.Stat(certPath); os.IsNotExist(err) {
-		log.Printf("Certificate file not found: %s", certPath)
-		return false
-	}
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		log.Printf("Key file not found: %s", keyPath)
-		return false
-	}
-
-	return true
 }
 
 // ParseDuration safely parses a duration string with a default fallback

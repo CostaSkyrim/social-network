@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A full-stack social network application. Go backend (standard library HTTP + SQLite with golang-migrate) and a React/TypeScript frontend (Vite + Tailwind CSS). Both sides compile cleanly. The backend now starts successfully; auth flow is wired end-to-end.
+A full-stack social network application. Go backend (standard library HTTP + SQLite with golang-migrate, Redis for caching/presence, WebSocket hub for real-time chat) and a React/TypeScript frontend (Next.js 16 App Router + Tailwind CSS). HTTPS is terminated at the edge by Caddy (Docker). Both sides compile cleanly; auth flow is wired end-to-end.
 
 ## Commands
 
@@ -32,9 +32,9 @@ go test ./backend/...
 cd frontend
 
 npm install              # or: make frontend-install
-npm run dev              # or: make frontend-dev     → Vite on :5173
-npm run build            # or: make frontend-build    → tsc -b && vite build
-npx tsc --noEmit         # or: make frontend-check    → typecheck only
+npm run dev              # or: make frontend-dev     → Next.js dev on :3000
+npm run build            # or: make frontend-build    → next build
+npm run check            # or: make frontend-check    → tsc --noEmit
 ```
 
 ### Database
@@ -48,13 +48,17 @@ migrate -database "sqlite3://backend/db/social-network.db" \
 
 Seed data (JSON at `backend/populate/seed.json`) is auto-loaded on first run if the users table is empty. Pass `--reseed` to drop and re-import.
 
-### Dev container (distrobox)
+### Docker (dev environment)
 
 ```bash
-./setup-dev.sh                   # create Fedora container with Go 1.24, Node 20
-distrobox enter social-network-dev
-./cleanup.sh                     # remove the container
+make docker-build   # build backend + frontend images
+make docker-up      # start full stack (Caddy :443, backend :8080, frontend :3000, redis)
+make docker-down    # stop stack
+make docker-reset   # stop + remove volumes
 ```
+
+- **Caddy** terminates TLS on `https://localhost` and routes `/api/*` to the backend and everything else to the Next.js dev server. No cert handling exists in the Go backend.
+- Dev server config is `backend/configs.docker.json` (used by the backend container).
 
 ## Architecture
 
@@ -66,9 +70,10 @@ cmd/main.go
     → global.Initialize()            creates shutdown context
     → config.LoadConfig("backend/configs.json")
     → setupDatabase(cfg)             opens SQLite, applies migrations, starts WAL/session goroutines
+    → setupRedis(cfg)                connects to Redis (degrades gracefully if unavailable)
     → populate.SeedFromJSON()        seeds if users table empty
-    → setupServer(cfg, db)           handlers.SetHandlers(db) → http.ServeMux
-    → startServer()                  ListenAndServe or ListenAndServeTLS
+    → setupServer(cfg, db, redis)    handlers.SetHandlers(db, redis) → http.ServeMux
+    → startServer()                  ListenAndServe (HTTP only; TLS handled by Caddy)
     → waitForShutdown()              SIGINT/SIGTERM → graceful shutdown
 ```
 
@@ -77,13 +82,15 @@ cmd/main.go
 | Package | Role |
 |---------|------|
 | `backend/cmd` | Entry point — parses `--reseed`, calls `entry.Start()` |
-| `backend/entry` | Orchestrates startup and shutdown. DB setup, server setup, seed, TLS config, graceful drain |
-| `backend/global` | Lightweight now — holds `ShutDownContext`/`CancelShutdown` plus helper functions for path construction and duration/size parsing. No longer a singleton config holder |
-| `backend/config` | Owns `config.LoadConfig()` which reads `backend/configs.json` into a typed `Config` struct. Thread-safe access via `GetConfig()`. Provides `GetRateLimit()`, `GetFrontendURL()`, `GetUniversalRateLimit()` |
+| `backend/entry` | Orchestrates startup and shutdown. DB setup, Redis setup, server setup, seed, graceful drain |
+| `backend/global` | Lightweight now — holds `ShutDownContext`/`CancelShutdown` plus helper functions for path construction and duration/size parsing. No TLS/cert helpers (Caddy handles HTTPS) |
+| `backend/config` | Owns `config.LoadConfig()` which reads `backend/configs.json` into a typed `Config` struct. Thread-safe access via `GetConfig()`. Provides `GetRateLimit()`, `GetFrontendURL()`, `GetUniversalRateLimit()`. Contains OAuth structs (future feature) |
+| `backend/cache` | Redis client — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub |
 | `backend/db/sql` | **Core data layer**. `DataBase` struct wraps `*sql.DB`. `New()` opens SQLite, configures WAL/foreign_keys/busy_timeout pragmas, runs migrations, starts WAL truncate + session cleanup goroutines. All CRUD methods are on `*DataBase` in `methods.go`. No prepared statements — all queries use raw SQL with `ExecContext`/`QueryRowContext` |
 | `backend/db/queries` | SQL string constants exported for use by both the `database` package methods and the `populate` seeder |
-| `backend/db/migrations` | 14 golang-migrate up/down pairs |
-| `backend/server/handlers` | `SetHandlers(db)` builds the mux with registered endpoints. Each handler receives `(http.ResponseWriter, *http.Request, *database.DataBase)` |
+| `backend/db/migrations` | 19 golang-migrate up/down pairs |
+| `backend/server/handlers` | `SetHandlers(db, redis)` builds the mux with registered endpoints. Each handler receives `(http.ResponseWriter, *http.Request, *database.DataBase)`. WebSocket hub at `/api/ws` |
+| `backend/server/websocket` | WebSocket hub, client read/write pumps, connection handler, message types |
 | `backend/populate` | Reads `seed.json`, inserts users/follows/groups/posts/comments/events/messages/notifications. Skips if users table is non-empty. `Reseed()` drops all first |
 
 ### Handler pattern
@@ -101,13 +108,18 @@ Endpoints are registered in `SetHandlers()` via `makeEndpoint(path, requireAuth,
 - `RespondError(w, status, msg)` — writes `{"error": "msg"}`
 - `RespondSuccess(w, status, msg, data)` — writes `{"message": "msg", "data": ...}`
 
-**Registered endpoints** (current):
-- `POST /api/signup` (no auth)
-- `POST /api/login` (no auth)
-- `GET /api/auth/check` (no auth) — validates session cookie, returns user or 401
-- `POST /api/logout` (auth required)
-- `POST /api/logout-all` (auth required)
-- `GET /api/health` — health check
+**Registered endpoints** (current, all prefixed `/api`):
+- Auth: `POST /signup`, `POST /login`, `GET /auth/check`, `POST /logout`, `POST /logout-all`
+- Posts: `GET /feed`, `POST /posts`, `GET /post/{id}`, `DELETE /posts/{id}`, `POST /posts/{id}/edit`, `GET /user/posts`
+- Comments: `POST /comments`, `GET /posts/{id}/comments`, `DELETE /comments/{id}`, `POST /comments/{id}/edit`
+- Follows: `POST /follow/request`, `POST /follow/accept`, `POST /follow/decline`, `POST /follow/remove`, `GET /followers`, `GET /following`, `GET /follow/pending`
+- Users: `GET /users/{id}`, `POST /users/{id}/edit`, `POST /users/{id}/avatar`
+- Groups: `POST /groups`, `GET /groups/{id}`, `POST /groups/{id}/update`, `POST /groups/{id}/delete`, `GET /groups/browse`, `GET /user/groups`, invite/join/accept/reject/leave/members/posts/avatar
+- Events: `GET /groups/{id}/events`, `GET /events/{id}`, `POST /events/{id}/rsvp`
+- Notifications: `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/read-all`
+- Chat: `GET /chat/dms`, `GET /chat/dms/{id}/messages`, `POST /chat/send/{id}`, `GET /chat/unread-count`
+- `GET /health` — health check
+- `GET /api/ws` — WebSocket hub (auth required)
 - `OPTIONS /api` — CORS preflight
 
 ### Middleware
@@ -134,17 +146,19 @@ Endpoints are registered in `SetHandlers()` via `makeEndpoint(path, requireAuth,
 
 ### Config
 
-Config lives at `backend/configs.json`. Key sections:
+Config lives at `backend/configs.json` (local) or `backend/configs.docker.json` (Docker). Key sections:
 
-- `frontend.url` — used for CORS (defaults to `http://localhost:3000` if absent; overridden to `http://localhost:5173` in dev config)
+- `frontend.url` — used for CORS (defaults to `http://localhost:3000`; `https://localhost` in Docker)
+- `redis` — Redis address, pool, timeouts
 - `database_configuration` — path, WAL, session cleanup interval, validation limits, system images
 - `server` — Addr (`:8080`)
-- `certifications` — HTTPS certs/key paths
 - `handlers` — rate limits per path, image config, cookie expiration
+
+**Note**: HTTPS is terminated by Caddy, so there is no `certifications` config in the backend.
 
 ### Database
 
-SQLite with WAL mode, foreign keys enforced, 5s busy timeout. 14 migration files covering the full schema. `DataBase` exposes `GetDB() *sql.DB` for the populate package and any future advanced operations.
+SQLite with WAL mode, foreign keys enforced, 5s busy timeout. 19 migration files covering the full schema. `DataBase` exposes `GetDB() *sql.DB` for the populate package and any future advanced operations.
 
 The `methods.go` file provides typed CRUD methods: `AddUser`, `GetUserByEmail`, `GetUserByID`, `GetUserByUUID`, `UpdateUserProfile`, `UpdateUserPrivacy`, `DeleteUser`, `CreateSession`, `GetSession`, `DeleteSession`, `DeleteAllUserSessions`, `CreatePost`, `GetPost`, `GetUserPosts`, `DeletePost`, `CreateGroup`, `GetGroup`, `GetUserGroups`, `CreateMessage`, `CreateOrGetDirectMessage`, `CreateNotification`, `GetUserNotifications`, `MarkNotificationAsRead`.
 
@@ -152,9 +166,9 @@ The `methods.go` file provides typed CRUD methods: `AddUser`, `GetUserByEmail`, 
 
 ### Frontend
 
-**Stack**: React 18, TypeScript 5.6+, Vite 6, Tailwind CSS 3.4, React Router 6, TanStack React Query 5, Axios.
+**Stack**: Next.js 16 (App Router, Turbopack), React 19, TypeScript 5.6+, Tailwind CSS 3.4, TanStack React Query 5, Axios, emoji-picker-react, @emoji-mart/data.
 
-**State management**: React Context instead of Zustand. `AuthProvider` manages `user`, `is_authenticated`, `is_loading`. `UIProvider` manages sidebar, modals, toasts. On mount, `AuthProvider.check_session()` calls `GET /api/auth/check` to restore the session.
+**State management**: React Context. `AuthProvider` manages `user`, `is_authenticated`, `is_loading`. `UIProvider` manages modals and toasts. `NotificationProvider` manages real-time notifications. On mount, `AuthProvider.check_session()` calls `GET /api/auth/check` to restore the session.
 
 **Auth hooks** (`src/hooks/useAuth.ts`): `useLogin()`, `useSignup()`, `useLogout()` — TanStack mutations that update auth context on success.
 
@@ -162,20 +176,22 @@ The `methods.go` file provides typed CRUD methods: `AddUser`, `GetUserByEmail`, 
 
 | Path | Purpose |
 |------|---------|
-| `src/api/client.ts` | Axios instance, `VITE_API_URL` env defaulting to `http://localhost:8080`, `withCredentials: true`, 401 → redirect to `/login` |
-| `src/api/auth.ts` | `login()`, `signup()`, `logout()`, `checkSession()` functions |
-| `src/context/AuthProvider.tsx` | Auth state via React Context + `useState` |
-| `src/context/UIProvider.tsx` | UI state (sidebar, modals, toasts) via React Context + `useState` |
-| `src/hooks/useAuth.ts` | TanStack mutations wrapping auth API calls |
-| `src/types/` | TypeScript interfaces (snake_case fields matching JSON) |
-| `src/pages/` | Route-level page components |
-| `src/pages/errors/` | `NotFoundPage` (404) and `ErrorPage` (route-level error boundary) |
-| `src/components/ui/` | Reusable primitives (Avatar, Button, Card, Input, Modal, Toast, etc.) |
-| `src/components/layout/` | `MainLayout` and `AuthLayout` with auth guards built in |
+| `src/api/client.ts` | Axios instance, `NEXT_PUBLIC_API_URL` env defaulting to `http://localhost:8080`, `withCredentials: true`, 401 → redirect to `/login` |
+| `src/api/` | `auth.ts`, `posts.ts`, `comments.ts`, `groups.ts`, `notifications.ts`, `chat.ts` endpoint functions |
+| `src/app/` | Next.js App Router: `layout.tsx`, `page.tsx`, `providers.tsx`, `error.tsx`, `not-found.tsx`, route groups `(auth)` and `(main)` |
+| `src/context/` | `AuthProvider.tsx`, `UIProvider.tsx`, `NotificationProvider.tsx` |
+| `src/hooks/` | `useAuth.ts`, `usePosts.ts`, `useComments.ts`, `useGroups.ts`, `useEmojiAutocomplete.ts`, `useMessageBadge.ts`, `useWebSocket.ts` |
+| `src/views/` | Page components (mirrors route structure: auth, home, post, profile, groups, chat, notifications, followers, search) |
+| `src/components/ui/` | Reusable primitives (Avatar, Button, Card, Input, Modal, Toast, EmojiPicker, etc.) |
+| `src/components/layout/` | `TopBar`, `NavMenu`, `MobileNav` (burger nav — no sidebar) |
 | `src/components/common/` | EmptyState, ErrorBoundary, ImageUpload, InfiniteScroll, LoadingScreen, LoadingSkeleton |
-| `src/lib/` | `cn.ts` (clsx + tailwind-merge), `format.ts`, `validators.ts` |
+| `src/components/post/` `comment/` `group/` | Feature components |
+| `src/types/` | TypeScript interfaces (snake_case fields matching JSON) |
+| `src/lib/` | `cn.ts` (clsx + tailwind-merge), `format.ts`, `media.ts`, `validators.ts`, `nav-link.tsx`, `nav.ts` |
 
-**Routing**: `AuthLayout` wraps `/login` and `/signup` — redirects to `/home` if already authenticated, shows spinner while loading. `MainLayout` wraps all authenticated routes — redirects to `/login` if unauthenticated, shows spinner while loading. `NotFoundPage` catches `/404` and `*`. `ErrorPage` is set as `errorElement` on both layout groups.
+**Routing**: Next.js App Router with route groups `(auth)` (login/signup — redirects to `/home` if authenticated) and `(main)` (all authenticated routes — redirects to `/login` if unauthenticated). Auth guards in each layout's `layout.tsx`. `not-found.tsx` handles 404, `error.tsx` is the error boundary.
+
+**WebSocket**: `useWebSocket.ts` maintains a singleton connection to `/api/ws` with auto-reconnect. Derives `ws://`/`wss://` from `NEXT_PUBLIC_API_URL`. Used for real-time chat, notifications, presence, and typing indicators.
 
 ## Conventions
 
