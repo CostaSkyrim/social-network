@@ -81,6 +81,10 @@ func GetGroupMessagesHandler(w http.ResponseWriter, r *http.Request, db *databas
 		messages = []*database.Message{}
 	}
 
+	for _, msg := range messages {
+		db.MarkMessageRead(r.Context(), msg.ID, userID)
+	}
+
 	RespondSuccess(w, http.StatusOK, "Messages retrieved", messages)
 }
 

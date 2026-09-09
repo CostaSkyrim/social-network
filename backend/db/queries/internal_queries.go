@@ -618,6 +618,20 @@ const (
 				SELECT message_id FROM message_reads WHERE user_id = ?
 			)
 	`
+
+	GetUnreadGroupMessageCount = `
+		SELECT COUNT(*)
+		FROM messages m
+		WHERE m.group_id IS NOT NULL
+			AND m.sender_id != ?
+			AND m.group_id IN (
+				SELECT group_id FROM group_members
+				WHERE user_id = ? AND status = 'accepted'
+			)
+			AND m.id NOT IN (
+				SELECT message_id FROM message_reads WHERE user_id = ?
+			)
+	`
 )
 
 // Comment queries

@@ -29,7 +29,10 @@ export function useMessageBadge() {
   useEffect(() => {
     if (!is_authenticated) return
 
-    const unsub = subscribe('chat_message', () => {
+    const unsubChat = subscribe('chat_message', () => {
+      refresh()
+    })
+    const unsubGroup = subscribe('group_message', () => {
       refresh()
     })
 
@@ -39,7 +42,8 @@ export function useMessageBadge() {
     window.addEventListener('focus', onFocus)
 
     return () => {
-      unsub()
+      unsubChat()
+      unsubGroup()
       window.removeEventListener('messages-read', onFocus)
       window.removeEventListener('focus', onFocus)
     }

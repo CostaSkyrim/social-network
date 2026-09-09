@@ -62,6 +62,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
         if (!cancelled) {
           set_messages(msgs)
           scrollToBottom()
+          window.dispatchEvent(new Event('messages-read'))
         }
       } catch {
         // silently fail

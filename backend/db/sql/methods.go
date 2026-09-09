@@ -1778,19 +1778,26 @@ func (db *DataBase) CreateOrGetDirectMessage(ctx context.Context, dm *DirectMess
 	return dmID, nil
 }
 
-// GetUnreadMessageCount returns total unread DM message count for a user
+// GetUnreadMessageCount returns the total unread message count for a user,
+// combining private DMs and group chat messages.
 func (db *DataBase) GetUnreadMessageCount(ctx context.Context, userID int64) (int, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	var count int
-	err := db.conn.QueryRowContext(ctx, queries.GetUnreadDMCount, userID, userID, userID, userID).Scan(&count)
+	var dmCount int
+	err := db.conn.QueryRowContext(ctx, queries.GetUnreadDMCount, userID, userID, userID, userID).Scan(&dmCount)
 	if err != nil {
-		return 0, fmt.Errorf("failed to count unread messages: %w", err)
+		return 0, fmt.Errorf("failed to count unread DM messages: %w", err)
 	}
 
-	return count, nil
+	var groupCount int
+	err = db.conn.QueryRowContext(ctx, queries.GetUnreadGroupMessageCount, userID, userID, userID).Scan(&groupCount)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unread group messages: %w", err)
+	}
+
+	return dmCount + groupCount, nil
 }
 
 // GetUnreadCountForDM returns unread message count for a specific DM
