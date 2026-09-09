@@ -8,8 +8,9 @@ services:
       - "8080"
     volumes:
       - .:/app
+      - ./backend/configs.docker.json:/app/backend/configs.json
       - go_mod_cache:/go/pkg/mod
-      - backend_db:/app/backend/db
+      - backend_db:/app/backend/data/db
       - backend_images:/app/backend/data/images
     networks:
       - social-net

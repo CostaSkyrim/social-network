@@ -16,6 +16,7 @@
     "database_configuration": {
         "path": [
             "backend",
+            "data",
             "db",
             "social-network.db"
         ],

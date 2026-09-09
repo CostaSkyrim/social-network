@@ -107,6 +107,12 @@ const (
 		SET is_active = 0
 		WHERE user_id = ?
 	`
+
+	GetUserSessionIDs = `
+		SELECT session_id
+		FROM sessions
+		WHERE user_id = ? AND is_active = 1
+	`
 )
 
 // Follow queries

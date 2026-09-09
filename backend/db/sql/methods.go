@@ -380,6 +380,37 @@ func (db *DataBase) DeleteAllUserSessions(ctx context.Context, userID int64) err
 	return nil
 }
 
+// GetUserSessionIDs returns the active session IDs for a user,
+// used to purge the corresponding Redis session cache entries.
+func (db *DataBase) GetUserSessionIDs(ctx context.Context, userID int64) ([]string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := db.conn.QueryContext(dbCtx, queries.GetUserSessionIDs, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessionIDs []string
+	for rows.Next() {
+		var sessionID string
+		if err := rows.Scan(&sessionID); err != nil {
+			return nil, fmt.Errorf("failed to scan session id: %w", err)
+		}
+		sessionIDs = append(sessionIDs, sessionID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate user sessions: %w", err)
+	}
+
+	return sessionIDs, nil
+}
+
 //====================================
 // FOLLOW METHODS
 //====================================

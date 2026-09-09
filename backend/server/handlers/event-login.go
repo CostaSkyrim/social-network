@@ -150,9 +150,21 @@ func LogoutAllHandler(w http.ResponseWriter, r *http.Request, db *database.DataB
 		return
 	}
 
+	sessionIDs, err := db.GetUserSessionIDs(r.Context(), userID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to logout")
+		return
+	}
+
 	if err := db.DeleteAllUserSessions(r.Context(), userID); err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to logout")
 		return
+	}
+
+	if rc := getRedis(); rc != nil {
+		for _, sessionID := range sessionIDs {
+			rc.Delete(r.Context(), cache.SessionKey(sessionID))
+		}
 	}
 
 	ClearSessionCookie(w)
