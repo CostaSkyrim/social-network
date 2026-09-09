@@ -66,6 +66,16 @@ func GetPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBas
 		return
 	}
 
+	can, err := db.CanViewPost(r.Context(), userID, postID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to check post access")
+		return
+	}
+	if !can {
+		RespondError(w, http.StatusNotFound, "Post not found")
+		return
+	}
+
 	post, err := db.GetPostWithAuthor(r.Context(), postID, userID)
 	if err != nil {
 		if err == sql.ErrNoRows || err.Error() == "post not found" {

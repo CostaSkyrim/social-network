@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 
 	database "social-network/backend/db/sql"
 )
@@ -62,7 +64,12 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.
 	followers, _ := db.GetFollowers(r.Context(), targetUser.ID)
 	following, _ := db.GetFollowing(r.Context(), targetUser.ID)
 
-	posts, _ := db.GetUserPosts(r.Context(), targetUser.ID, 5, 0)
+	viewerID := int64(0)
+	if isAuthenticated {
+		viewerID = currentUserID
+	}
+
+	posts, _ := db.GetUserPostsForViewer(r.Context(), targetUser.ID, viewerID, 5, 0)
 	if posts == nil {
 		posts = []*database.Post{}
 	}
@@ -204,4 +211,69 @@ func UpdateUserAvatarHandler(w http.ResponseWriter, r *http.Request, db *databas
 	RespondSuccess(w, http.StatusOK, "Avatar updated", map[string]interface{}{
 		"avatar_path": avatarPath,
 	})
+}
+
+func SearchUsersHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if query == "" {
+		RespondSuccess(w, http.StatusOK, "Search results", []map[string]interface{}{})
+		return
+	}
+
+	limit := 20
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+			limit = v
+		}
+	}
+
+	// Escape LIKE wildcards so user input is matched literally.
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(query)
+	pattern := "%" + escaped + "%"
+
+	results, err := db.SearchUsers(r.Context(), userID, pattern, limit)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to search users")
+		return
+	}
+
+	type searchUser struct {
+		ID              string `json:"id"`
+		FirstName       string `json:"first_name"`
+		LastName        string `json:"last_name"`
+		Nickname        *string `json:"nickname"`
+		AvatarPath      *string `json:"avatar_path,omitempty"`
+		IsPublic        bool   `json:"is_public"`
+		IsOnline        bool   `json:"is_online"`
+		IsFollowing     bool   `json:"is_following"`
+		IsFollowPending bool   `json:"is_follow_pending"`
+	}
+
+	payload := make([]searchUser, 0, len(results))
+	for _, res := range results {
+		payload = append(payload, searchUser{
+			ID:              res.UUID,
+			FirstName:       res.FirstName,
+			LastName:        res.LastName,
+			Nickname:        res.Nickname,
+			AvatarPath:      res.AvatarPath,
+			IsPublic:        res.IsPublic,
+			IsOnline:        GlobalHub != nil && GlobalHub.IsUserConnected(res.ID),
+			IsFollowing:     res.IsFollowing,
+			IsFollowPending: res.IsFollowPending,
+		})
+	}
+
+	RespondSuccess(w, http.StatusOK, "Search results", payload)
 }

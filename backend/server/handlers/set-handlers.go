@@ -71,7 +71,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 
 		// Comment endpoints
 		makeEndpoint("/api/comments", true, CreateCommentHandler),
-		makeEndpoint("/api/posts/{id}/comments", false, GetPostCommentsHandler),
+		makeEndpoint("/api/posts/{id}/comments", true, GetPostCommentsHandler),
 		makeEndpoint("/api/comments/{id}", true, DeleteCommentHandler),
 		makeEndpoint("/api/comments/{id}/edit", true, EditCommentHandler),
 
@@ -88,6 +88,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/users/{id}", false, GetUserProfileHandler),
 		makeEndpoint("/api/users/{id}/edit", true, UpdateUserProfileHandler),
 		makeEndpoint("/api/users/{id}/avatar", true, UpdateUserAvatarHandler),
+		makeEndpoint("/api/users/search", true, SearchUsersHandler),
 
 		// Group endpoints
 		makeEndpoint("/api/groups", true, CreateGroupHandler),

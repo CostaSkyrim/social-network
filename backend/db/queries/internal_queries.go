@@ -66,6 +66,32 @@ const (
 			updated_at = CURRENT_TIMESTAMP 
 		WHERE id = ?
 	`
+
+	SearchUsers = `
+		SELECT u.id, u.uuid, u.first_name, u.last_name, u.nickname,
+		 u.avatar_path, u.is_public,
+		 EXISTS(
+			SELECT 1 FROM followers f
+			WHERE f.follower_id = ? AND f.following_id = u.id
+				AND f.status = 'accepted'
+		 ) AS is_following,
+		 EXISTS(
+			SELECT 1 FROM followers f
+			WHERE f.follower_id = ? AND f.following_id = u.id
+				AND f.status = 'pending'
+		 ) AS is_pending
+		FROM users u
+		WHERE u.is_active = 1 AND u.id != ?
+			AND (u.first_name LIKE ? ESCAPE '\' OR u.last_name LIKE ? ESCAPE '\'
+				OR u.nickname LIKE ? ESCAPE '\')
+			AND (u.is_public = 1 OR EXISTS(
+				SELECT 1 FROM followers f
+				WHERE f.following_id = ? AND f.follower_id = u.id
+					AND f.status = 'accepted'
+			))
+		ORDER BY u.first_name ASC, u.last_name ASC
+		LIMIT ?
+	`
 )
 
 // Session queries
@@ -242,6 +268,39 @@ const (
 			FROM group_members WHERE user_id = ? AND status = 'accepted'))
 	`
 
+	CanViewPost = `
+		SELECT EXISTS(
+			SELECT 1 FROM posts p
+			JOIN users u ON u.id = p.author_id
+			WHERE p.id = ?
+				AND (
+					p.author_id = ?
+					OR (p.group_id IS NOT NULL AND EXISTS(
+						SELECT 1 FROM group_members gm
+						WHERE gm.group_id = p.group_id
+							AND gm.user_id = ? AND gm.status = 'accepted'
+					))
+					OR (p.group_id IS NULL AND u.is_public = 1 AND (
+						p.privacy_level = 'public'
+						OR (p.privacy_level = 'followers' AND EXISTS(
+							SELECT 1 FROM followers f
+							WHERE f.following_id = p.author_id
+								AND f.follower_id = ? AND f.status = 'accepted'
+						))
+						OR (p.privacy_level = 'private' AND EXISTS(
+							SELECT 1 FROM post_visibility pv
+							WHERE pv.post_id = p.id AND pv.user_id = ?
+						))
+					))
+					OR (p.group_id IS NULL AND u.is_public = 0 AND EXISTS(
+						SELECT 1 FROM followers f
+						WHERE f.following_id = p.author_id
+							AND f.follower_id = ? AND f.status = 'accepted'
+					))
+				)
+		)
+	`
+
 	GetPostByUUID = `
 		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
 		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted
@@ -258,6 +317,37 @@ const (
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN groups g ON g.id = p.group_id
 		WHERE p.author_id = ? AND p.group_id IS NULL
+		ORDER BY p.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
+	GetUserPostsForViewer = `
+		SELECT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.group_id, g.uuid as group_uuid,
+		 p.content, p.image_path, p.privacy_level, p.created_at, p.updated_at, p.is_deleted
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN groups g ON g.id = p.group_id
+		WHERE p.author_id = ? AND p.group_id IS NULL
+			AND (
+				p.author_id = ?
+				OR (u.is_public = 1 AND (
+					p.privacy_level = 'public'
+					OR (p.privacy_level = 'followers' AND EXISTS(
+						SELECT 1 FROM followers f
+						WHERE f.following_id = p.author_id
+							AND f.follower_id = ? AND f.status = 'accepted'
+					))
+					OR (p.privacy_level = 'private' AND EXISTS(
+						SELECT 1 FROM post_visibility pv
+						WHERE pv.post_id = p.id AND pv.user_id = ?
+					))
+				))
+				OR (u.is_public = 0 AND EXISTS(
+					SELECT 1 FROM followers f
+					WHERE f.following_id = p.author_id
+						AND f.follower_id = ? AND f.status = 'accepted'
+				))
+			)
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`
@@ -280,6 +370,11 @@ const (
 					SELECT post_id FROM post_visibility WHERE user_id = ?
 				))
 			)
+			AND (u.is_public = 1 OR p.author_id = ? OR EXISTS(
+				SELECT 1 FROM followers fw
+				WHERE fw.following_id = p.author_id
+					AND fw.follower_id = ? AND fw.status = 'accepted'
+			))
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`

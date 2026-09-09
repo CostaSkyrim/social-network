@@ -80,6 +80,16 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
+	can, err := db.CanViewPost(r.Context(), userID, post.ID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to check post access")
+		return
+	}
+	if !can {
+		RespondError(w, http.StatusNotFound, "Post not found")
+		return
+	}
+
 	var parentCommentID *int64
 	if req.ParentCommentID != nil {
 		parent, err := db.GetCommentByUUID(r.Context(), *req.ParentCommentID)
@@ -114,8 +124,24 @@ func GetPostCommentsHandler(w http.ResponseWriter, r *http.Request, db *database
 		return
 	}
 
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
 	postID, ok := resolvePostID(w, r, db)
 	if !ok {
+		return
+	}
+
+	can, err := db.CanViewPost(r.Context(), userID, postID)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to check post access")
+		return
+	}
+	if !can {
+		RespondError(w, http.StatusNotFound, "Post not found")
 		return
 	}
 

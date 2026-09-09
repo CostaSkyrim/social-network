@@ -574,6 +574,43 @@ func (db *DataBase) GetFollowing(ctx context.Context, userID int64) ([]User, err
 	return users, nil
 }
 
+// SearchUsers searches for active users the viewer can see (public profiles,
+// or private users who follow the viewer) by first/last name or nickname.
+func (db *DataBase) SearchUsers(ctx context.Context, viewerID int64, pattern string, limit int) ([]*UserSearchResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.SearchUsers,
+		viewerID, viewerID, viewerID, pattern, pattern, pattern, viewerID, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user search: %w", err)
+	}
+	defer rows.Close()
+
+	var results []*UserSearchResult
+	for rows.Next() {
+		u := &UserSearchResult{}
+		err := rows.Scan(
+			&u.ID, &u.UUID, &u.FirstName, &u.LastName,
+			&u.Nickname, &u.AvatarPath, &u.IsPublic,
+			&u.IsFollowing, &u.IsFollowPending,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan search result: %w", err)
+		}
+		results = append(results, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return results, nil
+}
+
 // GetFollowingWithDM retrieves the users a user is following with DM unread counts
 func (db *DataBase) GetFollowingWithDM(ctx context.Context, userID int64) ([]FollowerWithDM, error) {
 	if ctx == nil {
@@ -859,15 +896,60 @@ func (db *DataBase) GetUserPosts(ctx context.Context, userID int64, limit, offse
 	return posts, nil
 }
 
-// GetFeed retrieves the paginated news feed for a user
-func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+// GetUserPostsForViewer retrieves a user's posts that the viewer is allowed to
+// see, applying profile-privacy and post-privacy rules. Used for profile pages.
+func (db *DataBase) GetUserPostsForViewer(ctx context.Context, authorID, viewerID int64, limit, offset int) ([]*Post, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	rows, err := db.conn.QueryContext(ctx,
+		queries.GetUserPostsForViewer,
+		authorID, viewerID, viewerID, viewerID, viewerID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user posts for viewer: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []*Post
+	for rows.Next() {
+		post := &Post{}
+		err := rows.Scan(
+			&post.ID,
+			&post.UUID,
+			&post.AuthorID,
+			&post.AuthorUUID,
+			&post.GroupID,
+			&post.GroupUUID,
+			&post.Content,
+			&post.ImagePath,
+			&post.PrivacyLevel,
+			&post.CreatedAt,
+			&post.UpdatedAt,
+			&post.IsDeleted,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user post: %w", err)
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return posts, nil
+}
+
+// GetFeed retrieves the paginated news feed for a user
+func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
 		queries.GetFeed,
-		userID, userID, userID, limit, offset,
+		userID, userID, userID, userID, userID, limit, offset,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query feed: %w", err)
@@ -1023,6 +1105,25 @@ func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64)
 	}
 
 	return post, nil
+}
+
+// CanViewPost reports whether a viewer may access a post, applying the
+// profile-privacy and post-privacy rules (and group membership for group posts).
+func (db *DataBase) CanViewPost(ctx context.Context, viewerID, postID int64) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var can bool
+	err := db.conn.QueryRowContext(ctx,
+		queries.CanViewPost,
+		postID, viewerID, viewerID, viewerID, viewerID, viewerID,
+	).Scan(&can)
+	if err != nil {
+		return false, fmt.Errorf("failed to check post access: %w", err)
+	}
+
+	return can, nil
 }
 
 // DeletePost soft deletes a post

@@ -23,3 +23,15 @@ export interface Follow {
   following_id: string
   status: 'pending' | 'accepted' | 'declined'
 }
+
+export interface SearchUser {
+  id: string
+  first_name: string
+  last_name: string
+  nickname?: string
+  avatar_path?: string
+  is_public: boolean
+  is_online?: boolean
+  is_following: boolean
+  is_follow_pending: boolean
+}

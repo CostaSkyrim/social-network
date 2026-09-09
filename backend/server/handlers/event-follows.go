@@ -11,7 +11,7 @@ import (
 )
 
 type FollowRequest struct {
-	UserID int64 `json:"user_id"`
+	UserID string `json:"user_id"`
 }
 
 func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -32,43 +32,49 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	if req.UserID == currentUserID {
+	targetID, err := resolveUserID(r, db, req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	if targetID == currentUserID {
 		RespondError(w, http.StatusBadRequest, "Cannot follow yourself")
 		return
 	}
 
-	targetUser, err := db.GetUserByID(r.Context(), req.UserID)
+	targetUser, err := db.GetUserByID(r.Context(), targetID)
 	if err != nil {
 		RespondError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
 	if targetUser.IsPublic {
-		if err := db.CreateFollowRequest(r.Context(), currentUserID, req.UserID); err != nil {
+		if err := db.CreateFollowRequest(r.Context(), currentUserID, targetID); err != nil {
 			RespondError(w, http.StatusInternalServerError, "Failed to send follow request")
 			return
 		}
 
-		db.AcceptFollowRequest(r.Context(), currentUserID, req.UserID)
+		db.AcceptFollowRequest(r.Context(), currentUserID, targetID)
 
-		sendNotification(db, req.UserID, currentUserID, NotifNewFollower, "started following you", &currentUserID, nil)
+		sendNotification(db, targetID, currentUserID, NotifNewFollower, "started following you", &currentUserID, nil)
 
 		RespondSuccess(w, http.StatusOK, "Now following user", nil)
 		return
 	}
 
-	isFollowing, _ := db.CheckFollowing(r.Context(), currentUserID, req.UserID)
+	isFollowing, _ := db.CheckFollowing(r.Context(), currentUserID, targetID)
 	if isFollowing {
 		RespondError(w, http.StatusConflict, "Already following this user")
 		return
 	}
 
-	if err := db.CreateFollowRequest(r.Context(), currentUserID, req.UserID); err != nil {
+	if err := db.CreateFollowRequest(r.Context(), currentUserID, targetID); err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to send follow request")
 		return
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifFollowRequest, "sent you a follow request", &currentUserID, nil)
+	sendNotification(db, targetID, currentUserID, NotifFollowRequest, "sent you a follow request", &currentUserID, nil)
 
 	RespondSuccess(w, http.StatusOK, "Follow request sent", nil)
 }
@@ -91,19 +97,25 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 		return
 	}
 
-	if err := db.AcceptFollowRequest(r.Context(), req.UserID, currentUserID); err != nil {
+	targetID, err := resolveUserID(r, db, req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	if err := db.AcceptFollowRequest(r.Context(), targetID, currentUserID); err != nil {
 		RespondError(w, http.StatusNotFound, "Follow request not found")
 		return
 	}
 
-	follower, _ := db.GetUserByID(r.Context(), req.UserID)
+	follower, _ := db.GetUserByID(r.Context(), targetID)
 	content := "accepted your follow request"
 	if follower != nil {
 		name := getDisplayName(follower)
 		content = name + " accepted your follow request"
 	}
 
-	sendNotification(db, req.UserID, currentUserID, NotifFollowAccepted, content, &currentUserID, nil)
+	sendNotification(db, targetID, currentUserID, NotifFollowAccepted, content, &currentUserID, nil)
 
 	RespondSuccess(w, http.StatusOK, "Follow request accepted", nil)
 }
@@ -126,7 +138,13 @@ func DeclineFollowHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	if err := db.DeclineFollowRequest(r.Context(), req.UserID, currentUserID); err != nil {
+	targetID, err := resolveUserID(r, db, req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	if err := db.DeclineFollowRequest(r.Context(), targetID, currentUserID); err != nil {
 		RespondError(w, http.StatusNotFound, "Follow request not found")
 		return
 	}
@@ -152,7 +170,13 @@ func UnfollowHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		return
 	}
 
-	if err := db.RemoveFollow(r.Context(), currentUserID, req.UserID); err != nil {
+	targetID, err := resolveUserID(r, db, req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	if err := db.RemoveFollow(r.Context(), currentUserID, targetID); err != nil {
 		RespondError(w, http.StatusNotFound, "Not following this user")
 		return
 	}

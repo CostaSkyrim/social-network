@@ -31,7 +31,7 @@ social-network/
 │   ├── postcss.config.mjs      ✅
 │   ├── package.json            ✅
 │   ├── .env                    ✅
-│   ├── Dockerfile              # not yet created
+│   ├── Dockerfile              ✅
 │   ├── nginx.conf              # not yet created
 │   ├── src/
 │   │   ├── app/                ✅ (Next.js App Router)
@@ -79,7 +79,7 @@ social-network/
 │   │   └── lib/                ✅ (cn, format, validators, nav-link, nav)
 │   │   └── ws/                 # empty — Phase 7
 ├── backend/
-│   ├── Dockerfile              # not yet created
+│   ├── Dockerfile              ✅
 │   ├── cmd/main.go             ✅ (reads --reseed flag, propagates errors)
 │   ├── entry/entry.go          ✅ (startup, DB init, seeding, server, graceful shutdown)
 │   ├── config/config.go        ✅ (config structs, LoadConfig, rate limits, OAuth)
@@ -248,7 +248,7 @@ Create, get, update, delete, browse, user groups, invite, join, accept, reject, 
 - `sendNotification` helper → creates DB row + pushes real-time over WebSocket (`TypeNotification` → target user)
 - Frontend: `useWebSocket`, `NotificationProvider`, TopBar bell, NotificationsPage
 
-### Phase H — Chat / Message Handlers 🔜
+### Phase H — Chat / Message Handlers ✅
 Conversations (DMs), messages, group chat, read receipts.
 
 ### Phase I — WebSocket Hub ✅
@@ -266,7 +266,7 @@ Conversations (DMs), messages, group chat, read receipts.
 
 **Remaining:** Migrate sessions from SQLite to Redis (TTL), wire Redis pub/sub for cross-instance chat/notification fan-out, config toggle.
 
-### Phase K — Docker 🔜
+### Phase K — Docker ✅
 Backend Dockerfile (multi-stage Go build), frontend Dockerfile (nginx), docker-compose with Redis.
 
 ---

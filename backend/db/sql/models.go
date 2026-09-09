@@ -28,6 +28,20 @@ type User struct {
 	IsOnline     bool      `json:"is_online,omitempty"`
 }
 
+// UserSearchResult is a user with the viewer's follow state attached, used for
+// the user search endpoint.
+type UserSearchResult struct {
+	ID              int64
+	UUID            string
+	FirstName       string
+	LastName        string
+	Nickname        *string
+	AvatarPath      *string
+	IsPublic        bool
+	IsFollowing     bool
+	IsFollowPending bool
+}
+
 type UserQueries struct {
 	Create        *sql.Stmt
 	GetByEmail    *sql.Stmt
