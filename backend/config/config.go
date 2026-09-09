@@ -82,13 +82,14 @@ type RateLimitConfig struct {
 }
 
 type OAuthProvider struct {
-	ClientID     string   `json:"client_id"`
-	ClientSecret string   `json:"client_secret"`
-	Scopes       []string `json:"scopes"`
-	AuthURL      string   `json:"auth_url"`
-	TokenURL     string   `json:"token_url"`
-	UserInfoURL  string   `json:"user_info_url"`
-	RedirectURI  string   `json:"redirect_uri"`
+	ClientID      string   `json:"client_id"`
+	ClientSecret  string   `json:"client_secret"`
+	Scopes        []string `json:"scopes"`
+	AuthURL       string   `json:"auth_url"`
+	TokenURL      string   `json:"token_url"`
+	UserInfoURL   string   `json:"user_info_url"`
+	UserEmailsURL string   `json:"user_emails_url"`
+	RedirectURI   string   `json:"redirect_uri"`
 }
 
 type OAuthConfig struct {
@@ -195,6 +196,7 @@ func (c *OAuthProvider) ExchangeCodeForToken(code string) (string, error) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.Header.Set("Accept", "application/json")
+	r.Header.Set("User-Agent", "social-network/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	response, err := client.Do(r)
@@ -245,6 +247,7 @@ func (c *OAuthProvider) FetchUserInfo(accessToken string) ([]byte, error) {
 	}
 	r.Header.Set("Authorization", "Bearer "+accessToken)
 	r.Header.Set("Accept", "application/json")
+	r.Header.Set("User-Agent", "social-network/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	response, err := client.Do(r)
@@ -256,6 +259,37 @@ func (c *OAuthProvider) FetchUserInfo(accessToken string) ([]byte, error) {
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)
 		return nil, fmt.Errorf("oauth: cannot fetch user info %d: %s", response.StatusCode, body)
+	}
+
+	return io.ReadAll(response.Body)
+}
+
+// FetchUserEmails retrieves the authenticated user's email addresses from the
+// provider's email list endpoint (GitHub). The provider must grant the
+// "user:email" scope. Returns an error if no endpoint is configured.
+func (c *OAuthProvider) FetchUserEmails(accessToken string) ([]byte, error) {
+	if c.UserEmailsURL == "" {
+		return nil, fmt.Errorf("oauth: no user emails endpoint configured")
+	}
+
+	r, err := http.NewRequest("GET", c.UserEmailsURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	r.Header.Set("Authorization", "Bearer "+accessToken)
+	r.Header.Set("Accept", "application/json")
+	r.Header.Set("User-Agent", "social-network/1.0")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	response, err := client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		return nil, fmt.Errorf("oauth: cannot fetch user emails %d: %s", response.StatusCode, body)
 	}
 
 	return io.ReadAll(response.Body)

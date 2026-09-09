@@ -264,6 +264,7 @@
             "auth_url": "https://github.com/login/oauth/authorize",
             "token_url": "https://github.com/login/oauth/access_token",
             "user_info_url": "https://api.github.com/user",
+            "user_emails_url": "https://api.github.com/user/emails",
             "redirect_uri": "http://localhost:8080/api/auth/github/callback"
         }
     }

@@ -124,6 +124,22 @@ func OAuthCallbackHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
+	// GitHub: only trust a verified email for account linking. Fetch the
+	// email list and prefer the primary verified address; if none exists,
+	// fall back to a synthetic noreply address so we never auto-link to an
+	// existing account using an unverified email.
+	if providerName == "github" {
+		if raw, fetchErr := provider.FetchUserEmails(accessToken); fetchErr == nil {
+			if verified := githubVerifiedEmail(raw); verified != "" {
+				oauthUser.Email = verified
+			} else {
+				oauthUser.Email = fmt.Sprintf("%s@users.noreply.github.com", oauthUser.Nickname)
+			}
+		} else {
+			oauthUser.Email = fmt.Sprintf("%s@users.noreply.github.com", oauthUser.Nickname)
+		}
+	}
+
 	user, err := findOrCreateOAuthUser(r, db, providerName, oauthUser)
 	if err != nil {
 		oauthRedirectError(w, r, "Failed to sign in")
@@ -205,6 +221,31 @@ func parseOAuthUser(provider string, raw []byte) (*oauthUserInfo, error) {
 		Nickname:   gh.Login,
 		AvatarURL:  gh.AvatarURL,
 	}, nil
+}
+
+// githubVerifiedEmail returns the primary verified email address from a GitHub
+// /user/emails response, falling back to any verified address.
+func githubVerifiedEmail(raw []byte) string {
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	if err := json.Unmarshal(raw, &emails); err != nil {
+		return ""
+	}
+
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			return e.Email
+		}
+	}
+	for _, e := range emails {
+		if e.Verified {
+			return e.Email
+		}
+	}
+	return ""
 }
 
 // splitName derives first/last name from the given/name fields.
