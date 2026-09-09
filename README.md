@@ -10,11 +10,14 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 
 - **Followers** — Follow/unfollow users. Public profiles allow instant following. Private profiles require a follow request that the recipient can accept or decline.
 - **Profile** — View user profiles with posts, followers, and following lists. Toggle profile visibility between public and private.
-- **Posts** — Create text/image posts with privacy levels: public (everyone), followers only, or private (specific followers). Comment on posts with image support. Edit and soft-delete your own posts (deleted posts render as `[deleted]` with comments intact, Reddit-style).
+- **Posts** — Create text/image posts with privacy levels: public (everyone), followers only, or private (specific followers). Private-profile users' posts are visible only to their accepted followers. Group members can post to their group too. Comment on posts with image support. Edit and soft-delete your own posts (deleted posts render as `[deleted]` with comments intact, Reddit-style).
 - **Comments** — Nested reply threads. Edit and soft-delete your own comments (deleted comments render as `[deleted]` with replies intact).
+- **Image support** — Upload avatars for your profile and your groups, and attach images to posts, comments, events, and DM/group messages. Images are stored locally and served from `/images/...` (20MB max, jpg/png/gif).
+- **User search** — Find people by name or `@nickname`; results respect profile privacy (private users appear only if you're connected) and include an inline follow button.
 - **Emoji support** — Emoji picker button plus `:shortcode:` autocomplete (e.g. type `:cat` → pick 🐱) with keyboard navigation.
-- **Groups** — Create groups with title and description. Invite users or accept join requests. Group members can post, comment, create events, and chat in a shared group room.
-- **Events** — Group members can create events with title, description, and date/time. RSVP with Going / Not Going. Live counts per event plus your own response.
+- **OAuth** — Sign in or sign up with Google or GitHub. GitHub linking uses only verified emails.
+- **Groups** — Create groups with a title, description, and optional photo. Invite users by nickname or accept join requests. Group members can post, comment, create events, and chat in a shared group room.
+- **Events** — Group members can create events with title, description, optional image, and date/time. RSVP with Going / Not Going. Live counts per event plus your own response.
 - **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, and new events. Notifications appear across all pages.
 - **Chat** — Real-time private messaging between users who follow each other. Group chat rooms for group members. Emoji support. WebSocket-powered instant delivery.
 - **Real-time presence** — Online/offline status tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub (`/api/ws`).
@@ -30,18 +33,23 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - User profiles with functional follow button (view + edit + privacy toggle)
 - Group management (CRUD, browse, invite by nickname, join, accept, reject, leave, members)
 - Group membership UI — role-aware join/leave actions, accept/decline in the member list
-- Events (create, list with going/not_going counts, single event detail, RSVP upsert) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
-- Groups browse list + group detail page (header, member count, membership actions, events)
+- Group posts + group chat (members only)
+- Events (create, list with going/not_going counts, single event detail, RSVP upsert, optional event image) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
+- Groups browse list + group detail page (header, member count, membership actions, events, posts, chat)
+- User search (by name/nickname) with privacy-aware results and inline follow buttons
+- OAuth sign-in via Google and GitHub (verified-email linking for GitHub)
+- Image uploads — user/group avatars, post/comment/event images, DM/group message images
 - Notifications (list, unread count, mark read / mark all) with real-time WebSocket push
 - Actionable group-join notifications — accept/decline inline, outcome shown in the notification
 - Direct messages (send, history, unread count) with real-time delivery over WebSocket
+- Profile-privacy enforcement — a private profile's posts/comments are only visible to accepted followers (feed, single post, comments, and profile "recent posts" all respect it)
 - Burger navigation menu (desktop + mobile) replacing the sidebar
 - Emoji picker + `:shortcode:` autocomplete in the post composer
 - WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive (singleton connection per tab)
 - Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels
 - All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
 
-**Planned:** Group chat REST endpoints, CreateGroupPage, Following/Search page wiring, group posts feed, Redis session store migration, cross-instance pub/sub, Docker.
+**Planned:** Redis session store migration (SQLite → Redis as source of truth), cross-instance Redis pub/sub fan-out, moderation endpoints, production polish.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
@@ -93,7 +101,7 @@ See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
 ## Database Schema
 
-14 tables across the SQLite database:
+15 tables across the SQLite database:
 
 | Table | Purpose |
 |-------|---------|
@@ -111,6 +119,7 @@ See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 | `messages` | Individual messages (DM or group) |
 | `message_reads` | Read receipts |
 | `notifications` | User notifications |
+| `oauth_accounts` | OAuth provider links (Google/GitHub) per user |
 
 ## Getting Started
 
@@ -159,11 +168,11 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL (frontend) |
-| `REDIS_ADDR` | `localhost:6379` | Redis address (backend, planned) |
+| `REDIS_ADDR` | `localhost:6379` | Redis address (backend, optional) |
 
 ### Seed Data
 
-On first launch, 6 users are pre-loaded. All share the same password: `password123`
+On first launch, 7 users are pre-loaded. All share the same password: `password123`
 
 | Email | Name | Profile |
 |-------|------|---------|
@@ -173,8 +182,9 @@ On first launch, 6 users are pre-loaded. All share the same password: `password1
 | `dave@example.com` | Dave Brown | Public, backend dev |
 | `eve@example.com` | Eve Davis | Private, lurker |
 | `frank@example.com` | Frank Miller | Public, photographer |
+| `yuki@example.com` | Yuki Minakami | Public, photographer |
 
-The seed also includes 28 posts (2 deleted), 35 comments (3 deleted), 2 groups, 5 events (with going/not_going RSVPs), DMs, and notifications — useful for testing soft-delete rendering, privacy filtering, and events.
+The seed also includes 28 posts (2 deleted), 35 comments (2 deleted), 2 groups, 5 events (with going/not_going RSVPs), group members, DMs, and notifications — useful for testing soft-delete rendering, privacy filtering, group membership, and events.
 
 ## Project Structure
 
