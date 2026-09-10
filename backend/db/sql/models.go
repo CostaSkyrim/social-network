@@ -193,8 +193,21 @@ type Event struct {
 	Description   string    `json:"description"`
 	ImagePath     *string   `json:"image_path,omitempty"`
 	EventDateTime time.Time `json:"event_datetime"`
+	ReminderSent  bool      `json:"-"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// ReminderEvent is an event that is due for a reminder, with its group context.
+type ReminderEvent struct {
+	ID            int64
+	UUID          string
+	GroupID       int64
+	GroupUUID     string
+	GroupTitle    string
+	CreatorID     int64
+	Title         string
+	EventDateTime time.Time
 }
 
 type EventResponse struct {

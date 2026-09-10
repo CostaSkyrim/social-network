@@ -832,6 +832,28 @@ const (
 		WHERE r.event_id = ? AND gm.status = 'accepted'
 		GROUP BY r.response
 	`
+
+	GetEventsDueForReminder = `
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.event_datetime,
+			 g.uuid AS group_uuid, g.title AS group_title
+		FROM events e
+		JOIN groups g ON g.id = e.group_id
+		WHERE e.reminder_sent = 0 AND e.event_datetime > ? AND e.event_datetime <= ?
+		ORDER BY e.event_datetime ASC
+	`
+
+	MarkEventReminderSent = `
+		UPDATE events
+		SET reminder_sent = 1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
+	GetEventGoingUserIDs = `
+		SELECT gm.user_id
+		FROM group_members gm
+		JOIN event_responses er ON er.user_id = gm.user_id AND er.event_id = ?
+		WHERE gm.group_id = ? AND gm.status = 'accepted' AND er.response = 'going'
+	`
 )
 
 // OAuth account queries

@@ -21,6 +21,14 @@ type Config struct {
 	Frontend              FrontendConfig    `json:"frontend"`
 	Redis                 cache.RedisConfig `json:"redis"`
 	OAuth                 OAuthConfig       `json:"oauth"`
+	Scheduler             SchedulerConfig   `json:"scheduler"`
+}
+
+// SchedulerConfig controls the background event-reminder scheduler.
+type SchedulerConfig struct {
+	Enabled      bool   `json:"enabled"`
+	TickInterval string `json:"tick_interval"`
+	ReminderLead string `json:"reminder_lead"`
 }
 
 type FrontendConfig struct {

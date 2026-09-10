@@ -17,7 +17,7 @@
 - Language: Go 1.24
 - Database: SQLite (all persistent data)
 - Cache / ephemeral storage: Redis 7 (presence tracking, caching, rate limiting — session migration + cross-instance pub/sub planned)
-- Migrations: golang-migrate (20 migrations)
+- Migrations: golang-migrate (21 migrations)
 - Real-time: WebSocket hub at `/api/ws` (gorilla/websocket) with Redis presence tracking
 - WebSocket: gorilla/websocket
 
@@ -31,6 +31,7 @@ social-network/
 │   ├── postcss.config.mjs      ✅
 │   ├── package.json            ✅
 │   ├── .env                    ✅
+│   ├── Dockerfile              ✅ (Next.js dev image; build context = repo root)
 │   ├── src/
 │   │   ├── app/                ✅ (Next.js App Router)
 │   │   │   ├── layout.tsx      ✅ (root layout + <Providers>)
@@ -103,6 +104,7 @@ social-network/
 │   │   ├── event-group-chat.go ✅ (group chat messages — REST send/list)
 │   │   ├── event-events.go     ✅ (create, list, get event, RSVP — going/not_going with counts)
 │   │   ├── event-notifications.go ✅ (list, unread count, mark read, mark all read)
+│   │   ├── scheduler.go        ✅ (background event-reminder worker)
 │   │   └── notification-types.go  ✅ (notification type constants)
 │   ├── cache/
 │   │   └── redis.go            ✅ (Redis client, presence tracking, caching, rate limiting, pub/sub)
@@ -112,7 +114,7 @@ social-network/
 │   │   ├── handler.go          ✅ (ServeWS — connection upgrade)
 │   │   └── types.go            ✅ (WSMessage types + payloads)
 │   ├── db/
-│   │   ├── migrations/         ✅ (20 migrations up/down)
+│   │   ├── migrations/         ✅ (21 migrations up/down)
 │   │   ├── queries/            ✅ (all SQL constants)
 │   │   ├── sql/
 │   │   │   ├── models.go       ✅ (all structs incl. is_deleted flags)
@@ -122,8 +124,7 @@ social-network/
 │   ├── populate/
 │   │   ├── seed.json           ✅ (7 users, 28 posts, 35 comments, 2 groups, events, DMs, etc.)
 │   │   └── seed.go             ✅ (loader with bcrypt, is_deleted support, first-run check, --reseed)
-├── Dockerfile.backend         ✅ (multi-stage Go build)
-├── Dockerfile.frontend        ✅ (Next.js dev image)
+│   └── Dockerfile              ✅ (backend dev image, air hot-reload; build context = repo root)
 ├── docker-compose.yml          ✅ (dev stack: Caddy + frontend + backend + redis)
 ├── Caddyfile                   ✅ (TLS + reverse proxy for dev)
 ├── Makefile                    ✅
@@ -137,7 +138,7 @@ social-network/
 | Component | Status |
 |-----------|--------|
 | Go module + dependencies (`go.mod`) | ✅ |
-| Database migrations (20 up/down pairs) | ✅ |
+| Database migrations (21 up/down pairs) | ✅ |
 | All SQL query constants (`internal_queries.go`) | ✅ |
 | All data models (`models.go`) | ✅ |
 | Database init + migration runner (`sqlite.go`) | ✅ |
@@ -155,6 +156,7 @@ social-network/
 | Group handlers (CRUD, browse, invite, join, accept, reject, leave, members, avatar) | ✅ |
 | Group chat handlers (REST send/list) | ✅ |
 | Event handlers (create, list, get, RSVP going/not_going with counts) | ✅ |
+| Event reminder scheduler (background worker → going attendees) | ✅ |
 | Notification handlers (list, unread count, mark read, mark all) | ✅ |
 | Actionable notifications (accept/decline group-join outcome) | ✅ |
 | Direct message handlers (get DMs, messages, send, unread count) | ✅ |
@@ -194,6 +196,7 @@ social-network/
 | Profile pages (view + edit + follow button + avatar upload) | ✅ |
 | Groups pages (browse, detail with posts/events/chat, create with image, membership actions) | ✅ |
 | Group posts + group chat UI (GroupChat component) | ✅ |
+| EventCard "starts in …" hint for upcoming events | ✅ |
 | Notifications (list + actionable accept/decline buttons) | ✅ |
 | Chat (DMs, real-time via WebSocket) | ✅ |
 | Search page (debounced, privacy-aware, inline follow) | ✅ |
@@ -290,6 +293,9 @@ Shared `SaveUploadedImage` helper (multipart, 20MB, jpg/png/gif) serving `/image
 
 ### Phase N — Privacy & Access Control ✅
 Profile privacy (private-profile posts only for accepted followers) enforced across the feed, single-post fetch (`CanViewPost`), comment reads + creation, and profile "recent posts". Follow endpoints accept UUIDs (`resolveUserID`).
+
+### Phase O — Event Reminder Scheduler ✅
+Background worker (`handlers/scheduler.go`) ticks on a configurable interval and, for events starting within the reminder lead window, sends an `event_reminder` notification (DB row + WebSocket push) to accepted members who RSVP'd **going**, then flags the event (`events.reminder_sent`) to avoid duplicates. Configurable via the `scheduler` config block (`enabled`, `tick_interval`, `reminder_lead`); runs as a goroutine tied to the shutdown context.
 
 ---
 

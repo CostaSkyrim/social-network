@@ -28,3 +28,17 @@ export function format_datetime(iso: string): string {
     minute: '2-digit',
   })
 }
+
+// format_starts_in returns a short "starts in …" hint for upcoming events
+// (within 24h), or null when the event is in the past or further out.
+export function format_starts_in(iso: string): string | null {
+  const diff = new Date(iso).getTime() - Date.now()
+  if (diff <= 0) return null
+
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `starts in ${Math.max(1, mins)}m`
+
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `starts in ${hours}h`
+  return null
+}

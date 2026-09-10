@@ -2584,6 +2584,82 @@ func (db *DataBase) GetEventResponseCounts(ctx context.Context, eventID int64) (
 	return counts, nil
 }
 
+// GetEventsDueForReminder returns events starting within (from, to] that have
+// not had a reminder sent yet.
+func (db *DataBase) GetEventsDueForReminder(ctx context.Context, from, to time.Time) ([]*ReminderEvent, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetEventsDueForReminder, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query events due for reminder: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*ReminderEvent
+	for rows.Next() {
+		ev := &ReminderEvent{}
+		if err := rows.Scan(
+			&ev.ID, &ev.UUID, &ev.GroupID, &ev.CreatorID, &ev.Title,
+			&ev.EventDateTime, &ev.GroupUUID, &ev.GroupTitle,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan reminder event: %w", err)
+		}
+		events = append(events, ev)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return events, nil
+}
+
+// MarkEventReminderSent flags an event so no further reminders are sent.
+func (db *DataBase) MarkEventReminderSent(ctx context.Context, eventID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if _, err := db.conn.ExecContext(dbCtx, queries.MarkEventReminderSent, eventID); err != nil {
+		return fmt.Errorf("failed to mark event reminder sent: %w", err)
+	}
+
+	return nil
+}
+
+// GetEventGoingUserIDs returns accepted group members who RSVP'd "going".
+func (db *DataBase) GetEventGoingUserIDs(ctx context.Context, eventID, groupID int64) ([]int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetEventGoingUserIDs, eventID, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query event going users: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan going user: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return ids, nil
+}
+
 // CreateOAuthAccount links a user to an OAuth provider account.
 func (db *DataBase) CreateOAuthAccount(ctx context.Context, userID int64, provider, providerID string) error {
 	if ctx == nil {

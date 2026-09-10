@@ -3,7 +3,7 @@
 import { useRSVP } from '@/hooks/useGroups'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { format_datetime } from '@/lib/format'
+import { format_datetime, format_starts_in } from '@/lib/format'
 import { get_media_url } from '@/lib/media'
 import { cn } from '@/lib/cn'
 import type { GroupEvent } from '@/types/group'
@@ -35,6 +35,11 @@ export function EventCard({ event, groupId }: EventCardProps) {
             <p className="mt-0.5 text-xs text-gray-500">
               {format_datetime(event.event_datetime)} · by {creator_name}
             </p>
+            {format_starts_in(event.event_datetime) && (
+              <span className="mt-1 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                {format_starts_in(event.event_datetime)}
+              </span>
+            )}
           </div>
           <Badge variant="warning">{event.total} going</Badge>
         </div>

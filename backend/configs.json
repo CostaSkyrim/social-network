@@ -2,6 +2,11 @@
     "frontend": {
         "url": "http://localhost:3000"
     },
+    "scheduler": {
+        "enabled": true,
+        "tick_interval": "1m",
+        "reminder_lead": "30m"
+    },
     "redis": {
         "addr": "localhost:6379",
         "password": "",

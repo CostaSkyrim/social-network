@@ -17,8 +17,8 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - **Emoji support** — Emoji picker button plus `:shortcode:` autocomplete (e.g. type `:cat` → pick 🐱) with keyboard navigation.
 - **OAuth** — Sign in or sign up with Google or GitHub. GitHub linking uses only verified emails.
 - **Groups** — Create groups with a title, description, and optional photo. Invite users by nickname or accept join requests. Group members can post, comment, create events, and chat in a shared group room.
-- **Events** — Group members can create events with title, description, optional image, and date/time. RSVP with Going / Not Going. Live counts per event plus your own response.
-- **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, and new events. Notifications appear across all pages.
+- **Events** — Group members can create events with title, description, optional image, and date/time. RSVP with Going / Not Going. Live counts per event, your own response, and a "starts in …" hint for upcoming events. A background scheduler sends a reminder notification to everyone who RSVP'd **going** shortly before the event begins.
+- **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, new events, and upcoming-event reminders. Notifications appear across all pages.
 - **Chat** — Real-time private messaging between users who follow each other. Group chat rooms for group members. Emoji support. WebSocket-powered instant delivery.
 - **Real-time presence** — Online/offline status tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub (`/api/ws`).
 
@@ -35,6 +35,7 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - Group membership UI — role-aware join/leave actions, accept/decline in the member list
 - Group posts + group chat (members only)
 - Events (create, list with going/not_going counts, single event detail, RSVP upsert, optional event image) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
+- Event reminder scheduler — background worker sends a one-time reminder to members who RSVP'd "going" before the event starts (configurable tick + lead time)
 - Groups browse list + group detail page (header, member count, membership actions, events, posts, chat)
 - User search (by name/nickname) with privacy-aware results and inline follow buttons
 - OAuth sign-in via Google and GitHub (verified-email linking for GitHub)
@@ -96,6 +97,7 @@ See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
 - Frontend: Next.js App Router with route groups `(auth)` and `(main)` — auth guards redirect unauthenticated users to `/login`.
 - Backend: Go REST API with session-cookie auth, rate limiting, and CORS. WebSocket hub on `/api/ws` (auth required).
+- Background workers: WAL checkpointing, session cleanup, and the event-reminder scheduler run as goroutines tied to the shutdown context.
 - Caddy terminates HTTPS and reverse-proxies `/api/*` to the backend; everything else to the frontend dev server.
 - SQLite stores all persistent data. Redis is optional — presence tracking, JSON caching, rate limiting, and pub/sub channels. If Redis is down, the backend continues with in-memory fallbacks.
 
@@ -170,6 +172,8 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL (frontend) |
 | `REDIS_ADDR` | `localhost:6379` | Redis address (backend, optional) |
 
+The event-reminder scheduler is configured in `configs.json` under `scheduler` (`enabled`, `tick_interval`, `reminder_lead`).
+
 ### Seed Data
 
 On first launch, 7 users are pre-loaded. All share the same password: `password123`
@@ -201,6 +205,7 @@ social-network/
 │   │   ├── types/         # TypeScript interfaces
 │   │   └── views/         # Page components (mirrors route structure)
 │   ├── next.config.ts
+│   └── Dockerfile         # Frontend image (dev, Next.js dev server)
 ├── backend/
 │   ├── cmd/main.go        # Entry point
 │   ├── entry/             # Server startup sequence
@@ -215,9 +220,8 @@ social-network/
 │   ├── server/handlers/   # HTTP handlers + middleware + CORS
 │   ├── server/websocket/  # WebSocket hub, client, handler, types
 │   ├── cache/             # Redis client (presence, caching, rate limit)
-│   └── populate/          # Seed data (seed.json + seed.go)
-├── Dockerfile.backend     # Backend image (dev, air hot-reload)
-├── Dockerfile.frontend    # Frontend image (dev, Next.js dev server)
+│   ├── populate/          # Seed data (seed.json + seed.go)
+│   └── Dockerfile         # Backend image (dev, air hot-reload)
 ├── docker-compose.yml     # dev stack: Caddy + frontend + backend + redis
 ├── Caddyfile              # TLS termination + reverse proxy (dev)
 ├── Makefile               # dev, check, build commands

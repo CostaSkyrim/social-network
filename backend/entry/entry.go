@@ -61,6 +61,9 @@ func Start(reseed bool) error {
 
 	server := setupServer(cfg, db, redisClient)
 
+	// Background event-reminder scheduler (stops on shutdown).
+	handlers.StartEventScheduler(global.ShutDownContext, db)
+
 	go startServer(server, cfg)
 
 	return waitForShutdown(server, db)

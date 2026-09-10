@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS events (
     description TEXT,
     image_path VARCHAR(500),
     event_datetime TIMESTAMP NOT NULL,
+    reminder_sent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
