@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ImageUpload } from '@/components/common/ImageUpload'
 import OAuthButtons from '@/components/common/OAuthButtons'
 import { useSignup } from '@/hooks/useAuth'
 import { VALIDATION, validate_length } from '@/lib/validators'
@@ -15,14 +16,23 @@ export default function SignupPage() {
     first_name: '',
     last_name: '',
     date_of_birth: '',
+    nickname: '',
     about_me: '',
   })
+  const [avatar, set_avatar] = useState<File | null>(null)
+  const [avatar_preview, set_avatar_preview] = useState<string | null>(null)
   const [errors, set_errors] = useState<Record<string, string>>({})
   const signup = useSignup()
 
   function set(field: string, value: string) {
     set_form((prev) => ({ ...prev, [field]: value }))
     set_errors((prev) => ({ ...prev, [field]: '' }))
+  }
+
+  function handle_avatar(file: File) {
+    if (avatar_preview) URL.revokeObjectURL(avatar_preview)
+    set_avatar(file)
+    set_avatar_preview(URL.createObjectURL(file))
   }
 
   async function handle_submit(e: React.FormEvent) {
@@ -52,6 +62,8 @@ export default function SignupPage() {
         last_name: form.last_name.trim(),
         date_of_birth: new Date(form.date_of_birth).toISOString(),
         about_me: form.about_me.trim() || undefined,
+        nickname: form.nickname.trim() || undefined,
+        avatar: avatar ?? undefined,
       })
     } catch (err: any) {
       set_errors({ form: err?.response?.data?.error || err?.message || 'Signup failed' })
@@ -115,6 +127,40 @@ export default function SignupPage() {
         error={errors.date_of_birth}
         required
       />
+
+      <Input
+        id="nickname"
+        label="Nickname (optional)"
+        value={form.nickname}
+        onChange={(e) => set('nickname', e.target.value)}
+        placeholder="your_unique_handle"
+      />
+
+      <div>
+        <p className="mb-1 text-sm font-medium text-gray-700">Avatar (optional)</p>
+        <div className="flex items-center gap-3">
+          {avatar_preview ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={avatar_preview}
+              alt="Avatar preview"
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500">
+              No image
+            </div>
+          )}
+          <ImageUpload on_select={handle_avatar} className="[&>div]:inline-flex">
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+            >
+              {avatar_preview ? 'Change image' : 'Upload image'}
+            </button>
+          </ImageUpload>
+        </div>
+      </div>
 
       <Input
         id="about_me"

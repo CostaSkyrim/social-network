@@ -115,6 +115,13 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
+	// Notify the post author when someone else comments on their post.
+	if post.AuthorID != userID {
+		commenterName := getDisplayNameOfUser(db, r, userID)
+		sendNotification(db, post.AuthorID, userID, NotifNewComment,
+			commenterName+" commented on your post", &post.ID, &post.UUID)
+	}
+
 	RespondSuccess(w, http.StatusCreated, "Comment created", nil)
 }
 

@@ -12,6 +12,7 @@ const notif_icons: Record<string, string> = {
   follow_accepted: '✅',
   new_follower: '👤',
   new_post: '📝',
+  new_comment: '💬',
   group_invitation: '👥',
   group_join_request: '🚪',
   group_accepted: '🎉',
@@ -20,7 +21,7 @@ const notif_icons: Record<string, string> = {
 }
 
 const follow_types = new Set(['follow_request', 'follow_accepted', 'new_follower'])
-const post_types = new Set(['new_post'])
+const post_types = new Set(['new_post', 'new_comment'])
 const group_types = new Set([
   'group_invitation',
   'group_join_request',

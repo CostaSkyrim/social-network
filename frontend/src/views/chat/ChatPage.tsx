@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -8,6 +9,9 @@ import { fetchMessages, sendMessage as apiSendMessage } from '@/api/chat'
 import client from '@/api/client'
 import { Avatar } from '@/components/ui/Avatar'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { EmojiPicker } from '@/components/ui/EmojiPicker'
+import { EmojiSuggestions } from '@/components/ui/EmojiSuggestions'
+import { useEmojiAutocomplete } from '@/hooks/useEmojiAutocomplete'
 import { cn } from '@/lib/cn'
 import { get_media_url } from '@/lib/media'
 
@@ -46,6 +50,7 @@ export default function ChatPage() {
   const [pending_preview, set_pending_preview] = useState<string | null>(null)
   const [is_loading, set_is_loading] = useState(true)
   const [blocked, set_blocked] = useState(false)
+  const [cursor_pos, set_cursor_pos] = useState(0)
   const [partner, set_partner] = useState<{
     id: string
     first_name: string
@@ -55,8 +60,12 @@ export default function ChatPage() {
     is_online: boolean
   } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const dmIDRef = useRef<number | null>(null)
+
+  const { word, start, matches, selected_index, set_selected_index, reset } =
+    useEmojiAutocomplete(input, cursor_pos)
+  const show_suggestions = matches.length > 0 && word !== null
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -234,10 +243,61 @@ export default function ChatPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (show_suggestions) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        set_selected_index((selected_index + 1) % matches.length)
+        return
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        set_selected_index((selected_index - 1 + matches.length) % matches.length)
+        return
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        replace_word(matches[selected_index].native)
+        return
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        reset()
+        return
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  function track_cursor() {
+    set_cursor_pos(inputRef.current?.selectionStart ?? 0)
+  }
+
+  function replace_word(emoji: string) {
+    if (start === -1 || !word) return
+    const new_content = input.slice(0, start) + emoji + input.slice(start + word.length + 1)
+    set_input(new_content)
+    const new_pos = start + emoji.length
+    setTimeout(() => {
+      inputRef.current?.setSelectionRange(new_pos, new_pos)
+      set_cursor_pos(new_pos)
+    }, 0)
+  }
+
+  function insert_at_cursor(text: string) {
+    const ta = inputRef.current
+    if (!ta) {
+      set_input((prev) => prev + text)
+      return
+    }
+    const pos = ta.selectionStart
+    const new_content = input.slice(0, pos) + text + input.slice(ta.selectionEnd)
+    set_input(new_content)
+    const new_pos = pos + text.length
+    setTimeout(() => {
+      ta.setSelectionRange(new_pos, new_pos)
+      set_cursor_pos(new_pos)
+    }, 0)
   }
 
   if (!targetUserID) {
@@ -268,9 +328,12 @@ export default function ChatPage() {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">
+              <Link
+                href={`/profile/${partner.id}`}
+                className="text-sm font-medium text-gray-900 hover:underline"
+              >
                 {partner.first_name} {partner.last_name}
-              </p>
+              </Link>
               <p className="text-xs text-gray-500">
                 {partner.is_online ? 'Online' : 'Offline'}
               </p>
@@ -370,7 +433,7 @@ export default function ChatPage() {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-end gap-2">
           <ImageUpload on_select={handle_select_image}>
             <button
               type="button"
@@ -388,15 +451,27 @@ export default function ChatPage() {
               </svg>
             </button>
           </ImageUpload>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => set_input(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          <EmojiPicker on_select={insert_at_cursor} />
+          <div className="relative flex-1">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => set_input(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onKeyUp={track_cursor}
+              onClick={track_cursor}
+              placeholder="Type a message..."
+              rows={1}
+              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {show_suggestions && (
+              <EmojiSuggestions
+                matches={matches}
+                selected_index={selected_index}
+                on_select={replace_word}
+              />
+            )}
+          </div>
           <button
             onClick={handleSend}
             disabled={!input.trim() && !pending_image}
