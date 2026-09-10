@@ -109,6 +109,9 @@ type Post struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	Comments     []Comment `json:"comments,omitempty"`
 	CommentCount int       `json:"comment_count,omitempty"`
+	// VisibleUserIDs is only populated for the post's own author on private
+	// posts, so the editor can pre-select the allowed users.
+	VisibleUserIDs []string `json:"visible_user_ids,omitempty"`
 }
 
 type Comment struct {

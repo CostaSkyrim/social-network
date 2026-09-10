@@ -88,6 +88,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/users/{id}", false, GetUserProfileHandler),
 		makeEndpoint("/api/users/{id}/edit", true, UpdateUserProfileHandler),
 		makeEndpoint("/api/users/{id}/avatar", true, UpdateUserAvatarHandler),
+		makeEndpoint("/api/users/{id}/posts", true, GetUserPostsForViewerHandler),
 		makeEndpoint("/api/users/search", true, SearchUsersHandler),
 
 		// Group endpoints

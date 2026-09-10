@@ -13,10 +13,42 @@ import (
 )
 
 type CreatePostRequest struct {
-	Content      string  `json:"content"`
-	ImagePath    *string `json:"image_path,omitempty"`
-	PrivacyLevel string  `json:"privacy_level"`
-	GroupID      *string `json:"group_id,omitempty"`
+	Content        string    `json:"content"`
+	ImagePath      *string   `json:"image_path,omitempty"`
+	PrivacyLevel   string    `json:"privacy_level"`
+	GroupID        *string   `json:"group_id,omitempty"`
+	VisibleUserIDs *[]string `json:"visible_user_ids,omitempty"`
+}
+
+// resolveVisibleUserIDs converts a list of user UUIDs into internal user IDs.
+func resolveVisibleUserIDs(ctx context.Context, db *database.DataBase, uuids []string) ([]int64, error) {
+	ids := make([]int64, 0, len(uuids))
+	for _, u := range uuids {
+		u = strings.TrimSpace(u)
+		if u == "" {
+			continue
+		}
+		user, err := db.GetUserByUUID(ctx, u)
+		if err != nil {
+			return nil, fmt.Errorf("user not found: %s", u)
+		}
+		ids = append(ids, user.ID)
+	}
+	return ids, nil
+}
+
+// splitCommaList flattens form values that may contain comma-separated IDs.
+func splitCommaList(values []string) []string {
+	out := []string{}
+	for _, v := range values {
+		for _, part := range strings.Split(v, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				out = append(out, part)
+			}
+		}
+	}
+	return out
 }
 
 // resolvePostID looks up a post by its UUID (from the URL path) and returns
@@ -71,6 +103,10 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		if g := r.FormValue("group_id"); g != "" {
 			req.GroupID = &g
 		}
+		if vals, ok := r.Form["visible_user_ids"]; ok {
+			list := splitCommaList(vals)
+			req.VisibleUserIDs = &list
+		}
 		imgPath, ok := multipartImage(w, r)
 		if !ok {
 			return
@@ -118,6 +154,18 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to create post")
 		return
+	}
+
+	if req.PrivacyLevel == "private" && req.VisibleUserIDs != nil {
+		ids, err := resolveVisibleUserIDs(r.Context(), db, *req.VisibleUserIDs)
+		if err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid visible user")
+			return
+		}
+		if err := db.SetPostVisibility(r.Context(), id, ids); err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to set post visibility")
+			return
+		}
 	}
 
 	post.ID = id
@@ -243,9 +291,10 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 }
 
 type EditPostRequest struct {
-	Content      string  `json:"content"`
-	ImagePath    *string `json:"image_path,omitempty"`
-	PrivacyLevel string  `json:"privacy_level"`
+	Content        string    `json:"content"`
+	ImagePath      *string   `json:"image_path,omitempty"`
+	PrivacyLevel   string    `json:"privacy_level"`
+	VisibleUserIDs *[]string `json:"visible_user_ids,omitempty"`
 }
 
 func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -281,6 +330,10 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		}
 		req.Content = r.FormValue("content")
 		req.PrivacyLevel = r.FormValue("privacy_level")
+		if vals, ok := r.Form["visible_user_ids"]; ok {
+			list := splitCommaList(vals)
+			req.VisibleUserIDs = &list
+		}
 		imgPath, ok := multipartImage(w, r)
 		if !ok {
 			return
@@ -313,6 +366,25 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 	if err := db.UpdatePost(r.Context(), postID, userID, req.Content, imagePath, req.PrivacyLevel); err != nil {
 		RespondError(w, http.StatusNotFound, "Post not found or not authorized")
 		return
+	}
+
+	// Keep post visibility in sync with the privacy level.
+	switch {
+	case req.PrivacyLevel != "private":
+		if err := db.SetPostVisibility(r.Context(), postID, nil); err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to clear post visibility")
+			return
+		}
+	case req.VisibleUserIDs != nil:
+		ids, err := resolveVisibleUserIDs(r.Context(), db, *req.VisibleUserIDs)
+		if err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid visible user")
+			return
+		}
+		if err := db.SetPostVisibility(r.Context(), postID, ids); err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to set post visibility")
+			return
+		}
 	}
 
 	RespondSuccess(w, http.StatusOK, "Post updated", nil)

@@ -1,10 +1,11 @@
 'use client'
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getFeed, getGroupPosts, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
+import { getFeed, getGroupPosts, getUserPosts, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
 import { useUI } from '@/context/UIProvider'
 
 const FEED_PAGE_SIZE = 10
+const PROFILE_PAGE_SIZE = 5
 
 export function useFeed() {
   return useInfiniteQuery({
@@ -33,6 +34,20 @@ export function useGroupPosts(groupId: string) {
   })
 }
 
+export function useUserPosts(uuid: string) {
+  return useInfiniteQuery({
+    queryKey: ['user-posts', uuid],
+    queryFn: ({ pageParam }) => getUserPosts(uuid, pageParam, PROFILE_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < PROFILE_PAGE_SIZE) return undefined
+      return allPages.length + 1
+    },
+    initialPageParam: 1,
+    enabled: !!uuid,
+    staleTime: 30_000,
+  })
+}
+
 export function usePost(id: string) {
   return useQuery({
     queryKey: ['post', id],
@@ -46,7 +61,7 @@ export function useCreatePost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: (data: { content: string; privacy_level: string; group_id?: string; image?: File }) =>
+    mutationFn: (data: { content: string; privacy_level: string; group_id?: string; image?: File; visible_user_ids?: string[] }) =>
       apiCreatePost(data),
     onSuccess: (_data, variables) => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
@@ -88,11 +103,12 @@ export function useEditPost() {
   const { show_toast } = useUI()
 
   return useMutation({
-    mutationFn: ({ id, content, privacy_level, image, remove_image }: { id: string; content: string; privacy_level: string; image?: File; remove_image?: boolean }) =>
-      apiEditPost(id, { content, privacy_level, image, remove_image }),
+    mutationFn: ({ id, content, privacy_level, image, remove_image, visible_user_ids }: { id: string; content: string; privacy_level: string; image?: File; remove_image?: boolean; visible_user_ids?: string[] }) =>
+      apiEditPost(id, { content, privacy_level, image, remove_image, visible_user_ids }),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
       query_client.invalidateQueries({ queryKey: ['post'] })
+      query_client.invalidateQueries({ queryKey: ['user-posts'] })
       show_toast({ message: 'Post updated', type: 'success' })
     },
     onError: (err: any) => {

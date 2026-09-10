@@ -86,5 +86,12 @@ func GetPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBas
 		return
 	}
 
+	// Only the author of a private post gets the list of allowed users.
+	if post.AuthorID == userID && post.PrivacyLevel == "private" {
+		if uuids, err := db.GetPostVisibleUserUUIDs(r.Context(), post.ID); err == nil {
+			post.VisibleUserIDs = uuids
+		}
+	}
+
 	RespondSuccess(w, http.StatusOK, "Post retrieved", post)
 }

@@ -317,7 +317,7 @@ const (
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN groups g ON g.id = p.group_id
 		WHERE p.author_id = ? AND p.group_id IS NULL
-		ORDER BY p.created_at DESC
+		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`
 
@@ -348,7 +348,7 @@ const (
 						AND f.follower_id = ? AND f.status = 'accepted'
 				))
 			)
-		ORDER BY p.created_at DESC
+		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`
 
@@ -375,7 +375,7 @@ const (
 				WHERE fw.following_id = p.author_id
 					AND fw.follower_id = ? AND fw.status = 'accepted'
 			))
-		ORDER BY p.created_at DESC
+		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`
 
@@ -388,7 +388,7 @@ const (
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN groups g ON g.id = p.group_id
 		WHERE p.group_id = ?
-		ORDER BY p.created_at DESC
+		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`
 
@@ -419,6 +419,46 @@ const (
 	RemovePostVisibility = `
 		DELETE FROM post_visibility
 		WHERE post_id = ? AND user_id = ?
+	`
+
+	RemoveAllPostVisibility = `
+		DELETE FROM post_visibility
+		WHERE post_id = ?
+	`
+
+	GetPostVisibleUserUUIDs = `
+		SELECT u.uuid
+		FROM post_visibility pv
+		JOIN users u ON u.id = pv.user_id
+		WHERE pv.post_id = ?
+		ORDER BY u.first_name ASC, u.last_name ASC
+	`
+
+	CountUserPostsForViewer = `
+		SELECT COUNT(*)
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE p.author_id = ? AND p.group_id IS NULL
+			AND (
+				p.author_id = ?
+				OR (u.is_public = 1 AND (
+					p.privacy_level = 'public'
+					OR (p.privacy_level = 'followers' AND EXISTS(
+						SELECT 1 FROM followers f
+						WHERE f.following_id = p.author_id
+							AND f.follower_id = ? AND f.status = 'accepted'
+					))
+					OR (p.privacy_level = 'private' AND EXISTS(
+						SELECT 1 FROM post_visibility pv
+						WHERE pv.post_id = p.id AND pv.user_id = ?
+					))
+				))
+				OR (u.is_public = 0 AND EXISTS(
+					SELECT 1 FROM followers f
+					WHERE f.following_id = p.author_id
+						AND f.follower_id = ? AND f.status = 'accepted'
+				))
+			)
 	`
 )
 
@@ -519,6 +559,12 @@ const (
 		FROM direct_messages
 		WHERE (user1_id = ? AND user2_id = ?) 
 		OR (user1_id = ? AND user2_id = ?)
+	`
+
+	GetDMByID = `
+		SELECT id, user1_id, user2_id, created_at, last_message_at
+		FROM direct_messages
+		WHERE id = ?
 	`
 
 	GetOrCreateDM = `

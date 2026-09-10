@@ -942,8 +942,88 @@ func (db *DataBase) GetUserPostsForViewer(ctx context.Context, authorID, viewerI
 	return posts, nil
 }
 
+// CountUserPostsForViewer returns how many of a user's posts the viewer can see,
+// applying the same privacy rules as GetUserPostsForViewer.
+func (db *DataBase) CountUserPostsForViewer(ctx context.Context, authorID, viewerID int64) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx,
+		queries.CountUserPostsForViewer,
+		authorID, viewerID, viewerID, viewerID, viewerID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count user posts for viewer: %w", err)
+	}
+
+	return count, nil
+}
+
+// SetPostVisibility replaces the set of users allowed to see a private post.
+func (db *DataBase) SetPostVisibility(ctx context.Context, postID int64, userIDs []int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	tx, err := db.conn.BeginTx(dbCtx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin post visibility transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(dbCtx, queries.RemoveAllPostVisibility, postID); err != nil {
+		return fmt.Errorf("failed to clear post visibility: %w", err)
+	}
+
+	for _, userID := range userIDs {
+		if _, err := tx.ExecContext(dbCtx, queries.AddPostVisibility, postID, userID); err != nil {
+			return fmt.Errorf("failed to add post visibility: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit post visibility: %w", err)
+	}
+
+	return nil
+}
+
+// GetPostVisibleUserUUIDs returns the UUIDs of users allowed to see a private post.
+func (db *DataBase) GetPostVisibleUserUUIDs(ctx context.Context, postID int64) ([]string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetPostVisibleUserUUIDs, postID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query post visible users: %w", err)
+	}
+	defer rows.Close()
+
+	uuids := []string{}
+	for rows.Next() {
+		var uuidStr string
+		if err := rows.Scan(&uuidStr); err != nil {
+			return nil, fmt.Errorf("failed to scan post visible user: %w", err)
+		}
+		uuids = append(uuids, uuidStr)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return uuids, nil
+}
+
 // GetFeed retrieves the paginated news feed for a user
-func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {	if ctx == nil {
+func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
 		ctx = context.Background()
 	}
 
@@ -1921,6 +2001,26 @@ func (db *DataBase) GetDMByUsers(ctx context.Context, user1ID, user2ID int64) (*
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get DM: %w", err)
+	}
+
+	return &dm, nil
+}
+
+// GetDMByID retrieves a direct message conversation by its ID.
+func (db *DataBase) GetDMByID(ctx context.Context, dmID int64) (*DirectMessage, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var dm DirectMessage
+	err := db.conn.QueryRowContext(ctx, queries.GetDMByID, dmID).Scan(
+		&dm.ID, &dm.User1ID, &dm.User2ID, &dm.CreatedAt, &dm.LastMessageAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get DM by id: %w", err)
 	}
 
 	return &dm, nil

@@ -16,6 +16,7 @@ dump.rdb
 main
 backend/main
 bin
+tmp/build-errors.log
 
 # Environment
 .env

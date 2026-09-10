@@ -8,6 +8,7 @@ export interface Post {
   content?: string
   image_path?: string
   privacy_level: 'public' | 'followers' | 'private'
+  visible_user_ids?: string[]
   is_deleted?: boolean
   created_at: string
   updated_at: string

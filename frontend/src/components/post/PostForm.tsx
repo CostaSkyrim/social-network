@@ -7,6 +7,7 @@ import { PrivacySelector } from './PrivacySelector'
 import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { EmojiSuggestions } from '@/components/ui/EmojiSuggestions'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { UserVisibilityPicker } from './UserVisibilityPicker'
 import { useEmojiAutocomplete } from '@/hooks/useEmojiAutocomplete'
 import { useCreatePost } from '@/hooks/usePosts'
 import { useAuth } from '@/context/AuthProvider'
@@ -19,6 +20,7 @@ interface PostFormProps {
 export function PostForm({ groupId }: PostFormProps = {}) {
   const [content, set_content] = useState('')
   const [privacy, set_privacy] = useState('public')
+  const [visible_user_ids, set_visible_user_ids] = useState<string[]>([])
   const [image, set_image] = useState<File | null>(null)
   const [preview_url, set_preview_url] = useState<string | null>(null)
   const [cursor_pos, set_cursor_pos] = useState(0)
@@ -101,9 +103,11 @@ export function PostForm({ groupId }: PostFormProps = {}) {
       privacy_level: privacy,
       group_id: groupId,
       image: image ?? undefined,
+      visible_user_ids: privacy === 'private' ? visible_user_ids : undefined,
     })
     set_content('')
     set_privacy('public')
+    set_visible_user_ids([])
     clear_image()
   }
 
@@ -157,6 +161,13 @@ export function PostForm({ groupId }: PostFormProps = {}) {
                 Remove
               </button>
             </div>
+          )}
+
+          {!groupId && privacy === 'private' && (
+            <UserVisibilityPicker
+              selected={visible_user_ids}
+              onChange={set_visible_user_ids}
+            />
           )}
 
             <div className="flex items-center justify-between">

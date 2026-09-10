@@ -6,8 +6,10 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { UserVisibilityPicker } from './UserVisibilityPicker'
 import { format_date } from '@/lib/format'
 import { get_media_url } from '@/lib/media'
+import { getPost } from '@/api/posts'
 import { useAuth } from '@/context/AuthProvider'
 import { useEditPost, useDeletePost } from '@/hooks/usePosts'
 import { PrivacySelector } from './PrivacySelector'
@@ -28,6 +30,9 @@ export function PostCard({ post }: PostCardProps) {
   const [edit_image, set_edit_image] = useState<File | null>(null)
   const [edit_preview_url, set_edit_preview_url] = useState<string | null>(null)
   const [edit_remove_image, set_edit_remove_image] = useState(false)
+  const [edit_visible_user_ids, set_edit_visible_user_ids] = useState<string[]>(
+    post.visible_user_ids ?? [],
+  )
 
   const author_name = post.author
     ? `${post.author.first_name} ${post.author.last_name}`
@@ -36,6 +41,19 @@ export function PostCard({ post }: PostCardProps) {
   const is_deleted = post.is_deleted
   const is_owner = user && Number(post.author_id) === Number(user.id)
 
+  const start_edit = async () => {
+    set_editing(true)
+    // The feed doesn't include the visibility list; fetch it for private posts.
+    if (post.privacy_level === 'private' && post.visible_user_ids === undefined) {
+      try {
+        const full = await getPost(post.id)
+        set_edit_visible_user_ids(full.visible_user_ids ?? [])
+      } catch {
+        // silently fail
+      }
+    }
+  }
+
   const handle_edit = async () => {
     await edit_mutation.mutateAsync({
       id: post.id,
@@ -43,6 +61,7 @@ export function PostCard({ post }: PostCardProps) {
       privacy_level: edit_privacy,
       image: edit_image ?? undefined,
       remove_image: edit_remove_image,
+      visible_user_ids: edit_privacy === 'private' ? edit_visible_user_ids : [],
     })
     set_editing(false)
     set_edit_image(null)
@@ -101,7 +120,7 @@ export function PostCard({ post }: PostCardProps) {
           {!is_deleted && is_owner && !is_editing && (
             <div className="flex items-center gap-1">
               <button
-                onClick={() => set_editing(true)}
+                onClick={start_edit}
                 className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 title="Edit post"
               >
@@ -151,6 +170,12 @@ export function PostCard({ post }: PostCardProps) {
                   Remove
                 </button>
               </div>
+            )}
+            {edit_privacy === 'private' && (
+              <UserVisibilityPicker
+                selected={edit_visible_user_ids}
+                onChange={set_edit_visible_user_ids}
+              />
             )}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

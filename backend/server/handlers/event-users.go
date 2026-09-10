@@ -16,13 +16,13 @@ type updateProfileRequest struct {
 }
 
 type profileResponse struct {
-	User             *database.User  `json:"user"`
-	FollowerCount    int             `json:"follower_count"`
-	FollowingCount   int             `json:"following_count"`
-	PostCount        int             `json:"post_count"`
-	IsFollowing      bool            `json:"is_following"`
-	IsFollowPending  bool            `json:"is_follow_pending"`
-	RecentPosts      []*database.Post `json:"recent_posts"`
+	User            *database.User   `json:"user"`
+	FollowerCount   int              `json:"follower_count"`
+	FollowingCount  int              `json:"following_count"`
+	PostCount       int              `json:"post_count"`
+	IsFollowing     bool             `json:"is_following"`
+	IsFollowPending bool             `json:"is_follow_pending"`
+	RecentPosts     []*database.Post `json:"recent_posts"`
 }
 
 func GetUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -74,6 +74,8 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.
 		posts = []*database.Post{}
 	}
 
+	post_count, _ := db.CountUserPostsForViewer(r.Context(), targetUser.ID, viewerID)
+
 	isFollowing := false
 	isFollowPending := false
 	if isAuthenticated {
@@ -93,11 +95,70 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.
 		User:            targetUser,
 		FollowerCount:   len(followers),
 		FollowingCount:  len(following),
-		PostCount:       len(posts),
+		PostCount:       post_count,
 		IsFollowing:     isFollowing,
 		IsFollowPending: isFollowPending,
 		RecentPosts:     posts,
 	})
+}
+
+// GetUserPostsForViewerHandler returns a user's posts (paginated) as visible to
+// the requesting user, applying profile-privacy rules.
+func GetUserPostsForViewerHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	viewerID, _ := GetUserIDFromContext(r)
+
+	userUUID := r.PathValue("id")
+	if userUUID == "" {
+		RespondError(w, http.StatusBadRequest, "User ID is required")
+		return
+	}
+
+	targetUser, err := db.GetUserByUUID(r.Context(), userUUID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	isOwner := viewerID != 0 && viewerID == targetUser.ID
+
+	// Same private-profile gate as the profile endpoint.
+	if !targetUser.IsPublic && !isOwner {
+		if viewerID == 0 {
+			RespondError(w, http.StatusUnauthorized, "Private profile")
+			return
+		}
+		isFollowing, _ := db.CheckFollowing(r.Context(), viewerID, targetUser.ID)
+		isFollowedBy, _ := db.CheckFollowing(r.Context(), targetUser.ID, viewerID)
+		if !isFollowing && !isFollowedBy {
+			RespondError(w, http.StatusForbidden, "This profile is private")
+			return
+		}
+	}
+
+	limit := 5
+	offset := 0
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+		limit = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
+		offset = v
+	}
+
+	posts, err := db.GetUserPostsForViewer(r.Context(), targetUser.ID, viewerID, limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to fetch posts")
+		return
+	}
+	if posts == nil {
+		posts = []*database.Post{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "Posts retrieved", posts)
 }
 
 func UpdateUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -249,15 +310,15 @@ func SearchUsersHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	}
 
 	type searchUser struct {
-		ID              string `json:"id"`
-		FirstName       string `json:"first_name"`
-		LastName        string `json:"last_name"`
+		ID              string  `json:"id"`
+		FirstName       string  `json:"first_name"`
+		LastName        string  `json:"last_name"`
 		Nickname        *string `json:"nickname"`
 		AvatarPath      *string `json:"avatar_path,omitempty"`
-		IsPublic        bool   `json:"is_public"`
-		IsOnline        bool   `json:"is_online"`
-		IsFollowing     bool   `json:"is_following"`
-		IsFollowPending bool   `json:"is_follow_pending"`
+		IsPublic        bool    `json:"is_public"`
+		IsOnline        bool    `json:"is_online"`
+		IsFollowing     bool    `json:"is_following"`
+		IsFollowPending bool    `json:"is_follow_pending"`
 	}
 
 	payload := make([]searchUser, 0, len(results))

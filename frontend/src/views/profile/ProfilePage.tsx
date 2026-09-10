@@ -7,8 +7,11 @@ import client from '@/api/client'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { InfiniteScroll } from '@/components/common/InfiniteScroll'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
+import { useUserPosts } from '@/hooks/usePosts'
+import { get_media_url } from '@/lib/media'
 import { cn } from '@/lib/cn'
 
 interface ProfileData {
@@ -61,6 +64,9 @@ export default function ProfilePage() {
 
   const is_own = uuid === 'me' || uuid === currentUser?.id
   const resolved_uuid = is_own ? currentUser?.id : uuid
+
+  const user_posts = useUserPosts(resolved_uuid ?? '')
+  const all_posts = user_posts.data?.pages.flatMap((page) => page) ?? []
 
   useEffect(() => {
     if (!resolved_uuid) return
@@ -399,34 +405,51 @@ export default function ProfilePage() {
 
       <div>
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Posts</h2>
-        {profile.recent_posts.length === 0 ? (
+        {user_posts.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner />
+          </div>
+        ) : all_posts.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
             <p className="text-sm text-gray-500">No posts yet</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {profile.recent_posts.map((post) => (
-              <div
-                key={post.id}
-                className="rounded-lg border border-gray-200 bg-white p-4"
-              >
-                <p className="text-sm text-gray-900">{post.content}</p>
-                <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                  <span>
-                    {new Date(post.created_at).toLocaleDateString()}
-                  </span>
-                  {post.privacy_level !== 'public' && (
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                      {post.privacy_level}
+          <InfiniteScroll
+            has_next={!!user_posts.hasNextPage}
+            is_loading={user_posts.isFetchingNextPage}
+            on_load_more={() => user_posts.fetchNextPage()}
+          >
+            <div className="space-y-3">
+              {all_posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="rounded-lg border border-gray-200 bg-white p-4"
+                >
+                  <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                    {post.content}
+                  </p>
+                  {post.image_path && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={get_media_url(post.image_path)}
+                      alt="Post image"
+                      className="mt-2 max-h-64 w-full rounded-lg object-cover"
+                    />
+                  )}
+                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                    <span>
+                      {new Date(post.created_at).toLocaleDateString()}
                     </span>
-                  )}
-                  {(post.comment_count ?? 0) > 0 && (
-                    <span>{post.comment_count} comments</span>
-                  )}
+                    {post.privacy_level !== 'public' && (
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        {post.privacy_level}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </InfiniteScroll>
         )}
       </div>
     </div>

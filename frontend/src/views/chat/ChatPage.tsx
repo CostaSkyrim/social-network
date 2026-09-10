@@ -45,6 +45,7 @@ export default function ChatPage() {
   const [pending_image, set_pending_image] = useState<File | null>(null)
   const [pending_preview, set_pending_preview] = useState<string | null>(null)
   const [is_loading, set_is_loading] = useState(true)
+  const [blocked, set_blocked] = useState(false)
   const [partner, set_partner] = useState<{
     id: string
     first_name: string
@@ -80,11 +81,18 @@ export default function ChatPage() {
             avatar_path: dm.other_user.avatar_path,
             is_online: dm.other_user.is_online ?? false,
           })
-          const msgs = await fetchMessages(dm.id)
-          if (!cancelled) {
-            set_messages(msgs)
-            scrollToBottom()
-            window.dispatchEvent(new Event('messages-read'))
+          // History is always viewable; sending is disabled when neither user
+          // follows the other anymore.
+          if (!cancelled) set_blocked(dm.can_send === false)
+          try {
+            const msgs = await fetchMessages(dm.id)
+            if (!cancelled) {
+              set_messages(msgs)
+              scrollToBottom()
+              window.dispatchEvent(new Event('messages-read'))
+            }
+          } catch (err: any) {
+            if (!cancelled && err?.response?.status === 403) set_blocked(true)
           }
         } else {
           try {
@@ -182,6 +190,7 @@ export default function ChatPage() {
   }
 
   const handleSend = async () => {
+    if (blocked) return
     const content = input.trim()
     if ((!content && !pending_image) || !targetUserID) return
 
@@ -218,8 +227,9 @@ export default function ChatPage() {
       set_messages((prev) =>
         prev.map((m) => (m.id === tempID ? { ...m, id: result.id } : m)),
       )
-    } catch {
+    } catch (err: any) {
       set_messages((prev) => prev.filter((m) => m.id !== tempID))
+      if (err?.response?.status === 403) set_blocked(true)
     }
   }
 
@@ -335,6 +345,13 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {blocked ? (
+        <div className="border-t border-gray-200 pt-3">
+          <p className="rounded-lg bg-gray-50 p-3 text-center text-sm text-gray-500">
+            You can only message users you follow, or who follow you.
+          </p>
+        </div>
+      ) : (
       <div className="border-t border-gray-200 pt-3">
         {pending_preview && (
           <div className="relative mb-2">
@@ -396,6 +413,7 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }

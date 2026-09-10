@@ -23,6 +23,7 @@ type DMListItem struct {
 	LastMessage   *string        `json:"last_message,omitempty"`
 	LastMessageAt interface{}    `json:"last_message_at,omitempty"`
 	UnreadCount   int            `json:"unread_count"`
+	CanSend       bool           `json:"can_send"`
 }
 
 func GetDMsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -56,6 +57,16 @@ func GetDMsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 			unread, _ := db.GetUnreadCountForDM(r.Context(), dm.ID, userID)
 			item.UnreadCount = unread
 			item.OtherUser.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(dm.OtherUser.ID)
+
+			// History stays viewable, but sending requires at least one
+			// direction of following.
+			follows, _ := db.CheckFollowing(r.Context(), userID, dm.OtherUser.ID)
+			if follows {
+				item.CanSend = true
+			} else {
+				followedBy, _ := db.CheckFollowing(r.Context(), dm.OtherUser.ID, userID)
+				item.CanSend = followedBy
+			}
 		}
 
 		result = append(result, item)
@@ -80,6 +91,19 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	dmID, err := strconv.ParseInt(dmIDStr, 10, 64)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "Invalid DM ID")
+		return
+	}
+
+	dm, err := db.GetDMByID(r.Context(), dmID)
+	if err != nil || dm == nil {
+		RespondError(w, http.StatusNotFound, "Conversation not found")
+		return
+	}
+
+	// Conversation history remains visible to both participants; only sending
+	// new messages requires an active follow relationship.
+	if userID != dm.User1ID && userID != dm.User2ID {
+		RespondError(w, http.StatusForbidden, "You are not part of this conversation")
 		return
 	}
 
@@ -132,23 +156,19 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	targetUser, err := db.GetUserByID(r.Context(), targetUserID)
-	if err != nil {
+	if _, err := db.GetUserByID(r.Context(), targetUserID); err != nil {
 		RespondError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
-	existingDM, _ := db.GetDMByUsers(r.Context(), currentUserID, targetUserID)
-	if existingDM == nil {
-		if !targetUser.IsPublic {
-			isFollowing, _ := db.CheckFollowing(r.Context(), currentUserID, targetUserID)
-			if !isFollowing {
-				isFollowedBy, _ := db.CheckFollowing(r.Context(), targetUserID, currentUserID)
-				if !isFollowedBy {
-					RespondError(w, http.StatusForbidden, "You must follow this user to send messages")
-					return
-				}
-			}
+	// Access requires at least one direction of following at all times, so
+	// unfollowing revokes the ability to keep messaging an existing chat.
+	isFollowing, _ := db.CheckFollowing(r.Context(), currentUserID, targetUserID)
+	if !isFollowing {
+		isFollowedBy, _ := db.CheckFollowing(r.Context(), targetUserID, currentUserID)
+		if !isFollowedBy {
+			RespondError(w, http.StatusForbidden, "You must follow this user to send messages")
+			return
 		}
 	}
 
