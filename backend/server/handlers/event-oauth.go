@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -142,7 +143,7 @@ func OAuthCallbackHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 	user, err := findOrCreateOAuthUser(r, db, providerName, oauthUser)
 	if err != nil {
-		oauthRedirectError(w, r, "Failed to sign in")
+		oauthRedirectError(w, r, "Unable to sign in: "+err.Error())
 		return
 	}
 
@@ -276,8 +277,18 @@ func findOrCreateOAuthUser(r *http.Request, db *database.DataBase, provider stri
 		}
 	}
 
-	// Email already registered (e.g. via password signup) → link the account.
+	// Email already registered. Only auto-link when the existing account is a
+	// password-only account (no OAuth links). If the email belongs to a user
+	// already authenticated via a different provider, reject the login so we
+	// never silently merge two distinct provider identities into one account.
 	if existing, err := db.GetUserByEmail(r.Context(), info.Email); err == nil {
+		hasOAuth, checkErr := db.HasOAuthAccounts(r.Context(), existing.ID)
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		if hasOAuth {
+			return nil, fmt.Errorf("email %s is already registered with a different sign-in provider", info.Email)
+		}
 		if err := db.CreateOAuthAccount(r.Context(), existing.ID, provider, info.ProviderID); err == nil {
 			return existing, nil
 		}
@@ -367,16 +378,27 @@ func downloadAvatar(url string) (*string, error) {
 		return nil, fmt.Errorf("avatar download failed with status %d", resp.StatusCode)
 	}
 
-	contentType := resp.Header.Get("Content-Type")
-	ext, ok := extensionForType(contentType, []string{"image/jpeg", "image/jpg", "image/png", "image/gif"})
-	if !ok {
-		return nil, fmt.Errorf("unsupported avatar type %s", contentType)
-	}
-
 	cfg := config.GetConfig()
 	dir := global.GetImagePath(cfg.Handlers.Image.PathPrefix)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	ext, ok := extensionForType(contentType, []string{"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"})
+
+	var reader io.Reader = resp.Body
+	if !ok {
+		// Some providers may omit or mislabel the Content-Type header, so fall
+		// back to sniffing the actual bytes.
+		head := make([]byte, 512)
+		n, _ := io.ReadFull(resp.Body, head)
+		sniffedType := http.DetectContentType(head[:n])
+		ext, ok = extensionForType(sniffedType, []string{"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"})
+		if !ok {
+			return nil, fmt.Errorf("unsupported avatar type %s", contentType)
+		}
+		reader = io.MultiReader(bytes.NewReader(head[:n]), resp.Body)
 	}
 
 	filename := generateUUID() + ext
@@ -386,7 +408,7 @@ func downloadAvatar(url string) (*string, error) {
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, resp.Body); err != nil {
+	if _, err := io.Copy(dst, reader); err != nil {
 		return nil, err
 	}
 

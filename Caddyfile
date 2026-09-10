@@ -11,6 +11,11 @@ localhost {
 		reverse_proxy backend:8080
 	}
 
+	# Serve uploaded/avatar images directly from the backend's static files.
+	handle /images/* {
+		reverse_proxy backend:8080
+	}
+
 	# Proxy everything else to the Next.js dev server.
 	handle {
 		reverse_proxy frontend:3000

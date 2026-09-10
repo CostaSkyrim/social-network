@@ -800,4 +800,10 @@ const (
 		FROM oauth_accounts
 		WHERE provider = ? AND provider_id = ?
 	`
+
+	HasOAuthAccounts = `
+		SELECT COUNT(*)
+		FROM oauth_accounts
+		WHERE user_id = ?
+	`
 )

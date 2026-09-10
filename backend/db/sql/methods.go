@@ -943,7 +943,8 @@ func (db *DataBase) GetUserPostsForViewer(ctx context.Context, authorID, viewerI
 }
 
 // GetFeed retrieves the paginated news feed for a user
-func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {	if ctx == nil {
+func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
 		ctx = context.Background()
 	}
 
@@ -2527,6 +2528,23 @@ func (db *DataBase) GetUserIDByOAuthAccount(ctx context.Context, provider, provi
 	}
 
 	return userID, nil
+}
+
+// HasOAuthAccounts reports whether a user is linked to any OAuth provider
+// account. Used to distinguish password-only users (which may be linked to a
+// first provider) from users already authenticated via OAuth.
+func (db *DataBase) HasOAuthAccounts(ctx context.Context, userID int64) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx, queries.HasOAuthAccounts, userID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to query oauth accounts: %w", err)
+	}
+
+	return count > 0, nil
 }
 
 // GetGroupMessages retrieves messages for a group chat.
