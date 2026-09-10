@@ -57,7 +57,8 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 		db.AcceptFollowRequest(r.Context(), currentUserID, targetID)
 
-		sendNotification(db, targetID, currentUserID, NotifNewFollower, "started following you", &currentUserID, nil)
+		followerName := getDisplayNameOfUser(db, r, currentUserID)
+		sendNotification(db, targetID, currentUserID, NotifNewFollower, followerName+" started following you", &currentUserID, nil)
 
 		RespondSuccess(w, http.StatusOK, "Now following user", nil)
 		return
@@ -74,7 +75,8 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	sendNotification(db, targetID, currentUserID, NotifFollowRequest, "sent you a follow request", &currentUserID, nil)
+	requesterName := getDisplayNameOfUser(db, r, currentUserID)
+	sendNotification(db, targetID, currentUserID, NotifFollowRequest, requesterName+" sent you a follow request", &currentUserID, nil)
 
 	RespondSuccess(w, http.StatusOK, "Follow request sent", nil)
 }
@@ -290,6 +292,14 @@ func getDisplayName(user *database.User) string {
 		return *user.Nickname
 	}
 	return user.FirstName + " " + user.LastName
+}
+
+func getDisplayNameOfUser(db *database.DataBase, r *http.Request, userID int64) string {
+	user, err := db.GetUserByID(r.Context(), userID)
+	if err != nil || user == nil {
+		return "A user"
+	}
+	return getDisplayName(user)
 }
 
 func generateUUID() string {

@@ -324,8 +324,13 @@ func notifyFollowersOfNewPost(db *database.DataBase, authorID int64, post *datab
 		return
 	}
 
+	authorName := "A user"
+	if author, err := db.GetUserByID(context.Background(), authorID); err == nil && author != nil {
+		authorName = getDisplayName(author)
+	}
+
 	for _, followerID := range followerIDs {
-		sendNotification(db, followerID, authorID, NotifNewPost, "shared a new post", &post.ID, nil)
+		sendNotification(db, followerID, authorID, NotifNewPost, authorName+" shared a new post", &post.ID, &post.UUID)
 	}
 
 	fmt.Printf("Sent new_post notification to %d followers\n", len(followerIDs))

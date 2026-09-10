@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useNotifications } from '@/context/NotificationProvider'
 import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -16,6 +17,35 @@ const notif_icons: Record<string, string> = {
   group_accepted: '🎉',
   new_event: '📅',
   event_reminder: '⏰',
+}
+
+const follow_types = new Set(['follow_request', 'follow_accepted', 'new_follower'])
+const post_types = new Set(['new_post'])
+const group_types = new Set([
+  'group_invitation',
+  'group_join_request',
+  'group_accepted',
+])
+const event_types = new Set(['new_event', 'event_reminder'])
+
+function notifHref(notif: {
+  type: string
+  related_id?: string
+  from_user_id?: string
+}): string | null {
+  if (follow_types.has(notif.type) && notif.from_user_id) {
+    return `/profile/${notif.from_user_id}`
+  }
+  if (post_types.has(notif.type) && notif.related_id) {
+    return `/posts/${notif.related_id}`
+  }
+  if (group_types.has(notif.type) && notif.related_id) {
+    return `/groups/${notif.related_id}`
+  }
+  if (event_types.has(notif.type) && notif.related_id) {
+    return `/groups/${notif.related_id}`
+  }
+  return null
 }
 
 function formatTimeAgo(iso: string): string {
@@ -148,13 +178,9 @@ function NotificationRow({
     accept_mutation.isPending ||
     reject_mutation.isPending
 
-  return (
-    <div
-      className={cn(
-        'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
-        !notif.is_read && 'bg-blue-50/50',
-      )}
-    >
+  const href = notifHref(notif)
+  const content = (
+    <>
       <span className="mt-0.5 text-xl">
         {notif_icons[notif.type] || '🔔'}
       </span>
@@ -170,26 +196,47 @@ function NotificationRow({
         <p className="mt-0.5 text-xs text-gray-500">
           {formatTimeAgo(notif.created_at)}
         </p>
-
-        {is_actionable && (
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              onClick={handle_accept}
-              disabled={is_pending}
-              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              {action === 'accept' ? 'Accepting…' : 'Accept'}
-            </button>
-            <button
-              onClick={handle_decline}
-              disabled={is_pending}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              {action === 'decline' ? 'Declining…' : 'Decline'}
-            </button>
-          </div>
-        )}
       </div>
+    </>
+  )
+
+  return (
+    <div
+      className={cn(
+        'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
+        !notif.is_read && 'bg-blue-50/50',
+      )}
+    >
+      {href ? (
+        <Link
+          href={href}
+          onClick={() => !notif.is_read && on_mark_read()}
+          className="flex w-full min-w-0 items-start gap-3 hover:opacity-80"
+        >
+          {content}
+        </Link>
+      ) : (
+        <div className="flex w-full min-w-0 items-start gap-3">{content}</div>
+      )}
+
+      {is_actionable && (
+        <div className="mt-2 flex flex-shrink-0 items-center gap-2">
+          <button
+            onClick={handle_accept}
+            disabled={is_pending}
+            className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {action === 'accept' ? 'Accepting…' : 'Accept'}
+          </button>
+          <button
+            onClick={handle_decline}
+            disabled={is_pending}
+            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {action === 'decline' ? 'Declining…' : 'Decline'}
+          </button>
+        </div>
+      )}
       {!notif.is_read && (
         <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
       )}
