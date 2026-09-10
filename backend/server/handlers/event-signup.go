@@ -22,6 +22,7 @@ type SignupRequest struct {
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	DateOfBirth time.Time `json:"date_of_birth"`
+	Nickname    string    `json:"nickname"`
 	AboutMe     *string   `json:"about_me"`
 }
 
@@ -32,9 +33,34 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 	}
 
 	var req SignupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
+	var avatarPath *string
+
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Email = r.FormValue("email")
+		req.Password = r.FormValue("password")
+		req.FirstName = r.FormValue("first_name")
+		req.LastName = r.FormValue("last_name")
+		req.Nickname = r.FormValue("nickname")
+		if about := r.FormValue("about_me"); about != "" {
+			req.AboutMe = &about
+		}
+		if dob := r.FormValue("date_of_birth"); dob != "" {
+			if parsed, err := time.Parse(time.RFC3339, dob); err == nil {
+				req.DateOfBirth = parsed
+			}
+		}
+		if img, ok := multipartImage(w, r); ok && img != nil {
+			avatarPath = img
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
 	}
 
 	cfg := config.GetConfig()
@@ -97,7 +123,16 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return
 	}
 
-	nickname := generateNickname(req.Email, limits.MinUsername, limits.MaxUsername)
+	nickname := ""
+	if req.Nickname != "" {
+		nickname = sanitizeNickname(req.Nickname, limits.MaxUsername)
+		if len(nickname) < limits.MinUsername {
+			nickname = ""
+		}
+	}
+	if nickname == "" {
+		nickname = generateNickname(req.Email, limits.MinUsername, limits.MaxUsername)
+	}
 
 	for {
 		_, err := db.GetUserByNickname(r.Context(), nickname)
@@ -122,6 +157,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		Nickname:     &nickname,
 		DateOfBirth:  req.DateOfBirth,
 		AboutMe:      req.AboutMe,
+		AvatarPath:   avatarPath,
 		IsPublic:     true,
 	}
 

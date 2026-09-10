@@ -20,6 +20,8 @@ export async function signup(
   last_name: string,
   date_of_birth: string,
   about_me?: string,
+  nickname?: string,
+  avatar?: File,
 ): Promise<User> {
   const body: Record<string, string> = {
     email,
@@ -29,8 +31,20 @@ export async function signup(
     date_of_birth,
   }
   if (about_me) body.about_me = about_me
+  if (nickname) body.nickname = nickname
 
-  const res = await client.post<AuthResponse>('/api/signup', body)
+  let res
+  if (avatar) {
+    const form_data = new FormData()
+    for (const [key, value] of Object.entries(body)) {
+      form_data.append(key, value)
+    }
+    form_data.append('image', avatar)
+    res = await client.post<AuthResponse>('/api/signup', form_data)
+  } else {
+    res = await client.post<AuthResponse>('/api/signup', body)
+  }
+
   if (!res.data.data) throw new Error(res.data.error || 'Signup failed')
   return res.data.data
 }
