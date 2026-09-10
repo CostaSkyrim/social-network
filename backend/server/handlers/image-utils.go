@@ -147,6 +147,8 @@ func extensionForType(contentType string, allowedTypes []string) (string, bool) 
 		ext = ".png"
 	case "image/gif":
 		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
 	default:
 		return "", false
 	}

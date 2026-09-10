@@ -9,6 +9,7 @@ import { NavMenu } from '@/components/layout/NavMenu'
 
 export function TopBar() {
   const { user } = useAuth()
+  const router = useRouter()
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
@@ -28,11 +29,17 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <NavFollowersBadge />
         <NavNotificationBell />
-        <Avatar
-          src={user?.avatar_path}
-          alt={`${user?.first_name} ${user?.last_name}`}
-          size="sm"
-        />
+        <button
+          onClick={() => user?.id && router.push(`/profile/${user.id}`)}
+          className="rounded-lg transition-transform hover:scale-105"
+          title="Your profile"
+        >
+          <Avatar
+            src={user?.avatar_path}
+            alt={`${user?.first_name} ${user?.last_name}`}
+            size="sm"
+          />
+        </button>
       </div>
     </header>
   )

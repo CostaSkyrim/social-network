@@ -38,15 +38,16 @@ type GroupChatPayload struct {
 }
 
 type NotificationPayload struct {
-	ID          int64   `json:"id"`
-	Type        string  `json:"type"`
-	Content     string  `json:"content"`
-	RelatedID   *int64  `json:"related_id,omitempty"`
-	RelatedUUID *string `json:"related_id_uuid,omitempty"`
-	FromUserID  *int64  `json:"from_user_id,omitempty"`
-	TargetID    int64   `json:"-"`
-	IsRead      bool    `json:"is_read"`
-	CreatedAt   string  `json:"created_at"`
+	ID           int64   `json:"id"`
+	Type         string  `json:"type"`
+	Content      string  `json:"content"`
+	RelatedID    *int64  `json:"related_id,omitempty"`
+	RelatedUUID  *string `json:"related_id_uuid,omitempty"`
+	FromUserID   *int64  `json:"from_user_id,omitempty"`
+	FromUserUUID *string `json:"from_user_uuid,omitempty"`
+	TargetID     int64   `json:"-"`
+	IsRead       bool    `json:"is_read"`
+	CreatedAt    string  `json:"created_at"`
 }
 
 type PresencePayload struct {
@@ -56,9 +57,9 @@ type PresencePayload struct {
 }
 
 type TypingPayload struct {
-	TargetID int64  `json:"target_id"`
-	IsGroup  bool   `json:"is_group"`
-	IsTyping bool   `json:"is_typing"`
+	TargetID int64 `json:"target_id"`
+	IsGroup  bool  `json:"is_group"`
+	IsTyping bool  `json:"is_typing"`
 }
 
 type ErrorPayload struct {

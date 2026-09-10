@@ -2629,6 +2629,23 @@ func (db *DataBase) GetUserIDByOAuthAccount(ctx context.Context, provider, provi
 	return userID, nil
 }
 
+// HasOAuthAccounts reports whether a user is linked to any OAuth provider
+// account. Used to distinguish password-only users (which may be linked to a
+// first provider) from users already authenticated via OAuth.
+func (db *DataBase) HasOAuthAccounts(ctx context.Context, userID int64) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int
+	err := db.conn.QueryRowContext(ctx, queries.HasOAuthAccounts, userID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to query oauth accounts: %w", err)
+	}
+
+	return count > 0, nil
+}
+
 // GetGroupMessages retrieves messages for a group chat.
 func (db *DataBase) GetGroupMessages(ctx context.Context, groupID int64, limit int) ([]*Message, error) {
 	if ctx == nil {

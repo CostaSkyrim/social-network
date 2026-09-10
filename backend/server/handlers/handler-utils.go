@@ -59,16 +59,23 @@ func sendNotification(db *database.DataBase, userID int64, fromUserID int64, not
 	}
 
 	if GlobalHub != nil {
+		var fromUserUUID *string
+		if fromUser, err := db.GetUserByID(context.Background(), fromUserID); err == nil {
+			uuid := fromUser.UUID
+			fromUserUUID = &uuid
+		}
+
 		payload, _ := json.Marshal(ws.NotificationPayload{
-			ID:          notif,
-			Type:        notifType,
-			Content:     content,
-			RelatedID:   relatedID,
-			RelatedUUID: relatedUUID,
-			FromUserID:  &fromUserID,
-			TargetID:    userID,
-			IsRead:      false,
-			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+			ID:           notif,
+			Type:         notifType,
+			Content:      content,
+			RelatedID:    relatedID,
+			RelatedUUID:  relatedUUID,
+			FromUserID:   &fromUserID,
+			FromUserUUID: fromUserUUID,
+			TargetID:     userID,
+			IsRead:       false,
+			CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 		})
 		GlobalHub.SendToUser(userID, &ws.WSMessage{
 			Type:      ws.TypeNotification,

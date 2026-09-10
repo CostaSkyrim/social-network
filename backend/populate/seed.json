@@ -738,7 +738,7 @@
     {
       "user_id": 4,
       "from_user_id": 1,
-      "type": "group_invite",
+      "type": "group_invitation",
       "content": "You have been invited to join Photography Club",
       "related_id": 2,
       "related_uuid": "g0020000-0000-4000-8000-000000000002"
@@ -754,16 +754,18 @@
     {
       "user_id": 1,
       "from_user_id": 3,
-      "type": "event_created",
+      "type": "new_event",
       "content": "New event 'Go Meetup: Concurrency Patterns' in Golang Enthusiasts",
-      "related_id": 1
+      "related_id": 1,
+      "related_uuid": "g0010000-0000-4000-8000-000000000001"
     },
     {
       "user_id": 6,
       "from_user_id": 1,
-      "type": "event_created",
+      "type": "new_event",
       "content": "New event 'Photo Walk: City Architecture' in Photography Club",
-      "related_id": 2
+      "related_id": 2,
+      "related_uuid": "g0020000-0000-4000-8000-000000000002"
     }
   ]
 }

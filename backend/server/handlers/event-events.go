@@ -23,9 +23,9 @@ type EventRSVPRequest struct {
 
 type eventWithMeta struct {
 	*database.Event
-	Going     int     `json:"going"`
-	NotGoing  int     `json:"not_going"`
-	Total     int     `json:"total"`
+	Going      int     `json:"going"`
+	NotGoing   int     `json:"not_going"`
+	Total      int     `json:"total"`
 	MyResponse *string `json:"my_response,omitempty"`
 }
 
@@ -215,7 +215,7 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		if m.UserID == userID || m.Status != "accepted" {
 			continue
 		}
-		sendNotification(db, m.UserID, userID, NotifNewEvent, "New event '"+req.Title+"' in group: "+group.Title, &eventID, nil)
+		sendNotification(db, m.UserID, userID, NotifNewEvent, "New event '"+req.Title+"' in group: "+group.Title, &eventID, &group.UUID)
 	}
 
 	RespondSuccess(w, http.StatusCreated, "Event created", map[string]interface{}{

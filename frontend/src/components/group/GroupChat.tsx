@@ -6,6 +6,9 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { fetchGroupMessages, sendGroupMessage as apiSendGroupMessage } from '@/api/groups'
 import { Avatar } from '@/components/ui/Avatar'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { EmojiPicker } from '@/components/ui/EmojiPicker'
+import { EmojiSuggestions } from '@/components/ui/EmojiSuggestions'
+import { useEmojiAutocomplete } from '@/hooks/useEmojiAutocomplete'
 import { cn } from '@/lib/cn'
 import { get_media_url } from '@/lib/media'
 
@@ -46,10 +49,20 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
   const [pending_image, set_pending_image] = useState<File | null>(null)
   const [pending_preview, set_pending_preview] = useState<string | null>(null)
   const [is_loading, set_is_loading] = useState(true)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [cursor_pos, set_cursor_pos] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const { word, start, matches, selected_index, set_selected_index, reset } =
+    useEmojiAutocomplete(input, cursor_pos)
+
+  const show_suggestions = matches.length > 0 && word !== null
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const list = listRef.current
+    if (list) {
+      list.scrollTop = list.scrollHeight
+    }
   }
 
   useEffect(() => {
@@ -173,10 +186,61 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (show_suggestions) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        set_selected_index((selected_index + 1) % matches.length)
+        return
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        set_selected_index((selected_index - 1 + matches.length) % matches.length)
+        return
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        replace_word(matches[selected_index].native)
+        return
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        reset()
+        return
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  function track_cursor() {
+    set_cursor_pos(inputRef.current?.selectionStart ?? 0)
+  }
+
+  function replace_word(emoji: string) {
+    if (start === -1 || !word) return
+    const new_content = input.slice(0, start) + emoji + input.slice(start + word.length + 1)
+    set_input(new_content)
+    const new_pos = start + emoji.length
+    setTimeout(() => {
+      inputRef.current?.setSelectionRange(new_pos, new_pos)
+      set_cursor_pos(new_pos)
+    }, 0)
+  }
+
+  function insert_at_cursor(text: string) {
+    const ta = inputRef.current
+    if (!ta) {
+      set_input((prev) => prev + text)
+      return
+    }
+    const pos = ta.selectionStart
+    const new_content = input.slice(0, pos) + text + input.slice(ta.selectionEnd)
+    set_input(new_content)
+    const new_pos = pos + text.length
+    setTimeout(() => {
+      ta.setSelectionRange(new_pos, new_pos)
+      set_cursor_pos(new_pos)
+    }, 0)
   }
 
   return (
@@ -189,7 +253,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
         </div>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto py-3">
+      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-3">
         {is_loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -261,7 +325,6 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
             )
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="border-t border-gray-200 pt-3">
@@ -282,7 +345,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-end gap-2">
           <ImageUpload on_select={handle_select_image}>
             <button
               type="button"
@@ -300,14 +363,27 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
               </svg>
             </button>
           </ImageUpload>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => set_input(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          <EmojiPicker on_select={insert_at_cursor} />
+          <div className="relative flex-1">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => set_input(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onKeyUp={track_cursor}
+              onClick={track_cursor}
+              placeholder="Type a message..."
+              rows={1}
+              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {show_suggestions && (
+              <EmojiSuggestions
+                matches={matches}
+                selected_index={selected_index}
+                on_select={replace_word}
+              />
+            )}
+          </div>
           <button
             onClick={handleSend}
             disabled={!input.trim() && !pending_image}

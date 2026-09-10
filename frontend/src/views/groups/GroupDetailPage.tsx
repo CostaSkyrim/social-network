@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useGroup, useGroupEvents, useUpdateGroupAvatar } from '@/hooks/useGroups'
@@ -17,6 +18,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ImageUpload } from '@/components/common/ImageUpload'
+import { cn } from '@/lib/cn'
 
 export default function GroupDetailPage() {
   const params = useParams()
@@ -32,6 +34,7 @@ export default function GroupDetailPage() {
   const { data: events, isLoading: events_loading } = useGroupEvents(uuid)
   const upload_avatar = useUpdateGroupAvatar(uuid)
   const group_posts = useGroupPosts(uuid)
+  const [active_tab, set_active_tab] = useState<'posts' | 'events' | 'chat' | 'members'>('posts')
 
   if (group_loading) {
     return (
@@ -109,69 +112,84 @@ export default function GroupDetailPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold text-gray-900">Members</h3>
+          <div className="flex items-center gap-1 border-b border-gray-200">
+            {([
+              ['posts', 'Posts'],
+              ['events', 'Events'],
+              ['chat', 'Chat'],
+              ['members', 'Members'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => set_active_tab(key)}
+                className={cn(
+                  'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                  active_tab === key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {is_member && <InviteMember groupId={group.id} />}
-          <MemberList members={members} groupId={group.id} isCreator={is_creator} />
-        </CardContent>
-      </Card>
+        <CardContent className={active_tab === 'members' ? 'space-y-3' : 'space-y-4'}>
+          {active_tab === 'posts' &&
+            (is_member ? (
+              <>
+                <PostForm groupId={group.id} />
+                <PostList
+                  posts={group_posts.data?.pages.flatMap((page) => page) ?? []}
+                  is_loading={group_posts.isLoading}
+                  has_next={group_posts.hasNextPage}
+                  on_load_more={() => group_posts.fetchNextPage()}
+                />
+              </>
+            ) : (
+              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                Join this group to see its posts.
+              </p>
+            ))}
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">Posts</h3>
-        {is_member ? (
-          <>
-            <PostForm groupId={group.id} />
-            <PostList
-              posts={group_posts.data?.pages.flatMap((page) => page) ?? []}
-              is_loading={group_posts.isLoading}
-              has_next={group_posts.hasNextPage}
-              on_load_more={() => group_posts.fetchNextPage()}
-            />
-          </>
-        ) : (
-          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-            Join this group to see its posts.
-          </p>
-        )}
-      </div>
+          {active_tab === 'events' &&
+            (is_member ? (
+              <>
+                <EventForm groupId={group.id} />
+                <EventList
+                  events={events ?? []}
+                  groupId={group.id}
+                  is_loading={events_loading}
+                />
+              </>
+            ) : (
+              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                Join this group to see its events.
+              </p>
+            ))}
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">Events</h3>
-        {is_member ? (
-          <>
-            <EventForm groupId={group.id} />
-            <EventList
-              events={events ?? []}
-              groupId={group.id}
-              is_loading={events_loading}
-            />
-          </>
-        ) : (
-          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-            Join this group to see its events.
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">Chat</h3>
-        {is_member ? (
-          <Card>
-            <CardContent>
+          {active_tab === 'chat' &&
+            (is_member ? (
               <GroupChat
                 groupId={group.id}
                 groupTitle={group.title}
                 groupAvatar={group.avatar_path}
               />
-            </CardContent>
-          </Card>
-        ) : (
-          <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-            Join this group to participate in the chat.
-          </p>
-        )}
-      </div>
+            ) : (
+              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                Join this group to participate in the chat.
+              </p>
+            ))}
+
+          {active_tab === 'members' && (
+            <>
+              {is_member && <InviteMember groupId={group.id} />}
+              <MemberList members={members} groupId={group.id} isCreator={is_creator} creatorId={group.creator_id} />
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

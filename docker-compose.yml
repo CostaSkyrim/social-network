@@ -17,6 +17,12 @@ services:
     depends_on:
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
 
   frontend:
     build:
@@ -35,6 +41,12 @@ services:
       - social-net
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
 
   caddy:
     image: caddy:2-alpine
@@ -51,8 +63,16 @@ services:
     networks:
       - social-net
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://localhost/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -64,6 +84,11 @@ services:
     networks:
       - social-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   go_mod_cache:
