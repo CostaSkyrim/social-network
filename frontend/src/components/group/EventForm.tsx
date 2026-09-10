@@ -12,6 +12,7 @@ interface EventFormProps {
 }
 
 export function EventForm({ groupId }: EventFormProps) {
+  const [open, set_open] = useState(false)
   const [title, set_title] = useState('')
   const [description, set_description] = useState('')
   const [datetime, set_datetime] = useState('')
@@ -75,72 +76,81 @@ export function EventForm({ groupId }: EventFormProps) {
   return (
     <Card>
       <CardContent>
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">Create an event</h3>
-        <form onSubmit={handle_submit} className="space-y-3">
-          {preview_url && (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={preview_url}
-                alt="Event image preview"
-                className="max-h-48 w-full rounded-lg object-cover"
-              />
-              <button
-                type="button"
-                onClick={clear_image}
-                className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-          <Input
-            id="event-title"
-            label="Title"
-            value={title}
-            onChange={(e) => set_title(e.target.value)}
-            placeholder="e.g. Go Meetup: Concurrency Patterns"
-            error={errors.title}
-          />
-          <Input
-            id="event-description"
-            label="Description (optional)"
-            value={description}
-            onChange={(e) => set_description(e.target.value)}
-            placeholder="What's this event about?"
-          />
-          <Input
-            id="event-datetime"
-            label="Date and time"
-            type="datetime-local"
-            value={datetime}
-            onChange={(e) => set_datetime(e.target.value)}
-            error={errors.datetime}
-          />
-          <div className="flex items-center gap-3">
-            <ImageUpload on_select={handle_select_image}>
-              <button
-                type="button"
-                className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                title="Add event image"
-              >
-                📷 Add image
-              </button>
-            </ImageUpload>
-            {image && (
-              <button
-                type="button"
-                onClick={clear_image}
-                className="text-sm text-red-600 hover:text-red-700"
-              >
-                Remove photo
-              </button>
+        <button
+          type="button"
+          onClick={() => set_open((o) => !o)}
+          className="mb-3 flex w-full items-center justify-between text-sm font-semibold text-gray-900"
+        >
+          <span>Create an event</span>
+          <span className="text-gray-500">{open ? '−' : '+'}</span>
+        </button>
+        {open && (
+          <form onSubmit={handle_submit} className="space-y-3">
+            {preview_url && (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={preview_url}
+                  alt="Event image preview"
+                  className="max-h-48 w-full rounded-lg object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={clear_image}
+                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                >
+                  Remove
+                </button>
+              </div>
             )}
-          </div>
-          <Button type="submit" loading={create_event.isPending} disabled={!title.trim()}>
-            Create event
-          </Button>
-        </form>
+            <Input
+              id="event-title"
+              label="Title"
+              value={title}
+              onChange={(e) => set_title(e.target.value)}
+              placeholder="e.g. Go Meetup: Concurrency Patterns"
+              error={errors.title}
+            />
+            <Input
+              id="event-description"
+              label="Description (optional)"
+              value={description}
+              onChange={(e) => set_description(e.target.value)}
+              placeholder="What's this event about?"
+            />
+            <Input
+              id="event-datetime"
+              label="Date and time"
+              type="datetime-local"
+              value={datetime}
+              onChange={(e) => set_datetime(e.target.value)}
+              error={errors.datetime}
+            />
+            <div className="flex items-center gap-3">
+              <ImageUpload on_select={handle_select_image}>
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  title="Add event image"
+                >
+                  📷 Add image
+                </button>
+              </ImageUpload>
+              {image && (
+                <button
+                  type="button"
+                  onClick={clear_image}
+                  className="text-sm text-red-600 hover:text-red-700"
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
+            <Button type="submit" loading={create_event.isPending} disabled={!title.trim()}>
+              Create event
+            </Button>
+          </form>
+        )}
       </CardContent>
     </Card>
   )

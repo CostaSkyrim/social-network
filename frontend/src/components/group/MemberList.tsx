@@ -10,6 +10,7 @@ interface MemberListProps {
   members: GroupMember[]
   groupId: string
   isCreator: boolean
+  creatorId: string
 }
 
 const status_meta: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' }> = {
@@ -19,8 +20,24 @@ const status_meta: Record<string, { label: string; variant: 'default' | 'success
   declined: { label: 'Declined', variant: 'danger' },
 }
 
-export function MemberList({ members, groupId, isCreator }: MemberListProps) {
-  const accepted = members.filter((m) => m.status === 'accepted')
+function sort_members(members: GroupMember[], creatorId: string): GroupMember[] {
+  const by_name = (a: GroupMember, b: GroupMember) => {
+    const name_a = `${a.user.first_name} ${a.user.last_name}`.toLowerCase()
+    const name_b = `${b.user.first_name} ${b.user.last_name}`.toLowerCase()
+    return name_a.localeCompare(name_b)
+  }
+  const creator = members.filter((m) => m.user.id === creatorId)
+  const rest = members
+    .filter((m) => m.user.id !== creatorId)
+    .sort(by_name)
+  return [...creator.sort(by_name), ...rest]
+}
+
+export function MemberList({ members, groupId, isCreator, creatorId }: MemberListProps) {
+  const accepted = sort_members(
+    members.filter((m) => m.status === 'accepted'),
+    creatorId,
+  )
   const pending = members.filter(
     (m) => m.status === 'pending' || m.status === 'invited',
   )
@@ -30,6 +47,7 @@ export function MemberList({ members, groupId, isCreator }: MemberListProps) {
     const meta = status_meta[m.status] ?? status_meta.accepted
     const show_actions =
       isCreator && (m.status === 'pending' || m.status === 'invited')
+    const is_creator = m.user.id === creatorId
 
     return (
       <li key={m.user.id} className="flex items-center gap-3 py-2">
@@ -42,6 +60,11 @@ export function MemberList({ members, groupId, isCreator }: MemberListProps) {
             className="text-sm font-medium text-gray-900 hover:underline"
           >
             {name}
+            {is_creator && (
+              <span className="ml-1.5" title="Group creator">
+                👑
+              </span>
+            )}
           </Link>
           {m.user.nickname && (
             <p className="text-xs text-gray-500">@{m.user.nickname}</p>
