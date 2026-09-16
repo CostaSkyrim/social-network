@@ -26,6 +26,18 @@ type WSMessage struct {
 	Timestamp time.Time       `json:"timestamp"`
 }
 
+// FanoutEnvelope wraps a WSMessage for cross-instance delivery over Redis
+// pub/sub. Origin is the instance that produced the message, so the publisher
+// can ignore its own echo (it already delivered locally).
+type FanoutEnvelope struct {
+	Origin  string    `json:"origin"`
+	Kind    string    `json:"kind"` // "user" | "all" | "group"
+	Target  int64     `json:"target,omitempty"`
+	GroupID int64     `json:"group_id,omitempty"`
+	Exclude int64     `json:"exclude,omitempty"`
+	Message WSMessage `json:"message"`
+}
+
 type ChatPayload struct {
 	DMID     int64  `json:"dm_id"`
 	DMUserID int64  `json:"dm_user_id"`

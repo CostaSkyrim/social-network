@@ -9,6 +9,8 @@ import (
 
 	"social-network/backend/cache"
 	database "social-network/backend/db/sql"
+
+	"github.com/google/uuid"
 )
 
 type Hub struct {
@@ -20,6 +22,10 @@ type Hub struct {
 
 	db          *database.DataBase
 	redisClient *cache.RedisClient
+
+	// instanceID identifies this process so cross-instance fan-out can ignore
+	// its own echoed messages.
+	instanceID string
 
 	offlineTimers map[int64]*time.Timer
 	timersMu      sync.Mutex
@@ -40,6 +46,7 @@ func NewHub(db *database.DataBase, redisClient *cache.RedisClient) *Hub {
 		broadcast:     make(chan *WSMessage, 256),
 		db:            db,
 		redisClient:   redisClient,
+		instanceID:    uuid.New().String(),
 		offlineTimers: make(map[int64]*time.Timer),
 		ctx:           ctx,
 		cancel:        cancel,
@@ -55,6 +62,7 @@ func NewHubForTest(db *database.DataBase) *Hub {
 		Unregister:    make(chan *Client),
 		broadcast:     make(chan *WSMessage, 256),
 		db:            db,
+		instanceID:    uuid.New().String(),
 		offlineTimers: make(map[int64]*time.Timer),
 		ctx:           ctx,
 		cancel:        cancel,
@@ -63,7 +71,7 @@ func NewHubForTest(db *database.DataBase) *Hub {
 
 func (h *Hub) Run() {
 	if h.redisClient != nil {
-		go h.listenRedisPresence()
+		go h.listenRedisFanout()
 	}
 
 	for {
@@ -182,17 +190,9 @@ func (h *Hub) HandleMessage(client *Client, msg *WSMessage) {
 			return
 		}
 		if payload.IsGroup {
-			members, err := h.db.GetGroupMembers(client.Context(), payload.TargetID)
-			if err != nil {
-				return
-			}
-			for _, member := range members {
-				if member.UserID != client.UserID && member.Status == "accepted" {
-					h.SendToUser(member.UserID, msg)
-				}
-			}
+			h.PublishBroadcastGroup(payload.TargetID, client.UserID, msg)
 		} else {
-			h.SendToUser(payload.TargetID, msg)
+			h.PublishToUser(payload.TargetID, msg)
 		}
 
 	default:
@@ -221,7 +221,7 @@ func (h *Hub) handleUserOnline(client *Client) {
 			UserUUID: getClientUUID(h, client),
 			IsOnline: true,
 		})
-		h.BroadcastToAll(&WSMessage{
+		h.PublishBroadcastAll(&WSMessage{
 			Type:      TypePresenceUpdate,
 			Payload:   presencePayload,
 			Timestamp: time.Now(),
@@ -229,7 +229,6 @@ func (h *Hub) handleUserOnline(client *Client) {
 
 		if h.redisClient != nil {
 			h.redisClient.SetUserOnline(client.Context(), client.UserID)
-			h.redisClient.Publish(client.Context(), cache.ChannelUserOnline, presencePayload)
 		}
 
 		log.Printf("User %d is now online", client.UserID)
@@ -265,7 +264,7 @@ func (h *Hub) scheduleOffline(client *Client) {
 			UserUUID: userUUID,
 			IsOnline: false,
 		})
-		h.BroadcastToAll(&WSMessage{
+		h.PublishBroadcastAll(&WSMessage{
 			Type:      TypePresenceUpdate,
 			Payload:   presencePayload,
 			Timestamp: time.Now(),
@@ -273,7 +272,6 @@ func (h *Hub) scheduleOffline(client *Client) {
 
 		if h.redisClient != nil {
 			h.redisClient.SetUserOffline(context.Background(), userID)
-			h.redisClient.Publish(context.Background(), cache.ChannelUserOffline, presencePayload)
 		}
 
 		h.timersMu.Lock()
@@ -350,33 +348,25 @@ func (h *Hub) dispatchMessage(msg *WSMessage) {
 		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 			return
 		}
-		h.SendToUser(payload.DMUserID, msg)
-		h.SendToUser(msg.SenderID, msg)
+		h.PublishToUser(payload.DMUserID, msg)
+		h.PublishToUser(msg.SenderID, msg)
 
 	case TypeGroupMessage:
 		var payload GroupChatPayload
 		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 			return
 		}
-		members, err := h.db.GetGroupMembers(context.Background(), payload.GroupID)
-		if err != nil {
-			return
-		}
-		for _, member := range members {
-			if member.UserID != msg.SenderID && member.Status == "accepted" {
-				h.SendToUser(member.UserID, msg)
-			}
-		}
+		h.PublishBroadcastGroup(payload.GroupID, msg.SenderID, msg)
 
 	case TypeNotification:
 		var payload NotificationPayload
 		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 			return
 		}
-		h.SendToUser(payload.TargetID, msg)
+		h.PublishToUser(payload.TargetID, msg)
 
 	case TypePresenceUpdate:
-		h.BroadcastToAll(msg)
+		h.PublishBroadcastAll(msg)
 
 	default:
 		BroadcastMessage <- msg
@@ -412,8 +402,43 @@ func (h *Hub) HeartbeatUser(userID int64) {
 	}
 }
 
-func (h *Hub) listenRedisPresence() {
-	ps := h.redisClient.Subscribe(context.Background(), cache.ChannelUserOnline, cache.ChannelUserOffline)
+// ---- Cross-instance fan-out ----
+
+// PublishToUser delivers a message to a user's local connections and fans it
+// out to other backend instances.
+func (h *Hub) PublishToUser(userID int64, msg *WSMessage) {
+	h.SendToUser(userID, msg)
+	h.publishFanout(FanoutEnvelope{Kind: "user", Target: userID, Message: *msg})
+}
+
+// PublishBroadcastAll delivers a message to every local connection and fans it
+// out to other backend instances.
+func (h *Hub) PublishBroadcastAll(msg *WSMessage) {
+	h.BroadcastToAll(msg)
+	h.publishFanout(FanoutEnvelope{Kind: "all", Message: *msg})
+}
+
+// PublishBroadcastGroup delivers a message to a group's local members (except
+// excludeUserID) and fans it out to other backend instances.
+func (h *Hub) PublishBroadcastGroup(groupID, excludeUserID int64, msg *WSMessage) {
+	h.BroadcastGroup(groupID, excludeUserID, msg)
+	h.publishFanout(FanoutEnvelope{Kind: "group", GroupID: groupID, Exclude: excludeUserID, Message: *msg})
+}
+
+func (h *Hub) publishFanout(env FanoutEnvelope) {
+	if h.redisClient == nil {
+		return
+	}
+	env.Origin = h.instanceID
+	if err := h.redisClient.Publish(context.Background(), cache.ChannelWSFanout, env); err != nil {
+		log.Printf("ws fanout publish error: %v", err)
+	}
+}
+
+// listenRedisFanout subscribes to the cross-instance channel and delivers
+// messages produced by other instances to this instance's local clients.
+func (h *Hub) listenRedisFanout() {
+	ps := h.redisClient.Subscribe(context.Background(), cache.ChannelWSFanout)
 	defer ps.Close()
 
 	ch := ps.Channel()
@@ -423,27 +448,26 @@ func (h *Hub) listenRedisPresence() {
 			if !ok {
 				return
 			}
-			var presence PresencePayload
-			if err := json.Unmarshal([]byte(msg.Payload), &presence); err != nil {
+			var env FanoutEnvelope
+			if err := json.Unmarshal([]byte(msg.Payload), &env); err != nil {
 				continue
 			}
-			h.broadcastPresence(&presence, msg.Channel == cache.ChannelUserOnline)
+			// Ignore our own echo — the origin instance already delivered locally.
+			if env.Origin == h.instanceID {
+				continue
+			}
+
+			m := env.Message
+			switch env.Kind {
+			case "user":
+				h.SendToUser(env.Target, &m)
+			case "all":
+				h.BroadcastToAll(&m)
+			case "group":
+				h.BroadcastGroup(env.GroupID, env.Exclude, &m)
+			}
 		case <-h.ctx.Done():
 			return
 		}
 	}
-}
-
-func (h *Hub) broadcastPresence(p *PresencePayload, isOnline bool) {
-	payload, _ := json.Marshal(PresencePayload{
-		UserID:   p.UserID,
-		UserUUID: p.UserUUID,
-		IsOnline: isOnline,
-	})
-	msg := &WSMessage{
-		Type:      TypePresenceUpdate,
-		Payload:   payload,
-		Timestamp: time.Now(),
-	}
-	h.BroadcastToAll(msg)
 }

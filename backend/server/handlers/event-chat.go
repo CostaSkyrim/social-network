@@ -247,7 +247,7 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 			"created_at": now.Format(time.RFC3339),
 		})
 
-		GlobalHub.SendToUser(targetUserID, &ws.WSMessage{
+		GlobalHub.PublishToUser(targetUserID, &ws.WSMessage{
 			Type:      ws.TypeChatMessage,
 			Payload:   chatPayload,
 			SenderID:  currentUserID,

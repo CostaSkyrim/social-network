@@ -78,7 +78,7 @@ func sendNotification(db *database.DataBase, userID int64, fromUserID int64, not
 			IsRead:       false,
 			CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 		})
-		GlobalHub.SendToUser(userID, &ws.WSMessage{
+		GlobalHub.PublishToUser(userID, &ws.WSMessage{
 			Type:      ws.TypeNotification,
 			Payload:   payload,
 			SenderID:  fromUserID,

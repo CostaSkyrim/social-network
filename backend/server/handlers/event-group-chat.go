@@ -182,7 +182,7 @@ func SendGroupMessageHandler(w http.ResponseWriter, r *http.Request, db *databas
 			"created_at": now.Format(time.RFC3339),
 		})
 
-		GlobalHub.BroadcastGroup(groupID, currentUserID, &ws.WSMessage{
+		GlobalHub.PublishBroadcastGroup(groupID, currentUserID, &ws.WSMessage{
 			Type:      ws.TypeGroupMessage,
 			Payload:   groupPayload,
 			SenderID:  currentUserID,

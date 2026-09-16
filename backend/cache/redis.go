@@ -353,4 +353,7 @@ const (
 	ChannelGroupMessage    = "group:message"
 	ChannelUserOnline      = "presence:online"
 	ChannelUserOffline     = "presence:offline"
+	// ChannelWSFanout carries WebSocket messages between backend instances so a
+	// message delivered on one instance reaches clients connected to another.
+	ChannelWSFanout = "ws:fanout"
 )

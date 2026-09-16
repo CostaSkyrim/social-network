@@ -47,10 +47,10 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - Burger navigation menu (desktop + mobile) replacing the sidebar
 - Emoji picker + `:shortcode:` autocomplete in the post composer
 - WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive (singleton connection per tab)
-- Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels; sessions can optionally be stored in Redis (`sessions.storage = "redis"`, fail-closed)
+- Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels; sessions are stored in Redis by default (`sessions.storage`, fail-closed); WebSocket messages fan out across backend instances via the `ws:fanout` channel
 - All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
 
-**Planned:** cross-instance Redis pub/sub fan-out, moderation endpoints, production polish.
+**Planned:** moderation endpoints, production polish.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 

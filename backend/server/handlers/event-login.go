@@ -118,7 +118,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 				"user_uuid": user.UUID,
 				"is_online": false,
 			})
-			GlobalHub.BroadcastToAll(&ws.WSMessage{
+			GlobalHub.PublishBroadcastAll(&ws.WSMessage{
 				Type:      ws.TypePresenceUpdate,
 				Payload:   payload,
 				Timestamp: time.Now(),

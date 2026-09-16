@@ -170,7 +170,7 @@ social-network/
 | Redis session store (`sessions.storage = "redis"` — source of truth, fail-closed) | ✅ |
 | WebSocket hub (`/api/ws`) — register/unregister, broadcast, typing, singleton per tab | ✅ |
 | WS message dispatch (chat, group, notification, presence) | ✅ |
-| Cross-instance Redis pub/sub fan-out | ⬜ |
+| Cross-instance Redis pub/sub fan-out (`ws:fanout`) | ✅ |
 | Docker (backend + frontend + Caddy + redis) | ✅ |
 
 ### ✅ Frontend — Auth, Feed, Posts, Comments, Groups, Events, Notifications, Chat
@@ -280,7 +280,7 @@ Conversations (DMs), messages, group chat, read receipts.
 - Rate limiting: sliding window via Redis ZSET (`CheckRateLimit`), replaces in-memory limiter when Redis present
 - Pub/sub channels defined for future use (`notification:new`, `chat:new_message`, `group:message`)
 
-**Remaining:** wire Redis pub/sub for cross-instance chat/notification fan-out.
+**Remaining:** none — Redis presence, caching, rate limiting, sessions, and cross-instance pub/sub are all implemented.
 
 ### Phase K — Docker ✅
 Backend Dockerfile (multi-stage Go build), frontend Dockerfile (Next.js dev), docker-compose with Caddy (TLS) + Redis.
@@ -444,26 +444,22 @@ Moderation endpoints (optional — roles, content reports, moderator actions).
 | Caching | Sessions, users, posts, groups via JSON + TTL (`SetJSON`/`GetJSON`) with invalidation helpers |
 | Rate limiting | Sliding window via Redis ZSET (`CheckRateLimit`) — used by middleware when Redis is available |
 | Session store | `sessions.storage = "redis"` (default) makes Redis the source of truth: `rsession:{id}` JSON records + `user_sessions:{userID}` SET, TTL auto-expiry; set to `"sqlite"` to persist sessions in SQLite instead |
-| Pub/sub channels | Defined: `presence:online`, `presence:offline`, `notification:new`, `chat:new_message`, `group:message` |
+| Cross-instance fan-out | `ws:fanout` channel carries user/group/broadcast envelopes between instances; each instance delivers remote-origin messages to its local clients (origin guard prevents echoing) |
+| Pub/sub channels | Defined: `presence:online`, `presence:offline`, `notification:new`, `chat:new_message`, `group:message`, `ws:fanout` |
 
-Redis is **optional** — if unavailable, the backend logs a warning and continues (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map).
-
-### Remaining (planned)
-| Feature | Notes |
-|---------|-------|
-| Cross-instance pub/sub | Subscribe to `chat:new_message` / `notification:new` to fan out across multiple backend instances |
+Redis is **optional** — if unavailable, the backend logs a warning and continues (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map, and fan-out degrades to single-instance).
 
 ### Session flow
 ```
-# sqlite mode (default): SQLite is the source of truth, Redis caches the lookup
-Login   → insert sessions row → SET cache session:{id} ttl → Set cookie
-Request → GET session:{id} cache → miss → SELECT sessions → re-cache
-Logout  → soft-delete sessions row → DEL cache key → Clear cookie
-
-# redis mode (sessions.storage = "redis"): Redis is the source of truth (fail closed)
+# redis mode (default): Redis is the source of truth (fail closed)
 Login   → SETEX rsession:{id} {user_id,ip,ua} ttl + SADD user_sessions:{userID} → Set cookie
 Request → GET rsession:{id} → miss/unavailable ⇒ 401 (no SQLite fallback)
 Logout  → DEL rsession:{id} + SREM user_sessions:{userID} → Clear cookie
+
+# sqlite mode (sessions.storage = "sqlite"): SQLite is the source of truth, Redis caches the lookup
+Login   → insert sessions row → SET cache session:{id} ttl → Set cookie
+Request → GET session:{id} cache → miss → SELECT sessions → re-cache
+Logout  → soft-delete sessions row → DEL cache key → Clear cookie
 ```
 
 ## Seed Data
