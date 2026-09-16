@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"social-network/backend/cache"
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 	ws "social-network/backend/server/websocket"
 
@@ -127,9 +128,18 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	cookie, err := r.Cookie("session_token")
 	if err == nil {
-		db.DeleteSession(r.Context(), cookie.Value)
-		if rc := getRedis(); rc != nil {
-			rc.Delete(r.Context(), cache.SessionKey(cookie.Value))
+		if config.GetConfig().SessionStorage() == "redis" {
+			if rc := getRedis(); rc != nil {
+				if rec, rerr := rc.GetSessionRecord(r.Context(), cookie.Value); rerr == nil && rec != nil {
+					rc.RemoveUserSession(r.Context(), rec.UserID, cookie.Value)
+				}
+				rc.DeleteSessionRecord(r.Context(), cookie.Value)
+			}
+		} else {
+			db.DeleteSession(r.Context(), cookie.Value)
+			if rc := getRedis(); rc != nil {
+				rc.Delete(r.Context(), cache.SessionKey(cookie.Value))
+			}
 		}
 	}
 
@@ -147,6 +157,22 @@ func LogoutAllHandler(w http.ResponseWriter, r *http.Request, db *database.DataB
 	userID, authenticated := GetUserIDFromContext(r)
 	if !authenticated {
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	// Redis as the source of truth: drop every session record + the index set.
+	if config.GetConfig().SessionStorage() == "redis" {
+		if rc := getRedis(); rc != nil {
+			if ids, err := rc.GetUserSessionRecords(r.Context(), userID); err == nil {
+				for _, sessionID := range ids {
+					rc.DeleteSessionRecord(r.Context(), sessionID)
+				}
+			}
+			rc.ClearUserSessions(r.Context(), userID)
+		}
+
+		ClearSessionCookie(w)
+		RespondSuccess(w, http.StatusOK, "Logged out from all devices successfuly", nil)
 		return
 	}
 

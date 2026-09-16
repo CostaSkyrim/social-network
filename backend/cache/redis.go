@@ -144,6 +144,54 @@ func (rc *RedisClient) GetSession(ctx context.Context, key string) (int64, error
 	return userID, nil
 }
 
+// ---- Session store (Redis as source of truth) ----
+
+// SessionRecord is the full session payload stored in Redis when
+// sessions.storage = "redis". It uses a distinct "rsession:" namespace so it
+// never collides with the int64 session cache used by the sqlite backend.
+type SessionRecord struct {
+	UserID    int64     `json:"user_id"`
+	IP        string    `json:"ip"`
+	UserAgent string    `json:"user_agent"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func SessionRecordKey(sessionID string) string {
+	return "rsession:" + sessionID
+}
+
+func (rc *RedisClient) SetSessionRecord(ctx context.Context, sessionID string, rec SessionRecord, ttl time.Duration) error {
+	return rc.SetJSON(ctx, SessionRecordKey(sessionID), rec, ttl)
+}
+
+func (rc *RedisClient) GetSessionRecord(ctx context.Context, sessionID string) (*SessionRecord, error) {
+	var rec SessionRecord
+	if err := rc.GetJSON(ctx, SessionRecordKey(sessionID), &rec); err != nil {
+		return nil, err
+	}
+	return &rec, nil
+}
+
+func (rc *RedisClient) DeleteSessionRecord(ctx context.Context, sessionID string) error {
+	return rc.client.Del(ctx, SessionRecordKey(sessionID)).Err()
+}
+
+func (rc *RedisClient) AddUserSession(ctx context.Context, userID int64, sessionID string) error {
+	return rc.client.SAdd(ctx, UserSessionsKey(userID), sessionID).Err()
+}
+
+func (rc *RedisClient) RemoveUserSession(ctx context.Context, userID int64, sessionID string) error {
+	return rc.client.SRem(ctx, UserSessionsKey(userID), sessionID).Err()
+}
+
+func (rc *RedisClient) GetUserSessionRecords(ctx context.Context, userID int64) ([]string, error) {
+	return rc.client.SMembers(ctx, UserSessionsKey(userID)).Result()
+}
+
+func (rc *RedisClient) ClearUserSessions(ctx context.Context, userID int64) error {
+	return rc.client.Del(ctx, UserSessionsKey(userID)).Err()
+}
+
 // ---- User cache ----
 
 func UserKey(userID int64) string {

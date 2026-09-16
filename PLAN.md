@@ -167,9 +167,9 @@ social-network/
 | Redis client + connection (degrades gracefully if unavailable) | ✅ |
 | Presence tracking (online/offline via Redis TTL keys + pub/sub) | ✅ |
 | Redis caching (sessions, users, posts, groups) + rate limiting | ✅ |
+| Redis session store (`sessions.storage = "redis"` — source of truth, fail-closed) | ✅ |
 | WebSocket hub (`/api/ws`) — register/unregister, broadcast, typing, singleton per tab | ✅ |
 | WS message dispatch (chat, group, notification, presence) | ✅ |
-| Redis session store migration (SQLite → Redis) | ⬜ |
 | Cross-instance Redis pub/sub fan-out | ⬜ |
 | Docker (backend + frontend + Caddy + redis) | ✅ |
 
@@ -280,7 +280,7 @@ Conversations (DMs), messages, group chat, read receipts.
 - Rate limiting: sliding window via Redis ZSET (`CheckRateLimit`), replaces in-memory limiter when Redis present
 - Pub/sub channels defined for future use (`notification:new`, `chat:new_message`, `group:message`)
 
-**Remaining:** Migrate sessions from SQLite to Redis (TTL), wire Redis pub/sub for cross-instance chat/notification fan-out, config toggle.
+**Remaining:** wire Redis pub/sub for cross-instance chat/notification fan-out.
 
 ### Phase K — Docker ✅
 Backend Dockerfile (multi-stage Go build), frontend Dockerfile (Next.js dev), docker-compose with Caddy (TLS) + Redis.
@@ -407,7 +407,7 @@ Docker dev stack (backend, frontend dev image, Caddy TLS, Redis) + `docker-compo
 | WS | `/api/ws` | ServeWS (hub upgrade) | ✅ |
 
 ### Planned
-Redis session store migration, moderation endpoints (from configs.json rate limits).
+Moderation endpoints (optional — roles, content reports, moderator actions).
 
 ## Key Conventions
 
@@ -443,6 +443,7 @@ Redis session store migration, moderation endpoints (from configs.json rate limi
 | Presence tracking | `presence:{userID}` keys, 30s TTL, `SetUserOnline/Offline`, `IsUserOnline`, `GetOnlineUsers` (batch MGET) |
 | Caching | Sessions, users, posts, groups via JSON + TTL (`SetJSON`/`GetJSON`) with invalidation helpers |
 | Rate limiting | Sliding window via Redis ZSET (`CheckRateLimit`) — used by middleware when Redis is available |
+| Session store | `sessions.storage = "redis"` makes Redis the source of truth: `rsession:{id}` JSON records + `user_sessions:{userID}` SET, TTL auto-expiry |
 | Pub/sub channels | Defined: `presence:online`, `presence:offline`, `notification:new`, `chat:new_message`, `group:message` |
 
 Redis is **optional** — if unavailable, the backend logs a warning and continues (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map).
@@ -450,15 +451,19 @@ Redis is **optional** — if unavailable, the backend logs a warning and continu
 ### Remaining (planned)
 | Feature | Notes |
 |---------|-------|
-| Sessions (`session_id → user_id`) | Ephemeral key-value with TTL, auto-expire, removes SQLite cleanup routine |
 | Cross-instance pub/sub | Subscribe to `chat:new_message` / `notification:new` to fan out across multiple backend instances |
-| Config toggle | `session_storage: "sqlite" | "redis"` |
 
-### Session flow (planned)
+### Session flow
 ```
-Login → Generate UUID → Redis SETEX session:{uuid} 86400 user_id → Set cookie
-Request → Read cookie → Redis GET session:{uuid} → if nil, 401 → DB lookup by ID
-Logout → Redis DEL session:{uuid} → Clear cookie
+# sqlite mode (default): SQLite is the source of truth, Redis caches the lookup
+Login   → insert sessions row → SET cache session:{id} ttl → Set cookie
+Request → GET session:{id} cache → miss → SELECT sessions → re-cache
+Logout  → soft-delete sessions row → DEL cache key → Clear cookie
+
+# redis mode (sessions.storage = "redis"): Redis is the source of truth (fail closed)
+Login   → SETEX rsession:{id} {user_id,ip,ua} ttl + SADD user_sessions:{userID} → Set cookie
+Request → GET rsession:{id} → miss/unavailable ⇒ 401 (no SQLite fallback)
+Logout  → DEL rsession:{id} + SREM user_sessions:{userID} → Clear cookie
 ```
 
 ## Seed Data

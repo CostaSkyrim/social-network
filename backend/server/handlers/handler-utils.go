@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"social-network/backend/cache"
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 	ws "social-network/backend/server/websocket"
 
@@ -150,13 +151,38 @@ func ClearSessionCookie(w http.ResponseWriter) {
 
 func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.DataBase, redisClient *cache.RedisClient, userID int64) error {
 	sessionID := GenerateSessionID()
+	cfg := config.GetConfig()
+	ttl := cfg.SessionTTL()
 
+	if cfg.SessionStorage() == "redis" {
+		if redisClient == nil {
+			return fmt.Errorf("redis session storage is enabled but Redis is unavailable")
+		}
+
+		rec := cache.SessionRecord{
+			UserID:    userID,
+			IP:        r.RemoteAddr,
+			UserAgent: r.UserAgent(),
+			CreatedAt: time.Now().UTC(),
+		}
+		if err := redisClient.SetSessionRecord(r.Context(), sessionID, rec, ttl); err != nil {
+			return fmt.Errorf("failed to store session: %w", err)
+		}
+		if err := redisClient.AddUserSession(r.Context(), userID, sessionID); err != nil {
+			return fmt.Errorf("failed to track user session: %w", err)
+		}
+
+		SetSessionCookie(w, r, sessionID, time.Now().Add(ttl))
+		return nil
+	}
+
+	// Default: sessions persist in SQLite (Redis only caches the lookup).
 	session := &database.Session{
 		SessionID: sessionID,
 		UserID:    userID,
 		IPAddress: r.RemoteAddr,
 		UserAgent: r.UserAgent(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		ExpiresAt: time.Now().Add(ttl),
 	}
 
 	_, err := db.CreateSession(r.Context(), session)
@@ -165,7 +191,7 @@ func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.Data
 	}
 
 	if redisClient != nil {
-		if cacheErr := redisClient.CacheSession(r.Context(), cache.SessionKey(sessionID), userID, cache.SessionTTL); cacheErr != nil {
+		if cacheErr := redisClient.CacheSession(r.Context(), cache.SessionKey(sessionID), userID, ttl); cacheErr != nil {
 			fmt.Printf("Warning: failed to cache session in Redis: %v\n", cacheErr)
 		}
 	}
@@ -185,6 +211,24 @@ func GetUserFromCookie(r *http.Request, db *database.DataBase, redisClient *cach
 
 	if _, err := uuid.Parse(cookie.Value); err != nil {
 		return nil, ErrSessionNotFound
+	}
+
+	cfg := config.GetConfig()
+
+	// Redis as the source of truth (fail closed if Redis is unavailable).
+	if cfg.SessionStorage() == "redis" {
+		if redisClient == nil {
+			return nil, ErrSessionNotFound
+		}
+		rec, err := redisClient.GetSessionRecord(r.Context(), cookie.Value)
+		if err != nil || rec == nil {
+			return nil, ErrSessionNotFound
+		}
+		user, err := db.GetUserByID(r.Context(), rec.UserID)
+		if err != nil {
+			return nil, ErrSessionNotFound
+		}
+		return user, nil
 	}
 
 	sessionKey := cache.SessionKey(cookie.Value)

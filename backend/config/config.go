@@ -22,6 +22,7 @@ type Config struct {
 	Redis                 cache.RedisConfig `json:"redis"`
 	OAuth                 OAuthConfig       `json:"oauth"`
 	Scheduler             SchedulerConfig   `json:"scheduler"`
+	Sessions              SessionConfig     `json:"sessions"`
 }
 
 // SchedulerConfig controls the background event-reminder scheduler.
@@ -29,6 +30,33 @@ type SchedulerConfig struct {
 	Enabled      bool   `json:"enabled"`
 	TickInterval string `json:"tick_interval"`
 	ReminderLead string `json:"reminder_lead"`
+}
+
+// SessionConfig controls where sessions are stored.
+type SessionConfig struct {
+	// Storage is either "sqlite" (default) or "redis".
+	Storage string `json:"storage"`
+	// TTL is how long a session stays valid (e.g. "24h").
+	TTL string `json:"ttl"`
+}
+
+// SessionStorage returns the configured session storage backend, defaulting to
+// "sqlite" for any unknown/empty value.
+func (c *Config) SessionStorage() string {
+	if c != nil && c.Sessions.Storage == "redis" {
+		return "redis"
+	}
+	return "sqlite"
+}
+
+// SessionTTL returns the configured session lifetime, defaulting to 24h.
+func (c *Config) SessionTTL() time.Duration {
+	if c != nil && c.Sessions.TTL != "" {
+		if d, err := time.ParseDuration(c.Sessions.TTL); err == nil && d > 0 {
+			return d
+		}
+	}
+	return 24 * time.Hour
 }
 
 type FrontendConfig struct {

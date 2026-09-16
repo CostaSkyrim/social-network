@@ -7,6 +7,10 @@
         "tick_interval": "1m",
         "reminder_lead": "30m"
     },
+    "sessions": {
+        "storage": "sqlite",
+        "ttl": "24h"
+    },
     "redis": {
         "addr": "redis:6379",
         "password": "",

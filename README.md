@@ -47,10 +47,10 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 - Burger navigation menu (desktop + mobile) replacing the sidebar
 - Emoji picker + `:shortcode:` autocomplete in the post composer
 - WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive (singleton connection per tab)
-- Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels
+- Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels; sessions can optionally be stored in Redis (`sessions.storage = "redis"`, fail-closed)
 - All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
 
-**Planned:** Redis session store migration (SQLite → Redis as source of truth), cross-instance Redis pub/sub fan-out, moderation endpoints, production polish.
+**Planned:** cross-instance Redis pub/sub fan-out, moderation endpoints, production polish.
 
 See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
@@ -173,6 +173,8 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | `REDIS_ADDR` | `localhost:6379` | Redis address (backend, optional) |
 
 The event-reminder scheduler is configured in `configs.json` under `scheduler` (`enabled`, `tick_interval`, `reminder_lead`).
+
+Session storage is configured in `configs.json` under `sessions` — `storage` is `"sqlite"` (default; Redis caches lookups) or `"redis"` (Redis is the source of truth, fail-closed), plus a `ttl` (e.g. `"24h"`).
 
 ### Seed Data
 
