@@ -443,7 +443,7 @@ Moderation endpoints (optional — roles, content reports, moderator actions).
 | Presence tracking | `presence:{userID}` keys, 30s TTL, `SetUserOnline/Offline`, `IsUserOnline`, `GetOnlineUsers` (batch MGET) |
 | Caching | Sessions, users, posts, groups via JSON + TTL (`SetJSON`/`GetJSON`) with invalidation helpers |
 | Rate limiting | Sliding window via Redis ZSET (`CheckRateLimit`) — used by middleware when Redis is available |
-| Session store | `sessions.storage = "redis"` makes Redis the source of truth: `rsession:{id}` JSON records + `user_sessions:{userID}` SET, TTL auto-expiry |
+| Session store | `sessions.storage = "redis"` (default) makes Redis the source of truth: `rsession:{id}` JSON records + `user_sessions:{userID}` SET, TTL auto-expiry; set to `"sqlite"` to persist sessions in SQLite instead |
 | Pub/sub channels | Defined: `presence:online`, `presence:offline`, `notification:new`, `chat:new_message`, `group:message` |
 
 Redis is **optional** — if unavailable, the backend logs a warning and continues (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map).

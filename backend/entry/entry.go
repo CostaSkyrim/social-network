@@ -48,6 +48,10 @@ func Start(reseed bool) error {
 		defer redisClient.Close()
 	}
 
+	if redisClient == nil && cfg.SessionStorage() == "redis" {
+		log.Printf("WARNING: sessions.storage = \"redis\" but Redis is unavailable — authentication will fail closed (all requests 401) until Redis is reachable")
+	}
+
 	// Seed database with sample data on first run (or reseed if flag is set)
 	if reseed {
 		if err := populate.Reseed(db.GetDB(), populate.DefaultPath()); err != nil {

@@ -174,7 +174,7 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 
 The event-reminder scheduler is configured in `configs.json` under `scheduler` (`enabled`, `tick_interval`, `reminder_lead`).
 
-Session storage is configured in `configs.json` under `sessions` — `storage` is `"sqlite"` (default; Redis caches lookups) or `"redis"` (Redis is the source of truth, fail-closed), plus a `ttl` (e.g. `"24h"`).
+Session storage is configured in `configs.json` under `sessions` — `storage` is `"redis"` (default; Redis is the source of truth, fail-closed) or `"sqlite"` (SQLite persists sessions, Redis caches lookups), plus a `ttl` (e.g. `"24h"`). Redis must be running when using the default.
 
 ### Seed Data
 

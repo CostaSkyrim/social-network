@@ -8,7 +8,7 @@
         "reminder_lead": "30m"
     },
     "sessions": {
-        "storage": "sqlite",
+        "storage": "redis",
         "ttl": "24h"
     },
     "redis": {
