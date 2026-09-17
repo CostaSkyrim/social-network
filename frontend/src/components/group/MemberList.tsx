@@ -57,7 +57,7 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
         <div className="min-w-0 flex-1">
           <Link
             href={`/profile/${m.user.id}`}
-            className="text-sm font-medium text-gray-900 hover:underline"
+            className="text-sm font-medium text-gray-100 hover:underline"
           >
             {name}
             {is_creator && (
@@ -67,7 +67,7 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
             )}
           </Link>
           {m.user.nickname && (
-            <p className="text-xs text-gray-500">@{m.user.nickname}</p>
+            <p className="text-xs text-gray-300">@{m.user.nickname}</p>
           )}
         </div>
         {show_actions ? (
@@ -85,7 +85,7 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
     <div>
       {accepted.length > 0 && (
         <div>
-          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-300">
             Members ({accepted.length})
           </h4>
           <ul>{accepted.map(render_member)}</ul>
@@ -93,8 +93,8 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
       )}
 
       {pending.length > 0 && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <div className="mt-3 border-t border-purple-400/15 pt-3">
+          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-300">
             Requests & Invitations ({pending.length})
           </h4>
           <ul>{pending.map(render_member)}</ul>

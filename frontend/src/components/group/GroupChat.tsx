@@ -245,21 +245,21 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
 
   return (
     <div className="flex h-[calc(100vh-16rem)] min-h-[400px] flex-col">
-      <div className="flex items-center gap-2 border-b border-gray-200 pb-3">
+      <div className="flex items-center gap-2 border-b border-purple-400/20 pb-3">
         <Avatar src={groupAvatar} alt={groupTitle} size="sm" />
         <div>
-          <p className="text-sm font-medium text-gray-900">{groupTitle}</p>
-          <p className="text-xs text-gray-500">Group chat</p>
+          <p className="text-sm font-medium text-gray-100">{groupTitle}</p>
+          <p className="text-xs text-gray-300">Group chat</p>
         </div>
       </div>
 
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-3">
         {is_loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">
+          <p className="py-8 text-center text-sm text-gray-300">
             No messages yet. Start the conversation!
           </p>
         ) : (
@@ -281,7 +281,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
                 )}
                 <div className={cn('max-w-[75%]', isMine ? 'items-end' : 'items-start')}>
                   {!isMine && (
-                    <p className="mb-0.5 px-1 text-[11px] text-gray-500">
+                    <p className="mb-0.5 px-1 text-[11px] text-gray-300">
                       {msg.sender?.nickname ||
                         `${msg.sender?.first_name ?? ''} ${msg.sender?.last_name ?? ''}`.trim()}
                     </p>
@@ -289,7 +289,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
                   <div
                     className={cn(
                       'max-w-[75%] rounded-lg px-3 py-2',
-                      isMine ? 'ml-auto bg-blue-500 text-white' : 'bg-gray-100 text-gray-900',
+                      isMine ? 'ml-auto bg-violet-500 text-white' : 'bg-purple-400/15 text-gray-100',
                     )}
                   >
                     {msg.image_path && (
@@ -306,7 +306,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
                     <p
                       className={cn(
                         'mt-0.5 text-right text-[10px]',
-                        isMine ? 'text-blue-200' : 'text-gray-400',
+                        isMine ? 'text-violet-200' : 'text-gray-300',
                       )}
                     >
                       {formatTime(msg.created_at)}
@@ -327,7 +327,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
         )}
       </div>
 
-      <div className="border-t border-gray-200 pt-3">
+      <div className="border-t border-purple-400/20 pt-3">
         {pending_preview && (
           <div className="relative mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -349,7 +349,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
           <ImageUpload on_select={handle_select_image}>
             <button
               type="button"
-              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="rounded-lg p-2 text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
               title="Attach image"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -374,7 +374,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
               onClick={track_cursor}
               placeholder="Type a message..."
               rows={1}
-              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-purple-400/30 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
             />
             {show_suggestions && (
               <EmojiSuggestions
@@ -387,7 +387,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
           <button
             onClick={handleSend}
             disabled={!input.trim() && !pending_image}
-            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-violet-500 p-2 text-white hover:bg-violet-600 disabled:opacity-50"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path

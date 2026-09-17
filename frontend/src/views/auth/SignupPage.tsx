@@ -72,10 +72,10 @@ export default function SignupPage() {
 
   return (
     <form onSubmit={handle_submit} className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
+      <h2 className="text-xl font-semibold text-gray-100">Create account</h2>
 
       {errors.form && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errors.form}</div>
+        <div className="rounded-lg bg-red-500/15 p-3 text-sm text-red-200">{errors.form}</div>
       )}
 
       <Input
@@ -137,7 +137,7 @@ export default function SignupPage() {
       />
 
       <div>
-        <p className="mb-1 text-sm font-medium text-gray-700">Avatar (optional)</p>
+        <p className="mb-1 text-sm font-medium text-gray-300">Avatar (optional)</p>
         <div className="flex items-center gap-3">
           {avatar_preview ? (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -147,14 +147,14 @@ export default function SignupPage() {
               className="h-12 w-12 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-400/20 text-xs text-gray-300">
               No image
             </div>
           )}
           <ImageUpload on_select={handle_avatar} className="[&>div]:inline-flex">
             <button
               type="button"
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              className="rounded-lg px-3 py-1.5 text-sm text-gray-300 hover:bg-purple-400/15 hover:text-gray-100"
             >
               {avatar_preview ? 'Change image' : 'Upload image'}
             </button>
@@ -175,9 +175,9 @@ export default function SignupPage() {
 
       <OAuthButtons />
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-gray-300">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link href="/login" className="font-medium text-fuchsia-300 hover:text-fuchsia-200">
           Sign in
         </Link>
       </p>

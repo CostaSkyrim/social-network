@@ -74,14 +74,14 @@ export default function NotificationsPage() {
   if (is_loading) {
     return (
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <h2 className="text-xl font-semibold text-gray-100">Notifications</h2>
+        <div className="divide-y divide-purple-400/20 rounded-xl border border-purple-400/25 bg-gradient-to-br from-[#3a1f74] to-[#241146] shadow-lg shadow-black/30">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3">
-              <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
+              <div className="h-8 w-8 animate-pulse rounded-full bg-purple-400/20" />
               <div className="flex-1 space-y-1">
-                <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-48 animate-pulse rounded bg-purple-400/20" />
+                <div className="h-3 w-16 animate-pulse rounded bg-purple-400/20" />
               </div>
             </div>
           ))}
@@ -93,11 +93,11 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
+        <h2 className="text-xl font-semibold text-gray-100">Notifications</h2>
         {unread_count > 0 && (
           <button
             onClick={mark_all_read}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="text-sm font-medium text-violet-600 hover:text-violet-700"
           >
             Mark all as read
           </button>
@@ -110,7 +110,7 @@ export default function NotificationsPage() {
           description="You're all caught up!"
         />
       ) : (
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <div className="divide-y divide-purple-400/20 rounded-xl border border-purple-400/25 bg-gradient-to-br from-[#3a1f74] to-[#241146] shadow-lg shadow-black/30">
           {notifications.map((notif) => (
             <NotificationRow
               key={notif.id}
@@ -189,12 +189,12 @@ function NotificationRow({
         <p
           className={cn(
             'text-sm',
-            !notif.is_read ? 'font-semibold text-gray-900' : 'text-gray-700',
+            !notif.is_read ? 'font-semibold text-gray-100' : 'text-gray-300',
           )}
         >
           {notif.content}
         </p>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="mt-0.5 text-xs text-gray-300">
           {formatTimeAgo(notif.created_at)}
         </p>
       </div>
@@ -205,7 +205,7 @@ function NotificationRow({
     <div
       className={cn(
         'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
-        !notif.is_read && 'bg-blue-50/50',
+        !notif.is_read && 'bg-purple-400/15',
       )}
     >
       {href ? (
@@ -239,7 +239,7 @@ function NotificationRow({
         </div>
       )}
       {!notif.is_read && (
-        <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+        <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-violet-500" />
       )}
     </div>
   )

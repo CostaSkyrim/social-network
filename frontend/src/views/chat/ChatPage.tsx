@@ -306,10 +306,10 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
-      <div className="flex items-center gap-3 border-b border-gray-200 pb-3">
+      <div className="flex items-center gap-3 border-b border-purple-400/20 pb-3">
         <button
           onClick={() => router.back()}
-          className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+          className="rounded-lg p-1 text-gray-300 hover:bg-purple-400/15"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -330,11 +330,11 @@ export default function ChatPage() {
             <div>
               <Link
                 href={`/profile/${partner.id}`}
-                className="text-sm font-medium text-gray-900 hover:underline"
+                className="text-sm font-medium text-gray-100 hover:underline"
               >
                 {partner.first_name} {partner.last_name}
               </Link>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-300">
                 {partner.is_online ? 'Online' : 'Offline'}
               </p>
             </div>
@@ -345,7 +345,7 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto py-3 space-y-2">
         {is_loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
           </div>
         ) : (
           messages.map((msg) => {
@@ -367,8 +367,8 @@ export default function ChatPage() {
                   className={cn(
                     'max-w-[75%] rounded-lg px-3 py-2',
                     isMine
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900',
+                      ? 'bg-violet-500 text-white'
+                      : 'bg-purple-400/15 text-gray-100',
                   )}
                 >
                   {msg.image_path && (
@@ -387,7 +387,7 @@ export default function ChatPage() {
                   <p
                     className={cn(
                       'mt-0.5 text-right text-[10px]',
-                      isMine ? 'text-blue-200' : 'text-gray-400',
+                      isMine ? 'text-violet-200' : 'text-gray-300',
                     )}
                   >
                     {formatTime(msg.created_at)}
@@ -409,13 +409,13 @@ export default function ChatPage() {
       </div>
 
       {blocked ? (
-        <div className="border-t border-gray-200 pt-3">
-          <p className="rounded-lg bg-gray-50 p-3 text-center text-sm text-gray-500">
+        <div className="border-t border-purple-400/20 pt-3">
+          <p className="rounded-lg bg-purple-400/10 p-3 text-center text-sm text-gray-300">
             You can only message users you follow, or who follow you.
           </p>
         </div>
       ) : (
-      <div className="border-t border-gray-200 pt-3">
+      <div className="border-t border-purple-400/20 pt-3">
         {pending_preview && (
           <div className="relative mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -437,7 +437,7 @@ export default function ChatPage() {
           <ImageUpload on_select={handle_select_image}>
             <button
               type="button"
-              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="rounded-lg p-2 text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
               title="Attach image"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -462,7 +462,7 @@ export default function ChatPage() {
               onClick={track_cursor}
               placeholder="Type a message..."
               rows={1}
-              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="max-h-32 min-h-[2.5rem] w-full resize-none rounded-lg border border-purple-400/30 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
             />
             {show_suggestions && (
               <EmojiSuggestions
@@ -475,7 +475,7 @@ export default function ChatPage() {
           <button
             onClick={handleSend}
             disabled={!input.trim() && !pending_image}
-            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-violet-500 p-2 text-white hover:bg-violet-600 disabled:opacity-50"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path

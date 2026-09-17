@@ -71,7 +71,7 @@ export function EventsCarousel({ events, is_loading, has_next, on_load_more }: E
           type="button"
           onClick={() => scroll_by(-1)}
           aria-label="Scroll to earlier events"
-          className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50"
+          className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-purple-400/20 bg-[#241748] text-gray-300 shadow-sm hover:bg-purple-400/10"
         >
           ‹
         </button>
@@ -81,7 +81,7 @@ export function EventsCarousel({ events, is_loading, has_next, on_load_more }: E
           type="button"
           onClick={() => scroll_by(1)}
           aria-label="Scroll to later events"
-          className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50"
+          className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-purple-400/20 bg-[#241748] text-gray-300 shadow-sm hover:bg-purple-400/10"
         >
           ›
         </button>
@@ -99,7 +99,7 @@ export function EventsCarousel({ events, is_loading, has_next, on_load_more }: E
             type="button"
             onClick={on_load_more}
             disabled={is_loading}
-            className="flex w-40 shrink-0 snap-start items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-sm text-gray-500 hover:bg-gray-50"
+            className="flex w-40 shrink-0 snap-start items-center justify-center rounded-xl border border-dashed border-purple-400/30 bg-[#241748] text-sm text-gray-300 hover:bg-purple-400/10"
           >
             {is_loading ? <Spinner size="sm" /> : 'Load older events'}
           </button>
@@ -128,18 +128,18 @@ function EventSlide({ event }: { event: GroupEvent }) {
         )}
         <CardContent className="space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <h4 className="line-clamp-2 text-sm font-semibold text-gray-900">{event.title}</h4>
+            <h4 className="line-clamp-2 text-sm font-semibold text-gray-100">{event.title}</h4>
           </div>
           {event.group_title && (
-            <p className="text-xs font-medium text-blue-600">{event.group_title}</p>
+            <p className="text-xs font-semibold text-fuchsia-300">{event.group_title}</p>
           )}
-          <p className="text-xs text-gray-500">{format_datetime(event.event_datetime)}</p>
+          <p className="text-xs text-gray-300">{format_datetime(event.event_datetime)}</p>
           {starts_in && (
             <Badge variant="success" className="text-[10px]">
               {starts_in}
             </Badge>
           )}
-          <p className="text-xs text-gray-400">{event.going} going</p>
+          <p className="text-xs text-gray-300">{event.going} going</p>
         </CardContent>
       </Card>
     </Link>

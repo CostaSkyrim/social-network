@@ -61,15 +61,15 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
-      <p className="mb-2 text-xs font-medium text-gray-600">
+    <div className="rounded-lg border border-purple-400/20 p-3">
+      <p className="mb-2 text-xs font-medium text-gray-300">
         Who can see this post?
       </p>
 
       {is_loading ? (
-        <p className="text-xs text-gray-400">Loading followers…</p>
+        <p className="text-xs text-gray-300">Loading followers…</p>
       ) : followers.length === 0 ? (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-300">
           You have no followers to choose from yet.
         </p>
       ) : (
@@ -80,10 +80,10 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
               value={query}
               onChange={(e) => set_query(e.target.value)}
               placeholder="Search by name or @nickname..."
-              className="w-full rounded-lg border border-gray-300 py-1.5 pl-8 pr-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+              className="w-full rounded-lg border border-purple-400/30 py-1.5 pl-8 pr-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-300/40"
             />
             <svg
-              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -98,7 +98,7 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
           </div>
 
           {filtered.length === 0 ? (
-            <p className="py-2 text-xs text-gray-400">
+            <p className="py-2 text-xs text-gray-300">
               No matches for &ldquo;{query.trim()}&rdquo;.
             </p>
           ) : (
@@ -108,18 +108,18 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
                 const checked = selected.includes(f.id)
                 return (
                   <li key={f.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-50">
+                    <label className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-purple-400/10">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(f.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-purple-400/30 text-violet-600 focus:ring-violet-500"
                       />
                       <Avatar src={f.avatar_path} alt={name} size="sm" />
-                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-100">
                         {name}
                         {f.nickname ? (
-                          <span className="ml-1 text-xs text-gray-400">@{f.nickname}</span>
+                          <span className="ml-1 text-xs text-gray-300">@{f.nickname}</span>
                         ) : null}
                       </span>
                     </label>
@@ -132,7 +132,7 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
       )}
 
       {!is_loading && followers.length > 0 && (
-        <p className="mt-2 text-[11px] text-gray-400">
+        <p className="mt-2 text-[11px] text-gray-300">
           {selected.length} selected
         </p>
       )}

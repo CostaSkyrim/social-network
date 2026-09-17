@@ -38,10 +38,10 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={handle_submit} className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Sign in</h2>
+      <h2 className="text-xl font-semibold text-gray-100">Sign in</h2>
 
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-lg bg-red-500/15 p-3 text-sm text-red-200">{error}</div>
       )}
 
       <Input
@@ -70,9 +70,9 @@ export default function LoginPage() {
 
       <OAuthButtons />
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-gray-300">
         Don't have an account?{' '}
-        <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link href="/signup" className="font-medium text-fuchsia-300 hover:text-fuchsia-200">
           Sign up
         </Link>
       </p>

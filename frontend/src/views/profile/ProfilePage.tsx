@@ -187,10 +187,10 @@ export default function ProfilePage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4">
-          <div className="h-20 w-20 animate-pulse rounded-full bg-gray-200" />
+          <div className="h-20 w-20 animate-pulse rounded-full bg-purple-400/20" />
           <div className="space-y-2">
-            <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="h-6 w-48 animate-pulse rounded bg-purple-400/20" />
+            <div className="h-4 w-32 animate-pulse rounded bg-purple-400/20" />
           </div>
         </div>
       </div>
@@ -199,8 +199,8 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-        <p className="text-sm text-gray-500">User not found</p>
+      <div className="rounded-lg border border-purple-400/20 bg-[#241748] p-8 text-center">
+        <p className="text-sm text-gray-300">User not found</p>
       </div>
     )
   }
@@ -213,7 +213,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="rounded-lg border border-purple-400/20 bg-[#241748] p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="relative">
@@ -252,18 +252,18 @@ export default function ProfilePage() {
               )}
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-xl font-bold text-gray-100">
                 {profile.user.first_name} {profile.user.last_name}
               </h1>
-              <p className="text-sm text-gray-500">@{profile.user.nickname}</p>
+              <p className="text-sm text-gray-300">@{profile.user.nickname}</p>
               {(profile.user.is_public ? 'Public' : 'Private')}
               <span className="mx-1.5 text-gray-300">·</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-300">
                 Joined{' '}
                 {new Date(profile.user.created_at).toLocaleDateString()}
               </span>
               {profile.user.about_me && (
-                <p className="mt-2 text-sm text-gray-700">{profile.user.about_me}</p>
+                <p className="mt-2 text-sm text-gray-300">{profile.user.about_me}</p>
               )}
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function ProfilePage() {
           </div>
 
         {avatar_error && (
-          <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-red-500/15 p-3 text-sm text-red-200">
             {avatar_error}
           </div>
         )}
@@ -302,18 +302,18 @@ export default function ProfilePage() {
             <>
               <button
                 onClick={() => router.push('/followers')}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-300 hover:text-gray-100"
               >
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-gray-100">
                   {profile.follower_count}
                 </span>{' '}
                 followers
               </button>
               <button
                 onClick={() => router.push('/followers?tab=following')}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-300 hover:text-gray-100"
               >
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-gray-100">
                   {profile.following_count}
                 </span>{' '}
                 following
@@ -321,22 +321,22 @@ export default function ProfilePage() {
             </>
           ) : (
             <>
-              <span className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">
+              <span className="text-sm text-gray-300">
+                <span className="font-semibold text-gray-100">
                   {profile.follower_count}
                 </span>{' '}
                 followers
               </span>
-              <span className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">
+              <span className="text-sm text-gray-300">
+                <span className="font-semibold text-gray-100">
                   {profile.following_count}
                 </span>{' '}
                 following
               </span>
             </>
           )}
-          <span className="text-sm text-gray-600">
-            <span className="font-semibold text-gray-900">
+          <span className="text-sm text-gray-300">
+            <span className="font-semibold text-gray-100">
               {profile.post_count}
             </span>{' '}
             posts
@@ -345,12 +345,12 @@ export default function ProfilePage() {
       </div>
 
       {show_edit && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg border border-purple-400/20 bg-[#241748] p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-100">
             Edit Profile
           </h2>
           {edit_error && (
-            <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <div className="mb-3 rounded-lg bg-red-500/15 p-3 text-sm text-red-200">
               {edit_error}
             </div>
           )}
@@ -364,7 +364,7 @@ export default function ProfilePage() {
               }
             />
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-300">
                 About me
               </span>
               <textarea
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                   set_edit_form((f) => ({ ...f, about_me: e.target.value }))
                 }
                 rows={3}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-purple-400/30 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
             </label>
             <label className="flex items-center gap-2">
@@ -383,9 +383,9 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   set_edit_form((f) => ({ ...f, is_public: e.target.checked }))
                 }
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-purple-400/30 text-violet-600 focus:ring-violet-500"
               />
-              <span className="text-sm text-gray-700">Public profile</span>
+              <span className="text-sm text-gray-300">Public profile</span>
             </label>
             <div className="flex gap-2">
               <Button onClick={handleSave} loading={edit_saving} size="sm">
@@ -404,14 +404,14 @@ export default function ProfilePage() {
       )}
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Posts</h2>
+        <h2 className="mb-3 text-lg font-semibold text-gray-100">Posts</h2>
         {user_posts.isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
         ) : all_posts.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
-            <p className="text-sm text-gray-500">No posts yet</p>
+          <div className="rounded-lg border border-purple-400/20 bg-[#241748] p-6 text-center">
+            <p className="text-sm text-gray-300">No posts yet</p>
           </div>
         ) : (
           <InfiniteScroll
@@ -423,9 +423,9 @@ export default function ProfilePage() {
               {all_posts.map((post) => (
                 <div
                   key={post.id}
-                  className="rounded-lg border border-gray-200 bg-white p-4"
+                  className="rounded-lg border border-purple-400/20 bg-[#241748] p-4"
                 >
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                  <p className="text-sm text-gray-100 whitespace-pre-wrap">
                     {post.content}
                   </p>
                   {post.image_path && (
@@ -436,12 +436,12 @@ export default function ProfilePage() {
                       className="mt-2 max-h-64 w-full rounded-lg object-cover"
                     />
                   )}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-300">
                     <span>
                       {new Date(post.created_at).toLocaleDateString()}
                     </span>
                     {post.privacy_level !== 'public' && (
-                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      <span className="rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium uppercase">
                         {post.privacy_level}
                       </span>
                     )}

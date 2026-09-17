@@ -54,11 +54,11 @@ export default function CreateGroupPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Create Group</h2>
+      <h2 className="text-xl font-semibold text-gray-100">Create Group</h2>
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold text-gray-900">Group details</h3>
+          <h3 className="text-sm font-semibold text-gray-100">Group details</h3>
         </CardHeader>
         <CardContent>
           <form onSubmit={handle_submit} className="space-y-4">
@@ -66,7 +66,7 @@ export default function CreateGroupPage() {
               <ImageUpload on_select={handle_select_image}>
                 <button
                   type="button"
-                  className="group relative block h-20 w-20 overflow-hidden rounded-full border-2 border-dashed border-gray-300 hover:border-gray-400"
+                  className="group relative block h-20 w-20 overflow-hidden rounded-full border-2 border-dashed border-purple-400/30 hover:border-purple-400/60"
                   title="Add group photo"
                 >
                   {preview_url ? (
@@ -77,7 +77,7 @@ export default function CreateGroupPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center text-2xl text-gray-400">
+                    <span className="flex h-full w-full items-center justify-center text-2xl text-gray-300">
                       📷
                     </span>
                   )}
@@ -90,7 +90,7 @@ export default function CreateGroupPage() {
                 <button
                   type="button"
                   onClick={clear_image}
-                  className="text-sm text-red-600 hover:text-red-700"
+                  className="text-sm text-red-600 hover:text-red-200"
                 >
                   Remove photo
                 </button>

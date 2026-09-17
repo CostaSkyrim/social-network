@@ -26,8 +26,8 @@ export default function PostDetailPage() {
   if (isError || !post) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <h2 className="text-lg font-semibold text-gray-900">Post not found</h2>
-        <p className="mt-1 text-sm text-gray-500">This post may have been deleted.</p>
+        <h2 className="text-lg font-semibold text-gray-100">Post not found</h2>
+        <p className="mt-1 text-sm text-gray-300">This post may have been deleted.</p>
       </div>
     )
   }
@@ -37,7 +37,7 @@ export default function PostDetailPage() {
       <PostCard post={post} />
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold text-gray-900">
+          <h3 className="text-sm font-semibold text-gray-100">
             Comments {comments ? `(${comments.length})` : ''}
           </h3>
         </CardHeader>

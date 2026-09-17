@@ -26,7 +26,7 @@ export function GroupActions({
   // Creator: no join/leave buttons
   if (is_creator) {
     return (
-      <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      <div className="rounded-lg bg-purple-400/10 px-3 py-2 text-xs text-gray-300">
         You're the creator of this group.
       </div>
     )
@@ -38,7 +38,7 @@ export function GroupActions({
       <button
         onClick={() => join_mutation.mutate()}
         disabled={join_mutation.isPending}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
       >
         {join_mutation.isPending ? 'Joining…' : 'Join group'}
       </button>
@@ -48,7 +48,7 @@ export function GroupActions({
   // Pending / invited
   if (status !== 'accepted') {
     return (
-      <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      <div className="rounded-lg bg-purple-400/10 px-3 py-2 text-xs text-gray-300">
         {status === 'pending' ? 'Request sent — awaiting approval' : 'Invited — awaiting response'}
       </div>
     )
@@ -59,7 +59,7 @@ export function GroupActions({
     <button
       onClick={() => leave_mutation.mutate()}
       disabled={leave_mutation.isPending}
-      className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 disabled:opacity-50"
+      className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
     >
       {leave_mutation.isPending ? 'Leaving…' : 'Leave group'}
     </button>

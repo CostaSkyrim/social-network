@@ -33,7 +33,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const container_width = pathname === '/home' ? 'max-w-6xl' : 'max-w-2xl'
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-transparent">
       <div className="flex flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">

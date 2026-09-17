@@ -28,7 +28,7 @@ export function PostList({ posts, is_loading, has_next, on_load_more }: PostList
           <button
             onClick={on_load_more}
             disabled={is_loading}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200"
+            className="rounded-lg bg-purple-400/15 px-4 py-2 text-sm text-gray-300 hover:bg-purple-400/20"
           >
             {is_loading ? <Spinner size="sm" /> : 'Load more'}
           </button>

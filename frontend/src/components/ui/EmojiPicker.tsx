@@ -31,7 +31,7 @@ export function EmojiPicker({ on_select }: EmojiPickerProps) {
       <button
         type="button"
         onClick={() => set_open(!open)}
-        className="rounded-lg p-1.5 text-lg text-gray-500 hover:bg-gray-100"
+        className="rounded-lg p-1.5 text-lg text-gray-300 hover:bg-purple-400/15"
         title="Add emoji"
       >
         😊

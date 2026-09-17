@@ -57,7 +57,7 @@ export function CommentList({ comments, is_loading }: CommentListProps) {
 
   if (comments.length === 0) {
     return (
-      <p className="py-4 text-center text-sm text-gray-500">No comments yet.</p>
+      <p className="py-4 text-center text-sm text-gray-300">No comments yet.</p>
     )
   }
 

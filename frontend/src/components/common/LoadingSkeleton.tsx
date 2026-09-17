@@ -1,12 +1,12 @@
 import { cn } from '@/lib/cn'
 
 function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded bg-gray-200', className)} />
+  return <div className={cn('animate-pulse rounded bg-purple-400/20', className)} />
 }
 
 export function PostSkeleton() {
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="space-y-3 rounded-xl border border-purple-400/20 bg-[#241748] p-5">
       <div className="flex items-center gap-3">
         <Skeleton className="h-10 w-10 rounded-full" />
         <div className="space-y-1">

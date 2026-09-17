@@ -48,7 +48,7 @@ export function ImageUpload({
           <button
             type="button"
             className={cn(
-              'flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700',
+              'flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-purple-400/30 p-6 text-sm text-gray-300 transition-colors hover:border-purple-400/60 hover:text-gray-100',
             )}
           >
             Upload image

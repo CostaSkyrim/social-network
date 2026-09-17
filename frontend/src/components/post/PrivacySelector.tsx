@@ -21,8 +21,8 @@ export function PrivacySelector({ value, onChange }: PrivacySelectorProps) {
           onClick={() => onChange(opt.value)}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             value === opt.value
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              ? 'border-violet-400 bg-violet-500/30 text-violet-100'
+              : 'border-purple-400/30 text-gray-300 hover:bg-purple-400/10'
           }`}
           title={opt.desc}
         >

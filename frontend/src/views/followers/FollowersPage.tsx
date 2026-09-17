@@ -105,14 +105,14 @@ export default function FollowersPage() {
   if (is_loading) {
     return (
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <h2 className="text-xl font-semibold text-gray-100">{title}</h2>
+        <div className="divide-y divide-purple-400/15 rounded-lg border border-purple-400/20 bg-[#241748]">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3">
-              <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
+              <div className="h-10 w-10 animate-pulse rounded-full bg-purple-400/20" />
               <div className="flex-1 space-y-1">
-                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-32 animate-pulse rounded bg-purple-400/20" />
+                <div className="h-3 w-20 animate-pulse rounded bg-purple-400/20" />
               </div>
             </div>
           ))}
@@ -123,14 +123,14 @@ export default function FollowersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+      <div className="flex items-center gap-1 rounded-lg bg-purple-400/15 p-1">
         <button
           onClick={() => set_tab('followers')}
           className={cn(
             'flex-1 rounded-md py-1.5 text-sm font-medium transition-colors',
             tab === 'followers'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700',
+              ? 'bg-[#241748] text-gray-100 shadow-sm'
+              : 'text-gray-300 hover:text-gray-300',
           )}
         >
           Followers ({followers.length})
@@ -140,8 +140,8 @@ export default function FollowersPage() {
           className={cn(
             'flex-1 rounded-md py-1.5 text-sm font-medium transition-colors',
             tab === 'following'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700',
+              ? 'bg-[#241748] text-gray-100 shadow-sm'
+              : 'text-gray-300 hover:text-gray-300',
           )}
         >
           Following ({following.length})
@@ -158,12 +158,12 @@ export default function FollowersPage() {
           }
         />
       ) : (
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <div className="divide-y divide-purple-400/15 rounded-lg border border-purple-400/20 bg-[#241748]">
           {list.map((f) => (
             <button
               key={f.id}
               onClick={() => router.push(`/chat/${f.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-purple-400/10"
             >
               <div className="relative">
                 <Avatar
@@ -176,10 +176,10 @@ export default function FollowersPage() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">
+                <p className="truncate text-sm font-medium text-gray-100">
                   {f.first_name} {f.last_name}
                 </p>
-                <p className="truncate text-xs text-gray-500">
+                <p className="truncate text-xs text-gray-300">
                   {f.nickname ? `@${f.nickname}` : ''}
                   {f.is_public ? ' · public' : ' · private'}
                 </p>
@@ -190,7 +190,7 @@ export default function FollowersPage() {
                     {f.unread_count > 99 ? '99+' : f.unread_count}
                   </span>
                 )}
-                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>

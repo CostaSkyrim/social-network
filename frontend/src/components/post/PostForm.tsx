@@ -132,7 +132,7 @@ export function PostForm({ groupId }: PostFormProps = {}) {
                 onMouseUp={track_cursor}
                 placeholder="What's on your mind?"
                 rows={3}
-                className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                className="w-full resize-none rounded-lg border border-purple-400/30 p-3 text-sm outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-300/40"
                 maxLength={7000}
               />
               {show_suggestions && (
@@ -176,7 +176,7 @@ export function PostForm({ groupId }: PostFormProps = {}) {
                 <ImageUpload on_select={handle_select_image} className="[&>div]:inline-flex">
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    className="rounded-lg px-3 py-1.5 text-sm text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
                     title="Add image"
                   >
                     📷

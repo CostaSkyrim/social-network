@@ -91,13 +91,13 @@ export default function GroupDetailPage() {
                 <Avatar src={group.avatar_path} alt={group.title} size="lg" />
               )}
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{group.title}</h2>
+                <h2 className="text-xl font-semibold text-gray-100">{group.title}</h2>
                 {group.description && (
-                  <p className="mt-1 text-sm text-gray-500">{group.description}</p>
+                  <p className="mt-1 text-sm text-gray-300">{group.description}</p>
                 )}
               </div>
             </div>
-            <span className="text-xs text-gray-400">{accepted_count} members</span>
+            <span className="text-xs text-gray-300">{accepted_count} members</span>
           </div>
           <div className="mt-3">
             <GroupActions
@@ -112,7 +112,7 @@ export default function GroupDetailPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-1 border-b border-gray-200">
+          <div className="flex items-center gap-1 border-b border-purple-400/20">
             {([
               ['posts', 'Posts'],
               ['events', 'Events'],
@@ -126,8 +126,8 @@ export default function GroupDetailPage() {
                 className={cn(
                   'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
                   active_tab === key
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700',
+                    ? 'border-violet-300 text-violet-300'
+                    : 'border-transparent text-gray-300 hover:text-gray-300',
                 )}
               >
                 {label}
@@ -148,7 +148,7 @@ export default function GroupDetailPage() {
                 />
               </>
             ) : (
-              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+              <p className="rounded-lg border border-purple-400/20 bg-[#241748] p-6 text-center text-sm text-gray-300">
                 Join this group to see its posts.
               </p>
             ))}
@@ -164,7 +164,7 @@ export default function GroupDetailPage() {
                 />
               </>
             ) : (
-              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+              <p className="rounded-lg border border-purple-400/20 bg-[#241748] p-6 text-center text-sm text-gray-300">
                 Join this group to see its events.
               </p>
             ))}
@@ -177,7 +177,7 @@ export default function GroupDetailPage() {
                 groupAvatar={group.avatar_path}
               />
             ) : (
-              <p className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+              <p className="rounded-lg border border-purple-400/20 bg-[#241748] p-6 text-center text-sm text-gray-300">
                 Join this group to participate in the chat.
               </p>
             ))}

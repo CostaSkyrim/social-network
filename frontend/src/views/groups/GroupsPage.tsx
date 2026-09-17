@@ -47,9 +47,9 @@ export default function GroupsPage() {
               <CardContent className="flex items-center gap-4 px-6 py-6">
                 <Avatar src={group.avatar_path} alt={group.title} size="md" />
                 <div className="min-w-0">
-                  <h3 className="text-base font-semibold text-gray-900">{group.title}</h3>
+                  <h3 className="text-base font-semibold text-gray-100">{group.title}</h3>
                   {group.description && (
-                    <p className="mt-1 text-sm text-gray-500 line-clamp-2">{group.description}</p>
+                    <p className="mt-1 text-sm text-gray-300 line-clamp-2">{group.description}</p>
                   )}
                 </div>
               </CardContent>
@@ -64,10 +64,10 @@ export default function GroupsPage() {
 function GroupsHeader() {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-xl font-semibold text-gray-900">Groups</h2>
+      <h2 className="text-xl font-semibold text-gray-100">Groups</h2>
       <Link
         href="/groups/new"
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
       >
         + Create group
       </Link>

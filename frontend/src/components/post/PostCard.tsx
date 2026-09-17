@@ -104,16 +104,16 @@ export function PostCard({ post }: PostCardProps) {
           <div className="min-w-0 flex-1">
             <Link
               href={`/profile/${post.author_id}`}
-              className="text-sm font-medium text-gray-900 hover:underline"
+              className="text-sm font-medium text-gray-100 hover:underline"
             >
               {author_name}
             </Link>
-            <p className="text-xs text-gray-500">{format_date(post.created_at)}</p>
+            <p className="text-xs text-gray-300">{format_date(post.created_at)}</p>
           </div>
           {is_deleted ? (
             <span className="text-xs text-red-400 font-medium">deleted</span>
           ) : post.privacy_level !== 'public' ? (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-300">
               {post.privacy_level === 'followers' ? '🫂' : '🔒'}
             </span>
           ) : null}
@@ -121,7 +121,7 @@ export function PostCard({ post }: PostCardProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={start_edit}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded p-1 text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
                 title="Edit post"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,7 +130,7 @@ export function PostCard({ post }: PostCardProps) {
               </button>
               <button
                 onClick={handle_delete}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                className="rounded p-1 text-gray-300 hover:bg-purple-400/15 hover:text-red-500"
                 title="Delete post"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,14 +143,14 @@ export function PostCard({ post }: PostCardProps) {
 
         {is_deleted ? (
           <Link href={`/posts/${post.id}`}>
-            <p className="text-sm text-gray-400 italic">[deleted]</p>
+            <p className="text-sm text-gray-300 italic">[deleted]</p>
           </Link>
         ) : is_editing ? (
           <div className="space-y-3">
             <textarea
               value={edit_content}
               onChange={(e) => set_edit_content(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-purple-400/30 p-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
               rows={3}
               disabled={edit_mutation.isPending}
             />
@@ -207,7 +207,7 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         ) : (
           <Link href={`/posts/${post.id}`}>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
+            <p className="text-sm text-gray-100 whitespace-pre-wrap">{post.content}</p>
           </Link>
         )}
 
@@ -220,7 +220,7 @@ export function PostCard({ post }: PostCardProps) {
           />
         )}
 
-        <Link href={`/posts/${post.id}`} className="flex items-center gap-4 text-sm text-gray-500 hover:text-gray-700">
+        <Link href={`/posts/${post.id}`} className="flex items-center gap-4 text-sm text-gray-300 hover:text-gray-300">
           <span>{post.comment_count ?? 0} comments</span>
         </Link>
       </CardContent>

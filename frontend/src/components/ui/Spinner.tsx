@@ -10,7 +10,7 @@ const size_map = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-10 w-10' }
 export function Spinner({ size = 'md', className }: SpinnerProps) {
   return (
     <svg
-      className={cn('animate-spin text-blue-600', size_map[size], className)}
+      className={cn('animate-spin text-violet-600', size_map[size], className)}
       viewBox="0 0 24 24"
       fill="none"
     >

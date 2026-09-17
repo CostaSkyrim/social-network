@@ -62,7 +62,7 @@ export default function SearchPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Search</h2>
+      <h2 className="text-xl font-semibold text-gray-100">Search</h2>
 
       <div className="relative">
         <input
@@ -71,10 +71,10 @@ export default function SearchPage() {
           onChange={(e) => set_q(e.target.value)}
           placeholder="Search people by name or @nickname..."
           autoFocus
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+          className="w-full rounded-lg border border-purple-400/30 px-4 py-2.5 pl-10 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-300/40"
         />
         <svg
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -104,7 +104,7 @@ export default function SearchPage() {
           description={`No results for "${debounced_q}".`}
         />
       ) : (
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <div className="divide-y divide-purple-400/15 rounded-lg border border-purple-400/20 bg-[#241748]">
           {visible.map((u) => {
             const name = `${u.first_name} ${u.last_name}`
             return (
@@ -120,11 +120,11 @@ export default function SearchPage() {
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/profile/${u.id}`}
-                    className="text-sm font-medium text-gray-900 hover:underline"
+                    className="text-sm font-medium text-gray-100 hover:underline"
                   >
                     {name}
                   </Link>
-                  <p className="truncate text-xs text-gray-500">
+                  <p className="truncate text-xs text-gray-300">
                     {u.nickname ? `@${u.nickname}` : ''}
                     <span className="mx-1 text-gray-300">·</span>
                     {u.is_public ? 'Public' : 'Private'}

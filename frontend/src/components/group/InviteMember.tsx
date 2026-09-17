@@ -26,12 +26,12 @@ export function InviteMember({ groupId }: InviteMemberProps) {
         value={nickname}
         onChange={(e) => set_nickname(e.target.value)}
         placeholder="Invite by nickname…"
-        className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="flex-1 rounded-lg border border-purple-400/30 px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
       />
       <button
         type="submit"
         disabled={invite_mutation.isPending || !nickname.trim()}
-        className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
       >
         {invite_mutation.isPending ? 'Inviting…' : 'Invite'}
       </button>

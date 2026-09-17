@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 const type_styles = {
   success: 'bg-green-600 text-white',
   error: 'bg-red-600 text-white',
-  info: 'bg-blue-600 text-white',
+  info: 'bg-violet-600 text-white',
 }
 
 export function ToastContainer() {

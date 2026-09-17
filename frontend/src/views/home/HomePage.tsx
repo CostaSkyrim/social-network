@@ -29,7 +29,7 @@ export default function HomePage() {
     <div className="space-y-8">
       {/* 1) Recent events from the user's groups */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Upcoming events</h2>
+        <h2 className="mb-3 text-lg font-semibold text-gray-100">Upcoming events</h2>
         <EventsCarousel
           events={all_events}
           is_loading={events.isLoading}
@@ -45,7 +45,7 @@ export default function HomePage() {
 
       {/* 3) Recent posts from followed users */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">From people you follow</h2>
+        <h2 className="mb-3 text-lg font-semibold text-gray-100">From people you follow</h2>
         <PostGrid
           posts={following_posts}
           is_loading={following.isLoading}
@@ -58,7 +58,7 @@ export default function HomePage() {
 
       {/* 4) Public posts from accounts you don't follow */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Explore</h2>
+        <h2 className="mb-3 text-lg font-semibold text-gray-100">Explore</h2>
         <PostGrid
           posts={explore_posts}
           is_loading={explore.isLoading}

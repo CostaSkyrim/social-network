@@ -15,7 +15,7 @@ interface TabsProps {
 
 export function Tabs({ tabs, active, on_change, className }: TabsProps) {
   return (
-    <div className={cn('flex border-b border-gray-200', className)}>
+    <div className={cn('flex border-b border-purple-400/20', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -23,8 +23,8 @@ export function Tabs({ tabs, active, on_change, className }: TabsProps) {
           className={cn(
             'px-4 py-3 text-sm font-medium transition-colors',
             active === tab.id
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700',
+              ? 'border-b-2 border-violet-600 text-violet-600'
+              : 'text-gray-300 hover:text-gray-300',
           )}
         >
           {tab.label}

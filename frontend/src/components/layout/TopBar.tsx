@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthProvider'
 import { useNotifications } from '@/context/NotificationProvider'
 import { Avatar } from '@/components/ui/Avatar'
@@ -12,18 +13,23 @@ export function TopBar() {
   const router = useRouter()
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-purple-400/20 bg-[#1c1242]/80 px-4 backdrop-blur">
       <div className="flex items-center gap-3">
         <NavMenu
           trigger={
-            <button className="rounded-lg p-1 text-gray-500 hover:bg-gray-100">
+            <button className="rounded-lg p-1 text-purple-200 hover:bg-purple-400/10">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
           }
         />
-        <h1 className="text-lg font-bold text-blue-600">Social</h1>
+        <Link
+          href="/home"
+          className="bg-gradient-to-r from-fuchsia-400 to-violet-400 bg-clip-text text-xl font-bold tracking-wide text-transparent font-display hover:from-fuchsia-300 hover:to-violet-300"
+        >
+          Andromeda
+        </Link>
       </div>
 
       <div className="flex items-center gap-3">
@@ -52,7 +58,7 @@ function NavFollowersBadge() {
   return (
     <button
       onClick={() => router.push('/followers')}
-      className="relative rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+      className="relative rounded-lg p-1 text-purple-200 hover:bg-purple-400/10"
       title="Followers & Messages"
     >
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,7 +70,7 @@ function NavFollowersBadge() {
         />
       </svg>
       {message_count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-bold text-white">
           {message_count > 99 ? '99+' : message_count}
         </span>
       )}
@@ -79,7 +85,7 @@ function NavNotificationBell() {
   return (
     <button
       onClick={() => router.push('/notifications')}
-      className="relative rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+      className="relative rounded-lg p-1 text-purple-200 hover:bg-purple-400/10"
     >
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path

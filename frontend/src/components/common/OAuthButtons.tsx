@@ -10,22 +10,22 @@ export default function OAuthButtons() {
   return (
     <>
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs text-gray-400">or continue with</span>
-        <div className="h-px flex-1 bg-gray-200" />
+        <div className="h-px flex-1 bg-purple-400/20" />
+        <span className="text-xs text-gray-300">or continue with</span>
+        <div className="h-px flex-1 bg-purple-400/20" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <a
           href={oauth_url('google')}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100"
         >
           <GoogleIcon />
           Google
         </a>
         <a
           href={oauth_url('github')}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+          className="flex items-center justify-center gap-2 rounded-lg border border-purple-400/30 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
         >
           <GithubIcon />
           GitHub

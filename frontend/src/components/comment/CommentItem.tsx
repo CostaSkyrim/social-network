@@ -78,15 +78,15 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
         />
       </Link>
       <div className="min-w-0 flex-1">
-        <div className="rounded-xl bg-gray-100 px-4 py-2.5">
+        <div className="rounded-xl bg-purple-400/15 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Link
               href={`/profile/${comment.author_id}`}
-              className="text-sm font-medium text-gray-900 hover:underline"
+              className="text-sm font-medium text-gray-100 hover:underline"
             >
               {author_name}
             </Link>
-            <span className="text-xs text-gray-500">{format_date(comment.created_at)}</span>
+            <span className="text-xs text-gray-300">{format_date(comment.created_at)}</span>
             {is_deleted && (
               <span className="text-xs text-red-400 font-medium">deleted</span>
             )}
@@ -94,7 +94,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
               <div className="ml-auto flex items-center gap-1">
                 <button
                   onClick={() => set_editing(true)}
-                  className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                  className="rounded p-1 text-gray-300 hover:bg-purple-400/20 hover:text-gray-300"
                   title="Edit comment"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,7 +103,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
                 </button>
                 <button
                   onClick={handle_delete}
-                  className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500"
+                  className="rounded p-1 text-gray-300 hover:bg-purple-400/20 hover:text-red-500"
                   title="Delete comment"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -114,13 +114,13 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
             )}
           </div>
           {is_deleted ? (
-            <p className="mt-0.5 text-sm text-gray-400 italic">[deleted]</p>
+            <p className="mt-0.5 text-sm text-gray-300 italic">[deleted]</p>
           ) : is_editing ? (
             <div className="mt-2 space-y-2">
               <textarea
                 value={edit_content}
                 onChange={(e) => set_edit_content(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-purple-400/30 p-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                 rows={2}
                 disabled={edit_mutation.isPending}
               />
@@ -168,7 +168,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
             </div>
           ) : (
             <div>
-              <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+              <p className="mt-0.5 text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</p>
               {comment.image_path && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img

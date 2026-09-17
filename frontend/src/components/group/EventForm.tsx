@@ -79,10 +79,10 @@ export function EventForm({ groupId }: EventFormProps) {
         <button
           type="button"
           onClick={() => set_open((o) => !o)}
-          className="mb-3 flex w-full items-center justify-between text-sm font-semibold text-gray-900"
+          className="mb-3 flex w-full items-center justify-between text-sm font-semibold text-gray-100"
         >
           <span>Create an event</span>
-          <span className="text-gray-500">{open ? '−' : '+'}</span>
+          <span className="text-gray-300">{open ? '−' : '+'}</span>
         </button>
         {open && (
           <form onSubmit={handle_submit} className="space-y-3">
@@ -130,7 +130,7 @@ export function EventForm({ groupId }: EventFormProps) {
               <ImageUpload on_select={handle_select_image}>
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  className="rounded-lg px-3 py-1.5 text-sm text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
                   title="Add event image"
                 >
                   📷 Add image
@@ -140,7 +140,7 @@ export function EventForm({ groupId }: EventFormProps) {
                 <button
                   type="button"
                   onClick={clear_image}
-                  className="text-sm text-red-600 hover:text-red-700"
+                  className="text-sm text-red-600 hover:text-red-200"
                 >
                   Remove photo
                 </button>
