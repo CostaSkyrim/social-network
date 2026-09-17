@@ -151,7 +151,7 @@ export function PostForm({ groupId }: PostFormProps = {}) {
               <img
                 src={preview_url}
                 alt="Selected image"
-                className="max-h-64 w-full rounded-lg object-cover"
+                className="max-h-64 w-full rounded-lg object-contain"
               />
               <button
                 type="button"

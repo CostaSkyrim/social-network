@@ -58,7 +58,7 @@ export function CommentForm({ postId, parentCommentId, onSubmitted }: CommentFor
             <img
               src={preview_url}
               alt="Selected image"
-              className="max-h-40 w-full rounded-lg object-cover"
+              className="max-h-40 w-full rounded-lg object-contain"
             />
             <button
               type="button"

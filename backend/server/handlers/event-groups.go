@@ -584,6 +584,9 @@ func UpdateGroupAvatarHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
+	// Remove the previous avatar file now that it's no longer referenced.
+	DeleteImageFile(group.AvatarPath)
+
 	RespondSuccess(w, http.StatusOK, "Group avatar updated", map[string]interface{}{
 		"avatar_path": avatarPath,
 	})

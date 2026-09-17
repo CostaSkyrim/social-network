@@ -269,6 +269,9 @@ func UpdateUserAvatarHandler(w http.ResponseWriter, r *http.Request, db *databas
 		return
 	}
 
+	// Remove the previous avatar file now that it's no longer referenced.
+	DeleteImageFile(targetUser.AvatarPath)
+
 	RespondSuccess(w, http.StatusOK, "Avatar updated", map[string]interface{}{
 		"avatar_path": avatarPath,
 	})

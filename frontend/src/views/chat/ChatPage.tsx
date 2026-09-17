@@ -376,7 +376,7 @@ export default function ChatPage() {
                     <img
                       src={get_media_url(msg.image_path)}
                       alt="Message image"
-                      className="mb-1 max-h-60 w-full rounded-md object-cover"
+                      className="mb-1 max-h-60 w-full rounded-md object-contain"
                     />
                   )}
                   {msg.content && (
@@ -422,7 +422,7 @@ export default function ChatPage() {
             <img
               src={pending_preview}
               alt="Selected image"
-              className="max-h-32 w-48 rounded-lg object-cover"
+              className="max-h-32 w-48 rounded-lg object-contain"
             />
             <button
               type="button"

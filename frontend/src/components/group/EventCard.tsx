@@ -53,7 +53,7 @@ export function EventCard({ event, groupId }: EventCardProps) {
           <img
             src={get_media_url(event.image_path)}
             alt="Event image"
-            className="max-h-64 w-full rounded-lg object-cover"
+            className="max-h-64 w-full rounded-lg object-contain"
           />
         )}
 

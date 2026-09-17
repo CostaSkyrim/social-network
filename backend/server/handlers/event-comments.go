@@ -227,14 +227,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		if !ok {
 			return
 		}
-		switch {
-		case imgPath != nil:
-			imagePath = imgPath
-		case removeImageRequested(r):
-			imagePath = nil
-		default:
-			imagePath = comment.ImagePath // keep existing image
-		}
+		imagePath = resolveImageUpdate(comment.ImagePath, imgPath, r)
 	} else {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			RespondError(w, http.StatusBadRequest, "Invalid request body")

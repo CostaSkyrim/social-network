@@ -92,7 +92,7 @@ export function EventForm({ groupId }: EventFormProps) {
                 <img
                   src={preview_url}
                   alt="Event image preview"
-                  className="max-h-48 w-full rounded-lg object-cover"
+                  className="max-h-48 w-full rounded-lg object-contain"
                 />
                 <button
                   type="button"

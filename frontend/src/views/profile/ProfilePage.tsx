@@ -433,7 +433,7 @@ export default function ProfilePage() {
                     <img
                       src={get_media_url(post.image_path)}
                       alt="Post image"
-                      className="mt-2 max-h-64 w-full rounded-lg object-cover"
+                      className="mt-2 max-h-64 w-full rounded-lg object-contain"
                     />
                   )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-300">

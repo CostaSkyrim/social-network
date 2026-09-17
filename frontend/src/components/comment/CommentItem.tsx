@@ -130,7 +130,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
                   <img
                     src={edit_preview_url ?? get_media_url(comment.image_path)}
                     alt="Comment image"
-                    className="max-h-48 w-full rounded-lg object-cover"
+                    className="max-h-48 w-full rounded-lg object-contain"
                   />
                   <button
                     type="button"
@@ -174,7 +174,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
                 <img
                   src={get_media_url(comment.image_path)}
                   alt="Comment image"
-                  className="mt-2 max-h-48 w-full rounded-lg object-cover"
+                  className="mt-2 max-h-48 w-full rounded-lg object-contain"
                 />
               )}
             </div>

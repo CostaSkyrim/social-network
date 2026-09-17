@@ -338,14 +338,7 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 		if !ok {
 			return
 		}
-		switch {
-		case imgPath != nil:
-			imagePath = imgPath
-		case removeImageRequested(r):
-			imagePath = nil
-		default:
-			imagePath = post.ImagePath // keep existing image
-		}
+		imagePath = resolveImageUpdate(post.ImagePath, imgPath, r)
 	} else {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			RespondError(w, http.StatusBadRequest, "Invalid request body")

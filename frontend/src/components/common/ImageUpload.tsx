@@ -11,7 +11,7 @@ interface ImageUploadProps {
 
 export function ImageUpload({
   on_select,
-  accept = 'image/jpg,image/png,image/gif',
+  accept = 'image/jpeg,image/png,image/gif,image/webp',
   max_size = 20 * 1024 * 1024,
   className,
   children,

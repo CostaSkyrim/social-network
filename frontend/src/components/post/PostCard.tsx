@@ -160,7 +160,7 @@ export function PostCard({ post }: PostCardProps) {
                 <img
                   src={edit_preview_url ?? get_media_url(post.image_path)}
                   alt="Post image"
-                  className="max-h-64 w-full rounded-lg object-cover"
+                  className="max-h-64 w-full rounded-lg object-contain"
                 />
                 <button
                   type="button"
@@ -216,7 +216,7 @@ export function PostCard({ post }: PostCardProps) {
           <img
             src={get_media_url(post.image_path)}
             alt="Post image"
-            className="w-full rounded-lg object-cover max-h-96"
+            className="max-h-96 w-full rounded-lg object-contain"
           />
         )}
 
