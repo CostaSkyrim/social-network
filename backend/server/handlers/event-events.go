@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -251,6 +252,71 @@ func getGroupEventsHandler(w http.ResponseWriter, r *http.Request, db *database.
 		if err != nil {
 			RespondError(w, http.StatusInternalServerError, "Failed to fetch event details")
 			return
+		}
+		metaList = append(metaList, meta)
+	}
+
+	RespondSuccess(w, http.StatusOK, "Events retrieved", metaList)
+}
+
+// userGroupEventWithMeta is an event from a user's groups, enriched with RSVP
+// counts and (for the responder) the user's own response.
+type userGroupEventWithMeta struct {
+	*database.UserGroupEvent
+	Going      int     `json:"going"`
+	NotGoing   int     `json:"not_going"`
+	Total      int     `json:"total"`
+	MyResponse *string `json:"my_response,omitempty"`
+}
+
+func GetUserGroupEventsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	limit := 10
+	offset := 0
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+		limit = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
+		offset = v
+	}
+
+	events, err := db.GetUserGroupEvents(r.Context(), userID, limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to fetch events")
+		return
+	}
+
+	metaList := []*userGroupEventWithMeta{}
+	for _, e := range events {
+		counts, err := db.GetEventResponseCounts(r.Context(), e.ID)
+		if err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to fetch event details")
+			return
+		}
+		myResp, err := db.GetEventResponseByUser(r.Context(), e.ID, userID)
+		if err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to fetch event details")
+			return
+		}
+
+		meta := &userGroupEventWithMeta{
+			UserGroupEvent: e,
+			Going:          counts["going"],
+			NotGoing:       counts["not_going"],
+			Total:          counts["going"] + counts["not_going"],
+		}
+		if myResp != nil {
+			meta.MyResponse = &myResp.Response
 		}
 		metaList = append(metaList, meta)
 	}

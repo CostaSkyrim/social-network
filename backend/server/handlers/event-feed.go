@@ -49,6 +49,74 @@ func GetFeedHandler(w http.ResponseWriter, r *http.Request, db *database.DataBas
 	RespondSuccess(w, http.StatusOK, "Feed retrieved", posts)
 }
 
+func GetFollowingPostsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	limit := 10
+	offset := 0
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+		limit = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
+		offset = v
+	}
+
+	posts, err := db.GetFollowingPosts(r.Context(), userID, limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to fetch following posts")
+		return
+	}
+
+	if posts == nil {
+		posts = []*database.Post{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "Following posts retrieved", posts)
+}
+
+func GetExplorePostsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodGet {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	limit := 10
+	offset := 0
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+		limit = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
+		offset = v
+	}
+
+	posts, err := db.GetExplorePosts(r.Context(), userID, limit, offset)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to fetch explore posts")
+		return
+	}
+
+	if posts == nil {
+		posts = []*database.Post{}
+	}
+
+	RespondSuccess(w, http.StatusOK, "Explore posts retrieved", posts)
+}
+
 func GetPostHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodGet {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")

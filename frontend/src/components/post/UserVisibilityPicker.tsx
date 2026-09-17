@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchFollowers } from '@/api/chat'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/context/AuthProvider'
@@ -22,6 +22,7 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
   const { user } = useAuth()
   const [followers, set_followers] = useState<Follower[]>([])
   const [is_loading, set_is_loading] = useState(true)
+  const [query, set_query] = useState('')
 
   useEffect(() => {
     const userID = user?.id
@@ -44,6 +45,16 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
     }
   }, [user?.id])
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return followers
+    return followers.filter((f) => {
+      const name = `${f.first_name} ${f.last_name}`.toLowerCase()
+      const nickname = f.nickname?.toLowerCase() ?? ''
+      return name.includes(q) || nickname.includes(q)
+    })
+  }, [followers, query])
+
   function toggle(id: string) {
     if (selected.includes(id)) onChange(selected.filter((x) => x !== id))
     else onChange([...selected, id])
@@ -62,31 +73,62 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
           You have no followers to choose from yet.
         </p>
       ) : (
-        <ul className="max-h-40 space-y-1 overflow-y-auto">
-          {followers.map((f) => {
-            const name = `${f.first_name} ${f.last_name}`
-            const checked = selected.includes(f.id)
-            return (
-              <li key={f.id}>
-                <label className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(f.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <Avatar src={f.avatar_path} alt={name} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
-                    {name}
-                    {f.nickname ? (
-                      <span className="ml-1 text-xs text-gray-400">@{f.nickname}</span>
-                    ) : null}
-                  </span>
-                </label>
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          <div className="relative mb-2">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => set_query(e.target.value)}
+              placeholder="Search by name or @nickname..."
+              className="w-full rounded-lg border border-gray-300 py-1.5 pl-8 pr-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+            />
+            <svg
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="py-2 text-xs text-gray-400">
+              No matches for &ldquo;{query.trim()}&rdquo;.
+            </p>
+          ) : (
+            <ul className="max-h-40 space-y-1 overflow-y-auto">
+              {filtered.map((f) => {
+                const name = `${f.first_name} ${f.last_name}`
+                const checked = selected.includes(f.id)
+                return (
+                  <li key={f.id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(f.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <Avatar src={f.avatar_path} alt={name} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+                        {name}
+                        {f.nickname ? (
+                          <span className="ml-1 text-xs text-gray-400">@{f.nickname}</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </>
       )}
 
       {!is_loading && followers.length > 0 && (

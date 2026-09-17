@@ -198,6 +198,15 @@ type Event struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
+// UserGroupEvent is an event enriched with its owning group's context, used for
+// the home page's cross-group events feed.
+type UserGroupEvent struct {
+	*Event
+	GroupUUID       string  `json:"group_uuid"`
+	GroupTitle      string  `json:"group_title"`
+	GroupAvatarPath *string `json:"group_avatar_path,omitempty"`
+}
+
 // ReminderEvent is an event that is due for a reminder, with its group context.
 type ReminderEvent struct {
 	ID            int64

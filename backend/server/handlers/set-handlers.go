@@ -63,6 +63,8 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 
 		// Post endpoints
 		makeEndpoint("/api/feed", true, GetFeedHandler),
+		makeEndpoint("/api/feed/following", true, GetFollowingPostsHandler),
+		makeEndpoint("/api/feed/explore", true, GetExplorePostsHandler),
 		makeEndpoint("/api/posts", true, CreatePostHandler),
 		makeEndpoint("/api/post/{id}", true, GetPostHandler),
 		makeEndpoint("/api/posts/{id}", true, DeletePostHandler),
@@ -108,6 +110,9 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/avatar", true, UpdateGroupAvatarHandler),
 		makeEndpoint("/api/groups/{id}/messages", true, GetGroupMessagesHandler),
 		makeEndpoint("/api/groups/{id}/messages/send", true, SendGroupMessageHandler),
+
+		// Events endpoint
+		makeEndpoint("/api/events", true, GetUserGroupEventsHandler),
 
 		// Notification endpoints
 		makeEndpoint("/api/notifications", true, GetNotificationsHandler),

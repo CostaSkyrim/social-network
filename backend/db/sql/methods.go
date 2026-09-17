@@ -1076,6 +1076,118 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 	return posts, nil
 }
 
+// GetFollowingPosts retrieves the most recent posts authored by users the given
+// user follows (accepted follows), excluding the user's own posts.
+func (db *DataBase) GetFollowingPosts(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetFollowingPosts,
+		userID, userID, userID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query following posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []*Post
+	for rows.Next() {
+		post := &Post{Author: &User{}}
+		var nickname, avatarPath sql.NullString
+
+		err := rows.Scan(
+			&post.ID,
+			&post.UUID,
+			&post.AuthorID,
+			&post.AuthorUUID,
+			&post.Content,
+			&post.ImagePath,
+			&post.PrivacyLevel,
+			&post.CreatedAt,
+			&post.Author.FirstName,
+			&post.Author.LastName,
+			&nickname,
+			&avatarPath,
+			&post.IsDeleted,
+			&post.CommentCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan following post: %w", err)
+		}
+		if nickname.Valid {
+			post.Author.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			post.Author.AvatarPath = &avatarPath.String
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return posts, nil
+}
+
+// GetExplorePosts retrieves public posts from authors the given user does NOT
+// follow (excluding the user's own posts), for the home page "explore" section.
+func (db *DataBase) GetExplorePosts(ctx context.Context, userID int64, limit, offset int) ([]*Post, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetExplorePosts,
+		userID, userID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query explore posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []*Post
+	for rows.Next() {
+		post := &Post{Author: &User{}}
+		var nickname, avatarPath sql.NullString
+
+		err := rows.Scan(
+			&post.ID,
+			&post.UUID,
+			&post.AuthorID,
+			&post.AuthorUUID,
+			&post.Content,
+			&post.ImagePath,
+			&post.PrivacyLevel,
+			&post.CreatedAt,
+			&post.Author.FirstName,
+			&post.Author.LastName,
+			&nickname,
+			&avatarPath,
+			&post.IsDeleted,
+			&post.CommentCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan explore post: %w", err)
+		}
+		if nickname.Valid {
+			post.Author.Nickname = &nickname.String
+		}
+		if avatarPath.Valid {
+			post.Author.AvatarPath = &avatarPath.String
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return posts, nil
+}
+
 // GetGroupPosts retrieves posts within a group
 func (db *DataBase) GetGroupPosts(ctx context.Context, groupID int64, limit, offset int) ([]*Post, error) {
 	if ctx == nil {
@@ -2504,7 +2616,73 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 	return events, nil
 }
 
-// CreateEventRSVP upserts a user's response to an event
+// GetUserGroupEvents retrieves the most recent events across all groups the
+// given user is an accepted member of, each enriched with its group's context.
+func (db *DataBase) GetUserGroupEvents(ctx context.Context, userID int64, limit, offset int) ([]*UserGroupEvent, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx,
+		queries.GetUserGroupEvents,
+		userID, limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user group events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*UserGroupEvent
+	for rows.Next() {
+		event := &Event{}
+		var firstName, lastName string
+		var nickname, groupAvatarPath sql.NullString
+		var imagePath *string
+		ugEvent := &UserGroupEvent{Event: event}
+
+		err := rows.Scan(
+			&event.ID,
+			&event.UUID,
+			&event.GroupID,
+			&event.CreatorID,
+			&event.Title,
+			&event.Description,
+			&imagePath,
+			&event.EventDateTime,
+			&event.CreatedAt,
+			&event.UpdatedAt,
+			&firstName,
+			&lastName,
+			&nickname,
+			&ugEvent.GroupUUID,
+			&ugEvent.GroupTitle,
+			&groupAvatarPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user group event: %w", err)
+		}
+		event.ImagePath = imagePath
+
+		event.Creator = &User{
+			FirstName: firstName,
+			LastName:  lastName,
+		}
+		if nickname.Valid {
+			event.Creator.Nickname = &nickname.String
+		}
+		if groupAvatarPath.Valid {
+			ugEvent.GroupAvatarPath = &groupAvatarPath.String
+		}
+
+		events = append(events, ugEvent)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return events, nil
+}
 func (db *DataBase) CreateEventRSVP(ctx context.Context, eventID, userID int64, response string) error {
 	if ctx == nil {
 		ctx = context.Background()

@@ -1,11 +1,12 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import {
   browseGroups,
   getGroup,
   createGroup as apiCreateGroup,
   getGroupEvents,
+  getUserGroupEvents,
   createEvent as apiCreateEvent,
   rsvpEvent as apiRsvpEvent,
   acceptGroupMember as apiAcceptGroupMember,
@@ -60,6 +61,21 @@ export function useGroupEvents(groupId: string, enabled = true) {
     queryKey: ['group-events', groupId],
     queryFn: () => getGroupEvents(groupId),
     enabled: !!groupId && enabled,
+  })
+}
+
+const USER_GROUP_EVENTS_PAGE_SIZE = 6
+
+export function useUserGroupEvents() {
+  return useInfiniteQuery({
+    queryKey: ['user-group-events'],
+    queryFn: ({ pageParam }) => getUserGroupEvents(pageParam, USER_GROUP_EVENTS_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < USER_GROUP_EVENTS_PAGE_SIZE) return undefined
+      return allPages.length + 1
+    },
+    initialPageParam: 1,
+    staleTime: 30_000,
   })
 }
 

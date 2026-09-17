@@ -375,6 +375,51 @@ const (
 				WHERE fw.following_id = p.author_id
 					AND fw.follower_id = ? AND fw.status = 'accepted'
 			))
+			AND p.is_deleted = 0
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ? OFFSET ?
+	`
+
+	GetFollowingPosts = `
+		SELECT DISTINCT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.content, p.image_path,
+				 p.privacy_level, p.created_at, u.first_name, u.last_name,
+				 u.nickname, u.avatar_path, p.is_deleted,
+				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		JOIN followers f ON f.following_id = p.author_id
+			AND f.follower_id = ? AND f.status = 'accepted'
+		WHERE p.group_id IS NULL
+			AND p.author_id != ?
+			AND (
+				p.privacy_level = 'public'
+				OR (p.privacy_level = 'followers' AND 1 = 1)
+				OR (p.privacy_level = 'private' AND p.id IN (
+					SELECT post_id FROM post_visibility WHERE user_id = ?
+				))
+			)
+			AND p.is_deleted = 0
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ? OFFSET ?
+	`
+
+	GetExplorePosts = `
+		SELECT DISTINCT p.id, p.uuid, p.author_id, u.uuid as author_uuid, p.content, p.image_path,
+				 p.privacy_level, p.created_at, u.first_name, u.last_name,
+				 u.nickname, u.avatar_path, p.is_deleted,
+				 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE p.group_id IS NULL
+			AND p.author_id != ?
+			AND NOT EXISTS (
+				SELECT 1 FROM followers fw
+				WHERE fw.following_id = p.author_id
+					AND fw.follower_id = ? AND fw.status = 'accepted'
+			)
+			AND p.privacy_level = 'public'
+			AND u.is_public = 1
+			AND p.is_deleted = 0
 		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`
@@ -816,6 +861,19 @@ const (
 		JOIN users u ON u.id = e.creator_id
 		WHERE e.group_id = ?
 		ORDER BY e.event_datetime ASC
+	`
+
+	GetUserGroupEvents = `
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
+			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
+			 u.first_name, u.last_name, u.nickname,
+			 g.uuid AS group_uuid, g.title AS group_title, g.avatar_path AS group_avatar_path
+		FROM events e
+		JOIN users u ON u.id = e.creator_id
+		JOIN groups g ON g.id = e.group_id
+		JOIN group_members gm ON gm.group_id = e.group_id AND gm.user_id = ? AND gm.status = 'accepted'
+		ORDER BY e.created_at DESC, e.id DESC
+		LIMIT ? OFFSET ?
 	`
 
 	GetEventResponseByUser = `

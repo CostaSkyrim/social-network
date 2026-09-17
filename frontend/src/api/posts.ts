@@ -25,6 +25,18 @@ export async function getFeed(page: number, limit: number = 10): Promise<Post[]>
   return res.data.data ?? []
 }
 
+export async function getFollowingPosts(page: number, limit: number = 10): Promise<Post[]> {
+  const offset = (page - 1) * limit
+  const res = await client.get<FeedResponse>(`/api/feed/following?limit=${limit}&offset=${offset}`)
+  return res.data.data ?? []
+}
+
+export async function getExplorePosts(page: number, limit: number = 10): Promise<Post[]> {
+  const offset = (page - 1) * limit
+  const res = await client.get<FeedResponse>(`/api/feed/explore?limit=${limit}&offset=${offset}`)
+  return res.data.data ?? []
+}
+
 export async function getGroupPosts(groupId: string, page: number, limit: number = 10): Promise<Post[]> {
   const offset = (page - 1) * limit
   const res = await client.get<FeedResponse>(`/api/groups/${groupId}/posts?limit=${limit}&offset=${offset}`)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getFeed, getGroupPosts, getUserPosts, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
+import { getFeed, getFollowingPosts, getExplorePosts, getGroupPosts, getUserPosts, getPost, createPost as apiCreatePost, deletePost as apiDeletePost, editPost as apiEditPost } from '@/api/posts'
 import { useUI } from '@/context/UIProvider'
 
 const FEED_PAGE_SIZE = 10
@@ -11,6 +11,32 @@ export function useFeed() {
   return useInfiniteQuery({
     queryKey: ['feed'],
     queryFn: ({ pageParam }) => getFeed(pageParam, FEED_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < FEED_PAGE_SIZE) return undefined
+      return allPages.length + 1
+    },
+    initialPageParam: 1,
+    staleTime: 30_000,
+  })
+}
+
+export function useFollowingPosts() {
+  return useInfiniteQuery({
+    queryKey: ['following-posts'],
+    queryFn: ({ pageParam }) => getFollowingPosts(pageParam, FEED_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < FEED_PAGE_SIZE) return undefined
+      return allPages.length + 1
+    },
+    initialPageParam: 1,
+    staleTime: 30_000,
+  })
+}
+
+export function useExplorePosts() {
+  return useInfiniteQuery({
+    queryKey: ['explore-posts'],
+    queryFn: ({ pageParam }) => getExplorePosts(pageParam, FEED_PAGE_SIZE),
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < FEED_PAGE_SIZE) return undefined
       return allPages.length + 1

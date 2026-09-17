@@ -45,6 +45,17 @@ export async function getGroupEvents(groupId: string): Promise<GroupEvent[]> {
   return res.data.data ?? []
 }
 
+export async function getUserGroupEvents(
+  page: number,
+  limit: number = 10,
+): Promise<GroupEvent[]> {
+  const offset = (page - 1) * limit
+  const res = await client.get<ListResponse<GroupEvent>>('/api/events', {
+    params: { limit, offset },
+  })
+  return res.data.data ?? []
+}
+
 export async function createEvent(groupId: string, input: CreateEventInput): Promise<void> {
   const form = new FormData()
   form.append('title', input.title)

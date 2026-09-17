@@ -37,6 +37,9 @@ export interface GroupMember {
 export interface GroupEvent {
   id: string
   group_id: string
+  group_uuid?: string
+  group_title?: string
+  group_avatar_path?: string
   creator_id: string
   creator?: {
     first_name: string
