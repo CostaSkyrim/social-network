@@ -218,7 +218,6 @@ social-network/
 │   │   ├── migrations/    # SQL migration files (up/down)
 │   │   ├── queries/       # SQL query constants
 │   │   ├── sql/           # Models + methods + connection
-│   │   └── tables/        # Reference table schemas
 │   ├── server/handlers/   # HTTP handlers + middleware + CORS
 │   ├── server/websocket/  # WebSocket hub, client, handler, types
 │   ├── cache/             # Redis client (presence, caching, rate limit)

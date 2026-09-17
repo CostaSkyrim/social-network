@@ -16,9 +16,9 @@
 ### Backend
 - Language: Go 1.24
 - Database: SQLite (all persistent data)
-- Cache / ephemeral storage: Redis 7 (presence tracking, caching, rate limiting — session migration + cross-instance pub/sub planned)
+- Cache / ephemeral storage: Redis 7 (session store as source of truth by default, presence tracking, caching, rate limiting, cross-instance pub/sub)
 - Migrations: golang-migrate (21 migrations)
-- Real-time: WebSocket hub at `/api/ws` (gorilla/websocket) with Redis presence tracking
+- Real-time: WebSocket hub at `/api/ws` (gorilla/websocket) with Redis presence tracking + cross-instance fan-out
 - WebSocket: gorilla/websocket
 
 ## Project Structure
@@ -120,7 +120,7 @@ social-network/
 │   │   │   ├── models.go       ✅ (all structs incl. is_deleted flags)
 │   │   │   ├── methods.go      ✅ (users, sessions, follows, posts, comments, groups, messages, notifications, oauth)
 │   │   │   └── sqlite.go       ✅ (DB init, migrations, WAL, session cleanup)
-│   │   └── tables/             ✅ (reference schemas)
+
 │   ├── populate/
 │   │   ├── seed.json           ✅ (7 users, 28 posts, 35 comments, 2 groups, events, DMs, etc.)
 │   │   └── seed.go             ✅ (loader with bcrypt, is_deleted support, first-run check, --reseed)
@@ -164,7 +164,7 @@ social-network/
 | Privacy gating (profile privacy + post privacy across feed/post/comments) | ✅ |
 | Soft delete support (is_deleted on posts + comments) | ✅ |
 | Seed data JSON + loader (with deleted entries) | ✅ |
-| Redis client + connection (degrades gracefully if unavailable) | ✅ |
+| Redis client + connection (optional for presence/cache/rate-limit; required as session source of truth when `storage = "redis"`) | ✅ |
 | Presence tracking (online/offline via Redis TTL keys + pub/sub) | ✅ |
 | Redis caching (sessions, users, posts, groups) + rate limiting | ✅ |
 | Redis session store (`sessions.storage = "redis"` — source of truth, fail-closed) | ✅ |
@@ -274,7 +274,7 @@ Conversations (DMs), messages, group chat, read receipts.
 - Graceful shutdown on server stop
 
 ### Phase J — Redis Integration ✅ (mostly)
-- Redis client + config block (`configs.json`), optional — backend continues without it
+- Redis client + config block (`configs.json`), optional for presence/cache/rate-limit; required when `sessions.storage = "redis"` (the default)
 - Presence tracking: `presence:{userID}` keys with 30s TTL, `IsUserOnline`, `GetOnlineUsers` (batch)
 - Caching: sessions, users, posts, groups (JSON + TTL, invalidation helpers)
 - Rate limiting: sliding window via Redis ZSET (`CheckRateLimit`), replaces in-memory limiter when Redis present
@@ -447,7 +447,7 @@ Moderation endpoints (optional — roles, content reports, moderator actions).
 | Cross-instance fan-out | `ws:fanout` channel carries user/group/broadcast envelopes between instances; each instance delivers remote-origin messages to its local clients (origin guard prevents echoing) |
 | Pub/sub channels | Defined: `presence:online`, `presence:offline`, `notification:new`, `chat:new_message`, `group:message`, `ws:fanout` |
 
-Redis is **optional** — if unavailable, the backend logs a warning and continues (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map, and fan-out degrades to single-instance).
+Redis availability is **optional for presence, caching, rate limiting, and fan-out** — if unavailable, the backend logs a warning and those subsystems fall back (WebSocket presence falls back to in-memory hub state, rate limiting falls back to the sync.Map, fan-out degrades to single-instance). However, sessions are a different story: with the default `sessions.storage = "redis"`, Redis is the source of truth and auth **fails closed** (all requests 401) until Redis is reachable. Set `sessions.storage = "sqlite"` to make SQLite authoritative over sessions without Redis.
 
 ### Session flow
 ```
