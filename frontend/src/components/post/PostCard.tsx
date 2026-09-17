@@ -91,10 +91,15 @@ export function PostCard({ post }: PostCardProps) {
   }
 
   return (
-    <Card>
+    <Card className="group relative transition-shadow hover:shadow-lg">
+      <Link
+        href={`/posts/${post.id}`}
+        aria-label="Open post"
+        className="absolute inset-0 z-0 rounded-xl"
+      />
       <CardContent className="space-y-3">
         <div className="flex items-center gap-3">
-          <Link href={`/profile/${post.author_id}`}>
+          <Link href={`/profile/${post.author_id}`} className="relative z-10">
             <Avatar
               src={post.author?.avatar_path}
               alt={author_name}
@@ -104,7 +109,7 @@ export function PostCard({ post }: PostCardProps) {
           <div className="min-w-0 flex-1">
             <Link
               href={`/profile/${post.author_id}`}
-              className="text-sm font-medium text-gray-100 hover:underline"
+              className="relative z-10 text-sm font-medium text-gray-100 hover:underline"
             >
               {author_name}
             </Link>
@@ -118,7 +123,7 @@ export function PostCard({ post }: PostCardProps) {
             </span>
           ) : null}
           {!is_deleted && is_owner && !is_editing && (
-            <div className="flex items-center gap-1">
+            <div className="relative z-10 flex items-center gap-1">
               <button
                 onClick={start_edit}
                 className="rounded p-1 text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
@@ -142,11 +147,9 @@ export function PostCard({ post }: PostCardProps) {
         </div>
 
         {is_deleted ? (
-          <Link href={`/posts/${post.id}`}>
-            <p className="text-sm text-gray-300 italic">[deleted]</p>
-          </Link>
+          <p className="text-sm text-gray-300 italic">[deleted]</p>
         ) : is_editing ? (
-          <div className="space-y-3">
+          <div className="relative z-10 space-y-3">
             <textarea
               value={edit_content}
               onChange={(e) => set_edit_content(e.target.value)}
@@ -206,9 +209,7 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
         ) : (
-          <Link href={`/posts/${post.id}`}>
-            <p className="text-sm text-gray-100 whitespace-pre-wrap">{post.content}</p>
-          </Link>
+          <p className="text-sm text-gray-100 whitespace-pre-wrap">{post.content}</p>
         )}
 
         {!is_deleted && !is_editing && post.image_path && (
@@ -220,9 +221,9 @@ export function PostCard({ post }: PostCardProps) {
           />
         )}
 
-        <Link href={`/posts/${post.id}`} className="flex items-center gap-4 text-sm text-gray-300 hover:text-gray-300">
+        <div className="flex items-center gap-4 text-sm text-gray-300">
           <span>{post.comment_count ?? 0} comments</span>
-        </Link>
+        </div>
       </CardContent>
     </Card>
   )

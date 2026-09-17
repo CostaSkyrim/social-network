@@ -161,6 +161,7 @@ social-network/
 | Actionable notifications (accept/decline group-join outcome) | ✅ |
 | Direct message handlers (get DMs, messages, send, unread count) | ✅ |
 | Image upload support (avatars, posts, comments, events, messages) | ✅ |
+| Image hardening (magic-byte type sniffing, server-side resize/compress to ≤2048px, orphan cleanup on avatar replace) | ✅ |
 | Privacy gating (profile privacy + post privacy across feed/post/comments) | ✅ |
 | Soft delete support (is_deleted on posts + comments) | ✅ |
 | Seed data JSON + loader (with deleted entries) | ✅ |
@@ -187,7 +188,7 @@ social-network/
 | UI primitives (12 components incl. emoji) | ✅ |
 | Login / Signup pages with validation | ✅ |
 | OAuth buttons (Google/GitHub) on login + signup | ✅ |
-| HomePage — infinite-scroll feed + create post form | ✅ |
+| HomePage — 4 sections: events carousel → post form → followed-posts grid → explore grid | ✅ |
 | PostCard — edit/delete for owner, [deleted] placeholder, comments link, image rendering | ✅ |
 | CommentList — nested replies via parent_comment_id, [deleted] placeholders, image support | ✅ |
 | Emoji picker button (emoji-picker-react) | ✅ |
@@ -201,6 +202,9 @@ social-network/
 | Chat (DMs, real-time via WebSocket) | ✅ |
 | Search page (debounced, privacy-aware, inline follow) | ✅ |
 | Image uploads (ImageUpload component + get_media_url) | ✅ |
+| Home feed personalization (`/api/feed/following`, `/api/feed/explore`) | ✅ |
+| Cross-group events feed (`/api/events`) with EventsCarousel | ✅ |
+| Dark "nebula" theme (starry gradient, purple cards, Orbitron brand font) | ✅ |
 | Docker (backend + frontend dev images) | ✅ |
 
 ## Implementation Plan
@@ -357,6 +361,9 @@ Docker dev stack (backend, frontend dev image, Caddy TLS, Redis) + `docker-compo
 | GET | `/api/auth/{provider}/callback` | OAuthCallbackHandler (exchange + session) | ❌ |
 | GET | `/api/health` | inline | ❌ |
 | GET | `/api/feed` | GetFeedHandler | ✅ |
+| GET | `/api/feed/following` | GetFollowingPostsHandler | ✅ |
+| GET | `/api/feed/explore` | GetExplorePostsHandler | ✅ |
+| GET | `/api/events` | GetUserGroupEventsHandler (cross-group, recent) | ✅ |
 | POST | `/api/posts` | CreatePostHandler | ✅ |
 | GET | `/api/post/{id}` | GetPostHandler | ✅ |
 | POST | `/api/posts/{id}/edit` | EditPostHandler | ✅ |
@@ -425,7 +432,7 @@ Moderation endpoints (optional — roles, content reports, moderator actions).
 - **Nicknames:** mandatory, auto-generated from the email prefix at signup (sanitized, padded, de-duplicated). Used for group invites (`invite by nickname`).
 - **Navigation:** no sidebar — a burger `NavMenu` dropdown in the sticky TopBar holds all nav items + logout on desktop and mobile. Mobile bottom nav mirrors the same destinations.
 - **Pagination:** `limit`/`offset` query params. TanStack `useInfiniteQuery` on the frontend.
-- **Images:** multipart/form-data, max 20MB, jpg/png/gif. Saved under `backend/data/images/` and served from `/images/...`; the backend returns URL-relative paths like `images/{uuid}.jpg` and the frontend resolves them with `get_media_url()` (`src/lib/media.ts`).
+- **Images:** multipart/form-data, max 20MB, jpeg/png/gif (validated by magic bytes, not the client header; downscaled server-side to ≤2048px on the longest edge). Saved under `backend/data/images/` and served from `/images/...`; the backend returns URL-relative paths like `images/{uuid}.jpg` and the frontend resolves them with `get_media_url()` (`src/lib/media.ts`). Content images render with `object-contain` (fit, no stretch/crop).
 - **OAuth:** Google/GitHub buttons on login/signup hit `/api/auth/{provider}` → provider → `/api/auth/{provider}/callback` (state cookie CSRF) → session cookie → redirect to `/home`. Errors redirect back to `/login?oauth_error=...`. GitHub uses verified emails only.
 - **Privacy:** A private profile (`users.is_public = 0`) hides the user's posts/comments from everyone except accepted followers. Profile privacy overrides post-level privacy; enforced in the feed, single-post fetch, comment reads/creation, and profile "recent posts".
 - **Validation:** Mirror backend limits client-side (in `lib/validators.ts`).
@@ -479,3 +486,10 @@ On first launch, 7 users are pre-loaded. All share password: `password123`
 Plus 28 posts (2 marked deleted), 35 comments (2 marked deleted, some nested under deleted parents), 2 groups, 5 events (with going/not_going RSVPs), group members, DMs, and notifications.
 
 To reset: `make backend-run-reseed` (or `go run ./backend/cmd/main.go --reseed`)
+
+## Recent Changes
+
+- **Session store** (Redis as default source of truth, fail-closed; `sqlite` fallback option) + cross-instance WebSocket fan-out via `ws:fanout` pub/sub.
+- **Home personalization**: split the feed into a cross-group events carousel, a "From people you follow" grid, and an "Explore" grid (public posts from non-followed authors); new endpoints `/api/feed/following`, `/api/feed/explore`, `/api/events`.
+- **Image hardening**: MIME type validated by magic-byte sniffing (not the client header), server-side resize/compress to ≤2048px edge, orphan-file cleanup on avatar replacement, and `image/jpg`→`image/jpeg` MIME fix.
+- **Dark "Andromeda" theme**: deep purple starry background, nebula-gradient cards, violet accents, Orbitron brand font, light-on-dark text, and `object-contain` content images.

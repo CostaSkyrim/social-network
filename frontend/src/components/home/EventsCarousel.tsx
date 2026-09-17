@@ -114,7 +114,7 @@ function EventSlide({ event }: { event: GroupEvent }) {
 
   return (
     <Link
-      href={`/groups/${event.group_uuid ?? event.group_id}`}
+      href={`/groups/${event.group_uuid ?? event.group_id}?tab=events`}
       className="w-64 shrink-0 snap-start"
     >
       <Card className="h-full transition-shadow hover:shadow-md">

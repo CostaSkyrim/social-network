@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import { useGroup, useGroupEvents, useUpdateGroupAvatar } from '@/hooks/useGroups'
 import { useGroupPosts } from '@/hooks/usePosts'
@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn'
 
 export default function GroupDetailPage() {
   const params = useParams()
+  const search_params = useSearchParams()
   const uuid = (params?.uuid as string) || ''
   const { user } = useAuth()
 
@@ -34,7 +35,14 @@ export default function GroupDetailPage() {
   const { data: events, isLoading: events_loading } = useGroupEvents(uuid)
   const upload_avatar = useUpdateGroupAvatar(uuid)
   const group_posts = useGroupPosts(uuid)
-  const [active_tab, set_active_tab] = useState<'posts' | 'events' | 'chat' | 'members'>('posts')
+
+  type Tab = 'posts' | 'events' | 'chat' | 'members'
+  const initial_tab = search_params.get('tab')
+  const [active_tab, set_active_tab] = useState<Tab>(
+    initial_tab === 'events' || initial_tab === 'chat' || initial_tab === 'members'
+      ? initial_tab
+      : 'posts',
+  )
 
   if (group_loading) {
     return (

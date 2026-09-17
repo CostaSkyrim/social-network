@@ -44,7 +44,7 @@ function notifHref(notif: {
     return `/groups/${notif.related_id}`
   }
   if (event_types.has(notif.type) && notif.related_id) {
-    return `/groups/${notif.related_id}`
+    return `/groups/${notif.related_id}?tab=events`
   }
   return null
 }

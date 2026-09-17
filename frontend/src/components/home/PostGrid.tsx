@@ -29,12 +29,11 @@ export function PostGrid({
 
   return (
     <div className="space-y-4">
-      {/* CSS multi-column masonry: 1 col on phones, 2 on md, 3 on lg. */}
-      <div className="columns-1 gap-4 md:columns-2 lg:columns-3">
+      {/* Grid flows left-to-right, top-to-bottom (row-major): 1 col on phones,
+          2 on md, 3 on lg. */}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
         {posts.map((post) => (
-          <div key={post.id} className="mb-4 break-inside-avoid">
-            <PostCard post={post} />
-          </div>
+          <PostCard key={post.id} post={post} />
         ))}
       </div>
 
