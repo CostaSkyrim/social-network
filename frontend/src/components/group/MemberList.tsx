@@ -1,9 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import type { GroupMember } from '@/types/group'
 
 interface MemberListProps {
@@ -34,6 +36,23 @@ function sort_members(members: GroupMember[], creatorId: string): GroupMember[] 
 }
 
 export function MemberList({ members, groupId, isCreator, creatorId }: MemberListProps) {
+  const { subscribe } = useWebSocket()
+  const [online_overrides, set_online_overrides] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    const unsub = subscribe('presence_update', (msg) => {
+      const payload = msg.payload as
+        | { user_uuid?: string; is_online: boolean }
+        | undefined
+      if (!payload?.user_uuid) return
+      set_online_overrides((prev) => ({
+        ...prev,
+        [payload.user_uuid as string]: payload.is_online,
+      }))
+    })
+    return unsub
+  }, [subscribe])
+
   const accepted = sort_members(
     members.filter((m) => m.status === 'accepted'),
     creatorId,
@@ -48,12 +67,18 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
     const show_actions =
       isCreator && (m.status === 'pending' || m.status === 'invited')
     const is_creator = m.user.id === creatorId
+    const is_online = online_overrides[m.user.id] ?? m.user.is_online ?? false
 
     return (
       <li key={m.user.id} className="flex items-center gap-3 py-2">
-        <Link href={`/profile/${m.user.id}`}>
-          <Avatar src={m.user.avatar_path} alt={name} size="sm" />
-        </Link>
+        <div className="relative">
+          <Link href={`/profile/${m.user.id}`}>
+            <Avatar src={m.user.avatar_path} alt={name} size="sm" />
+          </Link>
+          {is_online && (
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <Link
             href={`/profile/${m.user.id}`}

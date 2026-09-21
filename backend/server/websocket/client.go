@@ -15,6 +15,10 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 4096
+	// presencePeriod is how often a connected client refreshes its Redis
+	// presence key. It must stay well below the presence TTL (30s) so idle
+	// connections don't expire and appear offline.
+	presencePeriod = 15 * time.Second
 )
 
 type Client struct {
@@ -72,8 +76,10 @@ func (c *Client) ReadPump() {
 
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
+	presenceTicker := time.NewTicker(presencePeriod)
 	defer func() {
 		ticker.Stop()
+		presenceTicker.Stop()
 		c.Conn.Close()
 	}()
 
@@ -94,6 +100,10 @@ func (c *Client) WritePump() {
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
+
+		case <-presenceTicker.C:
+			// Keep the Redis presence key alive while the socket is open.
+			c.Hub.HeartbeatUser(c.UserID)
 		}
 	}
 }

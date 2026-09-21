@@ -28,6 +28,7 @@ export interface GroupMember {
     last_name: string
     nickname?: string
     avatar_path?: string
+    is_online?: boolean
   }
   status: 'pending' | 'accepted' | 'declined' | 'invited'
   invited_by?: string

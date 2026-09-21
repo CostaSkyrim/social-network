@@ -613,5 +613,12 @@ func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request, db *database
 		members = []database.GroupMember{}
 	}
 
+	// Enrich with live presence so the member list can show online status.
+	for i := range members {
+		if members[i].User != nil && GlobalHub != nil {
+			members[i].User.IsOnline = GlobalHub.IsUserConnected(members[i].User.ID)
+		}
+	}
+
 	RespondSuccess(w, http.StatusOK, "Members retrieved", members)
 }
