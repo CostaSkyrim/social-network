@@ -37,3 +37,6 @@ Thumbs.db
 frontend/.next/
 frontend/out/
 frontend/tsconfig.tsbuildinfo
+
+# Personal notes
+AUDIT.md

@@ -283,7 +283,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar, members }: GroupCh
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-3">
+      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-2 py-3">
         {is_loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
@@ -302,31 +302,44 @@ export function GroupChat({ groupId, groupTitle, groupAvatar, members }: GroupCh
               msg.sender?.nickname ||
               `${msg.sender?.first_name ?? ''} ${msg.sender?.last_name ?? ''}`.trim() ||
               (isMine ? 'You' : 'Unknown')
+            const avatar = (
+              <div className="relative mt-0.5 flex-shrink-0">
+                <Avatar
+                  src={msg.sender?.avatar_path ?? (isMine ? user?.avatar_path : undefined)}
+                  alt={name}
+                  size="sm"
+                />
+                {is_online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                )}
+              </div>
+            )
             return (
-              <div key={msg.uuid} className="flex items-start gap-2.5">
-                <div className="relative mt-0.5 flex-shrink-0">
-                  <Avatar
-                    src={msg.sender?.avatar_path ?? (isMine ? user?.avatar_path : undefined)}
-                    alt={name}
-                    size="sm"
-                  />
-                  {is_online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+              <div
+                key={msg.uuid}
+                className={cn(
+                  'flex items-start gap-2.5',
+                  isMine ? 'justify-end' : 'justify-start',
+                )}
+              >
+                {!isMine && avatar}
+                <div
+                  className={cn(
+                    'flex min-w-0 max-w-[80%] flex-col',
+                    isMine ? 'items-end' : 'items-start',
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
+                >
                   <div className="mb-0.5 flex items-baseline gap-2">
-                    <span className="text-[11px] font-semibold text-gray-100">{name}</span>
-                    {isMine && (
-                      <span className="text-[10px] font-normal text-gray-400">(you)</span>
-                    )}
+                    <span className="text-[11px] font-semibold text-gray-100">
+                      {isMine ? 'You' : name}
+                    </span>
                     <span className="text-[10px] text-gray-400">
                       {formatTime(msg.created_at)}
                     </span>
                   </div>
                   <div
                     className={cn(
-                      'inline-block max-w-[85%] rounded-lg px-3 py-2 text-left',
+                      'inline-block max-w-full rounded-lg px-3 py-2 text-left',
                       isMine
                         ? 'bg-violet-500 text-white'
                         : 'bg-purple-400/15 text-gray-100',
@@ -345,6 +358,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar, members }: GroupCh
                     )}
                   </div>
                 </div>
+                {isMine && avatar}
               </div>
             )
           })

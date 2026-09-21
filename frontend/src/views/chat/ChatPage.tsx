@@ -342,7 +342,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-2">
         {is_loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
