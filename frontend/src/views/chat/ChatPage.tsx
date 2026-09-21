@@ -451,7 +451,7 @@ export default function ChatPage() {
               </svg>
             </button>
           </ImageUpload>
-          <EmojiPicker on_select={insert_at_cursor} />
+          <EmojiPicker on_select={insert_at_cursor} direction="up" />
           <div className="relative flex-1">
             <textarea
               ref={inputRef}
@@ -469,6 +469,7 @@ export default function ChatPage() {
                 matches={matches}
                 selected_index={selected_index}
                 on_select={replace_word}
+                direction="up"
               />
             )}
           </div>

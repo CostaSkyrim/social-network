@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react'
 import EmojiPickerReact, { type EmojiClickData } from 'emoji-picker-react'
+import { cn } from '@/lib/cn'
 
 interface EmojiPickerProps {
   on_select: (emoji: string) => void
+  /** Open above the trigger (use in bottom-anchored composers). */
+  direction?: 'up' | 'down'
 }
 
-export function EmojiPicker({ on_select }: EmojiPickerProps) {
+export function EmojiPicker({ on_select, direction = 'down' }: EmojiPickerProps) {
   const [open, set_open] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -37,7 +40,13 @@ export function EmojiPicker({ on_select }: EmojiPickerProps) {
         😊
       </button>
       {open && (
-        <div className="absolute top-10 -left-2 z-50" style={{ width: '320px' }}>
+        <div
+          className={cn(
+            'absolute z-50 -left-2',
+            direction === 'up' ? 'bottom-full mb-2' : 'top-10',
+          )}
+          style={{ width: '320px' }}
+        >
           <EmojiPickerReact
             onEmojiClick={handle_emoji_click}
             searchPlaceholder="Search emojis..."

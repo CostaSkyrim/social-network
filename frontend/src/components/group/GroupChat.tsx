@@ -11,6 +11,7 @@ import { EmojiSuggestions } from '@/components/ui/EmojiSuggestions'
 import { useEmojiAutocomplete } from '@/hooks/useEmojiAutocomplete'
 import { cn } from '@/lib/cn'
 import { get_media_url } from '@/lib/media'
+import type { GroupMember } from '@/types/group'
 
 interface GroupMessageData {
   id: number
@@ -38,9 +39,10 @@ interface GroupChatProps {
   groupId: string
   groupTitle: string
   groupAvatar?: string
+  members?: GroupMember[]
 }
 
-export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) {
+export function GroupChat({ groupId, groupTitle, groupAvatar, members }: GroupChatProps) {
   const { user } = useAuth()
   const { subscribe } = useWebSocket()
 
@@ -52,6 +54,34 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
   const [cursor_pos, set_cursor_pos] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Live online status of group members (for the sender avatars).
+  const [online_map, set_online_map] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!members) return
+    set_online_map((prev) => {
+      const next: Record<string, boolean> = {}
+      for (const m of members) next[m.user.id] = m.user.is_online ?? false
+      // You're connected while viewing the chat, so always show yourself online.
+      if (user?.id) next[user.id] = true
+      return { ...next, ...prev, ...(user?.id ? { [user.id]: true } : {}) }
+    })
+  }, [members, user?.id])
+
+  useEffect(() => {
+    const unsub = subscribe('presence_update', (msg) => {
+      const payload = msg.payload as
+        | { user_uuid?: string; is_online: boolean }
+        | undefined
+      if (!payload?.user_uuid) return
+      set_online_map((prev) => ({
+        ...prev,
+        [payload.user_uuid as string]: payload.is_online,
+      }))
+    })
+    return unsub
+  }, [subscribe])
 
   const { word, start, matches, selected_index, set_selected_index, reset } =
     useEmojiAutocomplete(input, cursor_pos)
@@ -244,7 +274,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
   }
 
   return (
-    <div className="flex h-[calc(100vh-16rem)] min-h-[400px] flex-col">
+    <div className="flex h-[calc(100vh-11rem)] min-h-[520px] flex-col">
       <div className="flex items-center gap-2 border-b border-purple-400/20 pb-3">
         <Avatar src={groupAvatar} alt={groupTitle} size="sm" />
         <div>
@@ -266,30 +296,40 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
           messages.map((msg) => {
             const isMine =
               (msg.sender?.id ?? String(msg.sender_id)) === String(user?.id ?? '')
+            const sender_id = msg.sender?.id ?? (isMine ? user?.id : undefined)
+            const is_online = sender_id ? online_map[sender_id] ?? false : false
+            const name =
+              msg.sender?.nickname ||
+              `${msg.sender?.first_name ?? ''} ${msg.sender?.last_name ?? ''}`.trim() ||
+              (isMine ? 'You' : 'Unknown')
             return (
-              <div
-                key={msg.uuid}
-                className={cn('flex', isMine ? 'justify-end' : 'justify-start')}
-              >
-                {!isMine && (
+              <div key={msg.uuid} className="flex items-start gap-2.5">
+                <div className="relative mt-0.5 flex-shrink-0">
                   <Avatar
-                    src={msg.sender?.avatar_path}
-                    alt={msg.sender?.first_name ?? ''}
+                    src={msg.sender?.avatar_path ?? (isMine ? user?.avatar_path : undefined)}
+                    alt={name}
                     size="sm"
-                    className="mr-2 mt-1 flex-shrink-0"
                   />
-                )}
-                <div className={cn('max-w-[75%]', isMine ? 'items-end' : 'items-start')}>
-                  {!isMine && (
-                    <p className="mb-0.5 px-1 text-[11px] text-gray-300">
-                      {msg.sender?.nickname ||
-                        `${msg.sender?.first_name ?? ''} ${msg.sender?.last_name ?? ''}`.trim()}
-                    </p>
+                  {is_online && (
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                   )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-0.5 flex items-baseline gap-2">
+                    <span className="text-[11px] font-semibold text-gray-100">{name}</span>
+                    {isMine && (
+                      <span className="text-[10px] font-normal text-gray-400">(you)</span>
+                    )}
+                    <span className="text-[10px] text-gray-400">
+                      {formatTime(msg.created_at)}
+                    </span>
+                  </div>
                   <div
                     className={cn(
-                      'max-w-[75%] rounded-lg px-3 py-2',
-                      isMine ? 'ml-auto bg-violet-500 text-white' : 'bg-purple-400/15 text-gray-100',
+                      'inline-block max-w-[85%] rounded-lg px-3 py-2 text-left',
+                      isMine
+                        ? 'bg-violet-500 text-white'
+                        : 'bg-purple-400/15 text-gray-100',
                     )}
                   >
                     {msg.image_path && (
@@ -303,24 +343,8 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
                     {msg.content && (
                       <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
                     )}
-                    <p
-                      className={cn(
-                        'mt-0.5 text-right text-[10px]',
-                        isMine ? 'text-violet-200' : 'text-gray-300',
-                      )}
-                    >
-                      {formatTime(msg.created_at)}
-                    </p>
                   </div>
                 </div>
-                {isMine && (
-                  <Avatar
-                    src={user?.avatar_path}
-                    alt={user?.first_name ?? ''}
-                    size="sm"
-                    className="ml-2 mt-1 flex-shrink-0"
-                  />
-                )}
               </div>
             )
           })
@@ -363,7 +387,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
               </svg>
             </button>
           </ImageUpload>
-          <EmojiPicker on_select={insert_at_cursor} />
+          <EmojiPicker on_select={insert_at_cursor} direction="up" />
           <div className="relative flex-1">
             <textarea
               ref={inputRef}
@@ -381,6 +405,7 @@ export function GroupChat({ groupId, groupTitle, groupAvatar }: GroupChatProps) 
                 matches={matches}
                 selected_index={selected_index}
                 on_select={replace_word}
+                direction="up"
               />
             )}
           </div>

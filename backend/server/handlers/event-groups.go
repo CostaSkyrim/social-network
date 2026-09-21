@@ -132,11 +132,24 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBa
 	}
 
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
+	enrichMembersPresence(members)
 
 	RespondSuccess(w, http.StatusOK, "Group retrieved", map[string]interface{}{
 		"group":   group,
 		"members": members,
 	})
+}
+
+// enrichMembersPresence fills in each member's live online status from the hub.
+func enrichMembersPresence(members []database.GroupMember) {
+	if GlobalHub == nil {
+		return
+	}
+	for i := range members {
+		if members[i].User != nil {
+			members[i].User.IsOnline = GlobalHub.IsUserConnected(members[i].User.ID)
+		}
+	}
 }
 
 func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -614,11 +627,7 @@ func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request, db *database
 	}
 
 	// Enrich with live presence so the member list can show online status.
-	for i := range members {
-		if members[i].User != nil && GlobalHub != nil {
-			members[i].User.IsOnline = GlobalHub.IsUserConnected(members[i].User.ID)
-		}
-	}
+	enrichMembersPresence(members)
 
 	RespondSuccess(w, http.StatusOK, "Members retrieved", members)
 }

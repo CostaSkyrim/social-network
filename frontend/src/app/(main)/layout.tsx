@@ -28,9 +28,15 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     )
   }
 
-  // The home page uses a wider, multi-column layout; every other page stays in
-  // the narrow reading column.
-  const container_width = pathname === '/home' ? 'max-w-6xl' : 'max-w-2xl'
+  // The home page uses a wider, multi-column layout; group pages (which host
+  // the chat) get a medium-wide column; every other page stays in the narrow
+  // reading column.
+  const container_width =
+    pathname === '/home'
+      ? 'max-w-6xl'
+      : pathname.startsWith('/groups')
+        ? 'max-w-4xl'
+        : 'max-w-2xl'
 
   return (
     <div className="flex min-h-screen bg-transparent">

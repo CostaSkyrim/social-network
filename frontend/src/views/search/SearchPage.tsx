@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
 import { cn } from '@/lib/cn'
 import { useUI } from '@/context/UIProvider'
+import { useWebSocket } from '@/hooks/useWebSocket'
 
 export default function SearchPage() {
   const router = useRouter()
@@ -19,10 +20,26 @@ export default function SearchPage() {
   const { user: currentUser } = useAuth()
   const query_client = useQueryClient()
   const { show_toast } = useUI()
+  const { subscribe } = useWebSocket()
 
   const [q, set_q] = useState(() => searchParams.get('q') ?? '')
   const [debounced_q, set_debounced_q] = useState(q)
   const [busy_id, set_busy_id] = useState<string | null>(null)
+  const [online_overrides, set_online_overrides] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    const unsub = subscribe('presence_update', (msg) => {
+      const payload = msg.payload as
+        | { user_uuid?: string; is_online: boolean }
+        | undefined
+      if (!payload?.user_uuid) return
+      set_online_overrides((prev) => ({
+        ...prev,
+        [payload.user_uuid as string]: payload.is_online,
+      }))
+    })
+    return unsub
+  }, [subscribe])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -107,13 +124,14 @@ export default function SearchPage() {
         <div className="divide-y divide-purple-400/15 rounded-lg border border-purple-400/20 bg-[#241748]">
           {visible.map((u) => {
             const name = `${u.first_name} ${u.last_name}`
+            const is_online = online_overrides[u.id] ?? u.is_online ?? false
             return (
               <div key={u.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="relative">
                   <Link href={`/profile/${u.id}`}>
                     <Avatar src={u.avatar_path} alt={name} size="md" />
                   </Link>
-                  {u.is_online && (
+                  {is_online && (
                     <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                   )}
                 </div>

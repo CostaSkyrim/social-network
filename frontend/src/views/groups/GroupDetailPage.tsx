@@ -183,6 +183,7 @@ export default function GroupDetailPage() {
                 groupId={group.id}
                 groupTitle={group.title}
                 groupAvatar={group.avatar_path}
+                members={members}
               />
             ) : (
               <p className="rounded-lg border border-purple-400/20 bg-[#241748] p-6 text-center text-sm text-gray-300">

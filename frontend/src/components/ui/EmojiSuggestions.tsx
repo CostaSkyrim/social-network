@@ -12,9 +12,11 @@ interface EmojiSuggestionsProps {
   matches: EmojiSuggestion[]
   selected_index: number
   on_select: (emoji: string) => void
+  /** Open above the input (use in bottom-anchored composers). */
+  direction?: 'up' | 'down'
 }
 
-export function EmojiSuggestions({ matches, selected_index, on_select }: EmojiSuggestionsProps) {
+export function EmojiSuggestions({ matches, selected_index, on_select, direction = 'down' }: EmojiSuggestionsProps) {
   const list_ref = useRef<HTMLUListElement>(null)
 
   useEffect(() => {
@@ -25,7 +27,11 @@ export function EmojiSuggestions({ matches, selected_index, on_select }: EmojiSu
   if (matches.length === 0) return null
 
   return (
-    <div className="absolute top-full left-0 z-50 mt-1 w-72 rounded-xl border border-purple-400/20 bg-[#241748] shadow-lg">
+    <div
+      className={`absolute left-0 z-50 w-72 rounded-xl border border-purple-400/20 bg-[#241748] shadow-lg ${
+        direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+      }`}
+    >
       <ul ref={list_ref} className="max-h-48 overflow-y-auto py-1">
         {matches.map((match, i) => (
           <li

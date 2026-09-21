@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchFollowers } from '@/api/chat'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/context/AuthProvider'
+import { useWebSocket } from '@/hooks/useWebSocket'
 
 interface Follower {
   id: string
@@ -11,6 +12,7 @@ interface Follower {
   last_name: string
   nickname?: string
   avatar_path?: string
+  is_online?: boolean
 }
 
 interface UserVisibilityPickerProps {
@@ -20,9 +22,25 @@ interface UserVisibilityPickerProps {
 
 export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPickerProps) {
   const { user } = useAuth()
+  const { subscribe } = useWebSocket()
   const [followers, set_followers] = useState<Follower[]>([])
   const [is_loading, set_is_loading] = useState(true)
   const [query, set_query] = useState('')
+  const [online_overrides, set_online_overrides] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    const unsub = subscribe('presence_update', (msg) => {
+      const payload = msg.payload as
+        | { user_uuid?: string; is_online: boolean }
+        | undefined
+      if (!payload?.user_uuid) return
+      set_online_overrides((prev) => ({
+        ...prev,
+        [payload.user_uuid as string]: payload.is_online,
+      }))
+    })
+    return unsub
+  }, [subscribe])
 
   useEffect(() => {
     const userID = user?.id
@@ -106,6 +124,8 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
               {filtered.map((f) => {
                 const name = `${f.first_name} ${f.last_name}`
                 const checked = selected.includes(f.id)
+                const is_online =
+                  online_overrides[f.id] ?? f.is_online ?? false
                 return (
                   <li key={f.id}>
                     <label className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-purple-400/10">
@@ -115,7 +135,12 @@ export function UserVisibilityPicker({ selected, onChange }: UserVisibilityPicke
                         onChange={() => toggle(f.id)}
                         className="h-4 w-4 rounded border-purple-400/30 text-violet-600 focus:ring-violet-500"
                       />
-                      <Avatar src={f.avatar_path} alt={name} size="sm" />
+                      <div className="relative">
+                        <Avatar src={f.avatar_path} alt={name} size="sm" />
+                        {is_online && (
+                          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                        )}
+                      </div>
                       <span className="min-w-0 flex-1 truncate text-sm text-gray-100">
                         {name}
                         {f.nickname ? (
