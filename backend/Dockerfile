@@ -18,6 +18,10 @@ WORKDIR /app
 COPY --from=build /go/pkg/mod /go/pkg/mod
 COPY . .
 
+# Warm the Go build cache at image build time so the first container start
+# doesn't have to compile everything from scratch (cgo sqlite3 is slow).
+RUN go build -o /dev/null ./backend/cmd
+
 # Use Docker-specific config
 RUN cp backend/configs.docker.json backend/configs.json
 

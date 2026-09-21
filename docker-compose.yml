@@ -10,6 +10,7 @@ services:
       - .:/app
       - ./backend/configs.docker.json:/app/backend/configs.json
       - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
       - backend_db:/app/backend/data/db
       - backend_images:/app/backend/data/images
     networks:
@@ -22,7 +23,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-      start_period: 20s
+      start_period: 120s
 
   frontend:
     build:
@@ -92,6 +93,7 @@ services:
 
 volumes:
   go_mod_cache:
+  go_build_cache:
   backend_db:
   backend_images:
   redis_data:
