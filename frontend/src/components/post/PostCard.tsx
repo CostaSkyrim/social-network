@@ -20,9 +20,13 @@ interface PostCardProps {
   post: Post
   /** Uniform card for grid layouts: equal height, fixed image frame, clamped text. */
   compact?: boolean
+  /** Hide the author header (e.g. when already on that author's profile). */
+  hide_author?: boolean
+  /** Hide owner edit/delete controls (e.g. on the profile, where you edit via the post page). */
+  hide_actions?: boolean
 }
 
-export function PostCard({ post, compact = false }: PostCardProps) {
+export function PostCard({ post, compact = false, hide_author = false, hide_actions = false }: PostCardProps) {
   const { user } = useAuth()
   const edit_mutation = useEditPost()
   const delete_mutation = useDeletePost()
@@ -42,7 +46,7 @@ export function PostCard({ post, compact = false }: PostCardProps) {
     : 'Unknown'
 
   const is_deleted = post.is_deleted
-  const is_owner = user && Number(post.author_id) === Number(user.id)
+  const is_owner = !!user && String(post.author_id) === String(user.id)
 
   const start_edit = async () => {
     set_editing(true)
@@ -102,21 +106,27 @@ export function PostCard({ post, compact = false }: PostCardProps) {
       />
       <CardContent className="space-y-3">
         <div className="flex items-center gap-3">
-          <Link href={`/profile/${post.author_id}`} className="relative z-10">
-            <Avatar
-              src={post.author?.avatar_path}
-              alt={author_name}
-              size="md"
-            />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <Link
-              href={`/profile/${post.author_id}`}
-              className="relative z-10 block truncate text-sm font-medium text-gray-100 hover:underline"
-            >
-              {author_name}
-            </Link>
-          </div>
+          {hide_author ? (
+            <div className="flex-1" />
+          ) : (
+            <>
+              <Link href={`/profile/${post.author_id}`} className="relative z-10">
+                <Avatar
+                  src={post.author?.avatar_path}
+                  alt={author_name}
+                  size="md"
+                />
+              </Link>
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={`/profile/${post.author_id}`}
+                  className="relative z-10 block truncate text-sm font-medium text-gray-100 hover:underline"
+                >
+                  {author_name}
+                </Link>
+              </div>
+            </>
+          )}
           <span
             className="whitespace-nowrap text-xs font-medium text-gray-300"
             title={new Date(post.created_at).toLocaleString()}
@@ -130,7 +140,7 @@ export function PostCard({ post, compact = false }: PostCardProps) {
               {post.privacy_level === 'followers' ? '🫂' : '🔒'}
             </span>
           ) : null}
-          {!is_deleted && is_owner && !is_editing && (
+          {!is_deleted && is_owner && !is_editing && !hide_actions && (
             <div className="relative z-10 flex items-center gap-1">
               <button
                 onClick={start_edit}
@@ -191,9 +201,13 @@ export function PostCard({ post, compact = false }: PostCardProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ImageUpload on_select={handle_edit_image}>
-                  <Button type="button" variant="ghost" size="sm">
-                    {post.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
-                  </Button>
+                  <button
+                    type="button"
+                    className="rounded-lg px-2 py-1.5 text-base text-gray-300 hover:bg-purple-400/15 hover:text-gray-100"
+                    title={post.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
+                  >
+                    📷
+                  </button>
                 </ImageUpload>
                 <PrivacySelector value={edit_privacy} onChange={(v) => set_edit_privacy(v as typeof edit_privacy)} />
               </div>
