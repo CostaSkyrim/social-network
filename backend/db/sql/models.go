@@ -187,13 +187,15 @@ type Event struct {
 	ID            int64     `json:"-"`
 	UUID          string    `json:"id"`
 	GroupID       int64     `json:"group_id"`
-	CreatorID     int64     `json:"creator_id"`
+	CreatorID     int64     `json:"-"`
+	CreatorUUID   string    `json:"creator_id"`
 	Creator       *User     `json:"creator,omitempty"`
 	Title         string    `json:"title"`
 	Description   string    `json:"description"`
 	ImagePath     *string   `json:"image_path,omitempty"`
 	EventDateTime time.Time `json:"event_datetime"`
 	ReminderSent  bool      `json:"-"`
+	IsCancelled   bool      `json:"is_cancelled"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

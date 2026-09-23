@@ -399,3 +399,112 @@ func EventRSVPHandler(w http.ResponseWriter, r *http.Request, db *database.DataB
 
 	RespondSuccess(w, http.StatusOK, "RSVP updated", meta)
 }
+
+// canManageEvent reports whether the user may edit or cancel an event (its
+// creator, or the group's creator).
+func canManageEvent(r *http.Request, db *database.DataBase, event *database.Event, userID int64) bool {
+	if event.CreatorID == userID {
+		return true
+	}
+	group, err := db.GetGroup(r.Context(), event.GroupID)
+	if err != nil {
+		return false
+	}
+	return group.CreatorID == userID
+}
+
+func UpdateEventHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	event, ok := resolveEvent(w, r, db)
+	if !ok {
+		return
+	}
+
+	if !canManageEvent(r, db, event, userID) {
+		RespondError(w, http.StatusForbidden, "You cannot edit this event")
+		return
+	}
+
+	var req CreateEventRequest
+	imagePath := event.ImagePath // keep unless replaced/removed
+
+	if isMultipart(r) {
+		if err := parseMultipartForm(r); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid multipart form")
+			return
+		}
+		req.Title = r.FormValue("title")
+		req.Description = r.FormValue("description")
+		req.EventDatetime = r.FormValue("event_datetime")
+		if _, has := r.MultipartForm.File["image"]; has {
+			path, ok := SaveMultipartImage(w, r)
+			if !ok {
+				return
+			}
+			imagePath = &path
+		} else if removeImageRequested(r) {
+			imagePath = nil
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		imagePath = req.ImagePath
+	}
+
+	eventDatetime, validationErr := validateEventRequest(&req)
+	if validationErr != "" {
+		RespondError(w, http.StatusBadRequest, validationErr)
+		return
+	}
+
+	if err := db.UpdateEvent(r.Context(), event.ID, req.Title, req.Description, imagePath, eventDatetime); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to update event")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Event updated", map[string]interface{}{
+		"id": event.UUID,
+	})
+}
+
+func DeleteEventHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	event, ok := resolveEvent(w, r, db)
+	if !ok {
+		return
+	}
+
+	if !canManageEvent(r, db, event, userID) {
+		RespondError(w, http.StatusForbidden, "You cannot cancel this event")
+		return
+	}
+
+	if err := db.CancelEvent(r.Context(), event.ID); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Failed to cancel event")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Event cancelled", nil)
+}

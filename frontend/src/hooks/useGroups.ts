@@ -15,6 +15,8 @@ import {
   leaveGroup as apiLeaveGroup,
   inviteGroupMember as apiInviteGroupMember,
   uploadGroupAvatar as apiUploadGroupAvatar,
+  updateEvent as apiUpdateEvent,
+  deleteEvent as apiDeleteEvent,
 } from '@/api/groups'
 import { useUI } from '@/context/UIProvider'
 import { useNotifications } from '@/context/NotificationProvider'
@@ -258,6 +260,58 @@ export function useUpdateGroupAvatar(groupId: string) {
     onError: (err: any) => {
       show_toast({
         message: err?.response?.data?.error || 'Failed to update avatar',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useUpdateEvent(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      input,
+    }: {
+      eventId: string
+      input: {
+        title: string
+        description?: string
+        event_datetime: string
+        image?: File
+        remove_image?: boolean
+      }
+    }) => apiUpdateEvent(eventId, input),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group-events', groupId] })
+      query_client.invalidateQueries({ queryKey: ['user-group-events'] })
+      show_toast({ message: 'Event updated', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to update event',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useDeleteEvent(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (eventId: string) => apiDeleteEvent(eventId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group-events', groupId] })
+      query_client.invalidateQueries({ queryKey: ['user-group-events'] })
+      show_toast({ message: 'Event cancelled', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to cancel event',
         type: 'error',
       })
     },
