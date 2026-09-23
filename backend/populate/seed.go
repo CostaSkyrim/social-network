@@ -89,11 +89,11 @@ type seedEventResponse struct {
 }
 
 type seedMessage struct {
-	UUID            string `json:"uuid"`
-	SenderID        int64  `json:"sender_id"`
-	DirectMessageID *int64 `json:"direct_message_id"`
-	GroupID         *int64 `json:"group_id"`
-	Content         string `json:"content"`
+	UUID            string  `json:"uuid"`
+	SenderID        int64   `json:"sender_id"`
+	DirectMessageID *int64  `json:"direct_message_id"`
+	GroupID         *int64  `json:"group_id"`
+	Content         string  `json:"content"`
 	ImagePath       *string `json:"image_path"`
 }
 

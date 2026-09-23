@@ -215,7 +215,12 @@ func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error
 
 	if db.redis != nil {
 		var cached User
-		if err := db.redis.GetCachedUser(ctx, userID, &cached); err == nil && cached.ID != 0 {
+		if err := db.redis.GetCachedUser(ctx, userID, &cached); err == nil {
+			// User.ID is json:"-" so it never lands in the cache payload;
+			// rebuild it from the key. This method does not return the
+			// password hash (use GetUserForAuth for that), so the cached value
+			// is equivalent to the database row.
+			cached.ID = userID
 			return &cached, nil
 		}
 	}
@@ -1198,6 +1203,7 @@ func (db *DataBase) GetFeed(ctx context.Context, userID int64, limit, offset int
 		if avatarPath.Valid {
 			post.Author.AvatarPath = &avatarPath.String
 		}
+		post.Author.UUID = post.AuthorUUID
 		posts = append(posts, post)
 	}
 
@@ -1254,6 +1260,7 @@ func (db *DataBase) GetFollowingPosts(ctx context.Context, userID int64, limit, 
 		if avatarPath.Valid {
 			post.Author.AvatarPath = &avatarPath.String
 		}
+		post.Author.UUID = post.AuthorUUID
 		posts = append(posts, post)
 	}
 
@@ -1310,6 +1317,7 @@ func (db *DataBase) GetExplorePosts(ctx context.Context, userID int64, limit, of
 		if avatarPath.Valid {
 			post.Author.AvatarPath = &avatarPath.String
 		}
+		post.Author.UUID = post.AuthorUUID
 		posts = append(posts, post)
 	}
 
@@ -1368,6 +1376,7 @@ func (db *DataBase) GetGroupPosts(ctx context.Context, groupID int64, limit, off
 		if avatarPath.Valid {
 			post.Author.AvatarPath = &avatarPath.String
 		}
+		post.Author.UUID = post.AuthorUUID
 		posts = append(posts, post)
 	}
 
@@ -1427,6 +1436,7 @@ func (db *DataBase) GetPostWithAuthor(ctx context.Context, postID, userID int64)
 	if avatarPath.Valid {
 		post.Author.AvatarPath = &avatarPath.String
 	}
+	post.Author.UUID = post.AuthorUUID
 
 	return post, nil
 }
@@ -1745,9 +1755,9 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	}
 
 	if db.redis != nil {
-		var cached Group
-		if err := db.redis.GetCachedGroup(ctx, groupID, &cached); err == nil && cached.ID != 0 {
-			return &cached, nil
+		var cached groupCacheEntry
+		if err := db.redis.GetCachedGroup(ctx, groupID, &cached); err == nil {
+			return groupFromCache(cached), nil
 		}
 	}
 
@@ -1775,7 +1785,7 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	}
 
 	if db.redis != nil {
-		_ = db.redis.CacheGroup(ctx, groupID, group, cache.GroupTTL)
+		_ = db.redis.CacheGroup(ctx, groupID, groupToCache(group), cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1811,7 +1821,7 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 	}
 
 	if db.redis != nil {
-		_ = db.redis.CacheGroup(ctx, group.ID, group, cache.GroupTTL)
+		_ = db.redis.CacheGroup(ctx, group.ID, groupToCache(group), cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1838,10 +1848,14 @@ func (db *DataBase) GetUserGroups(ctx context.Context, userID int64) ([]*Group, 
 		err := rows.Scan(
 			&group.ID,
 			&group.UUID,
+			&group.CreatorID,
+			&group.CreatorUUID,
 			&group.Title,
 			&group.Description,
 			&group.AvatarPath,
 			&group.LastMessageAt,
+			&group.CreatedAt,
+			&group.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan group: %w", err)
@@ -1964,9 +1978,9 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 	}
 
 	if db.redis != nil {
-		var cached []GroupMember
+		var cached []groupMemberCacheEntry
 		if err := db.redis.GetCachedGroupMembers(ctx, groupID, &cached); err == nil {
-			return cached, nil
+			return groupMembersFromCache(cached), nil
 		}
 	}
 
@@ -2010,7 +2024,7 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 	}
 
 	if db.redis != nil {
-		_ = db.redis.CacheGroupMembers(ctx, groupID, members, cache.GroupTTL)
+		_ = db.redis.CacheGroupMembers(ctx, groupID, groupMembersToCache(members), cache.GroupTTL)
 	}
 
 	return members, nil
@@ -2033,8 +2047,9 @@ func (db *DataBase) GetAllGroups(ctx context.Context, limit, offset int) ([]Grou
 		var g Group
 		var memberCount int
 		err := rows.Scan(
-			&g.ID, &g.UUID, &g.CreatorID, &g.Title, &g.Description,
-			&g.AvatarPath, &g.CreatedAt, &memberCount,
+			&g.ID, &g.UUID, &g.CreatorID, &g.CreatorUUID, &g.Title,
+			&g.Description, &g.AvatarPath, &g.LastMessageAt,
+			&g.CreatedAt, &g.UpdatedAt, &memberCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan group: %w", err)
@@ -2721,6 +2736,7 @@ func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, er
 		FirstName: firstName,
 		LastName:  lastName,
 	}
+	event.Creator.UUID = event.CreatorUUID
 	if nickname.Valid {
 		event.Creator.Nickname = &nickname.String
 	}
@@ -2771,6 +2787,7 @@ func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, er
 		FirstName: firstName,
 		LastName:  lastName,
 	}
+	event.Creator.UUID = event.CreatorUUID
 	if nickname.Valid {
 		event.Creator.Nickname = &nickname.String
 	}
@@ -2826,6 +2843,7 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 			FirstName: firstName,
 			LastName:  lastName,
 		}
+		event.Creator.UUID = event.CreatorUUID
 		if nickname.Valid {
 			event.Creator.Nickname = &nickname.String
 		}
@@ -2893,6 +2911,7 @@ func (db *DataBase) GetUserGroupEvents(ctx context.Context, userID int64, limit,
 			FirstName: firstName,
 			LastName:  lastName,
 		}
+		event.Creator.UUID = event.CreatorUUID
 		if nickname.Valid {
 			event.Creator.Nickname = &nickname.String
 		}

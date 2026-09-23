@@ -297,7 +297,7 @@ func GetUserGroupsHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	userID, err := resolveUserID(r, db, userIDStr)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "Invalid user_id")
 		return

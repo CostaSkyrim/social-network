@@ -535,9 +535,11 @@ const (
 	`
 
 	GetUserGroups = `
-		SELECT g.id, g.uuid, g.title, g.description, g.avatar_path,
-		 g.last_message_at
+		SELECT g.id, g.uuid, g.creator_id, cu.uuid AS creator_uuid,
+		 g.title, g.description, g.avatar_path, g.last_message_at,
+		 g.created_at, g.updated_at
 		FROM groups g
+		JOIN users cu ON cu.id = g.creator_id
 		JOIN group_members gm ON gm.group_id = g.id
 		WHERE gm.user_id = ? AND gm.status = 'accepted'
 		ORDER BY g.last_message_at DESC NULLS LAST
@@ -575,9 +577,11 @@ const (
 	`
 
 	GetAllGroups = `
-		SELECT g.id, g.uuid, g.creator_id, g.title, g.description, g.avatar_path,
-			 g.created_at, COUNT(gm.user_id) as member_count
+		SELECT g.id, g.uuid, g.creator_id, cu.uuid AS creator_uuid,
+			 g.title, g.description, g.avatar_path, g.last_message_at,
+			 g.created_at, g.updated_at, COUNT(gm.user_id) as member_count
 		FROM groups g
+		JOIN users cu ON cu.id = g.creator_id
 		LEFT JOIN group_members gm ON gm.group_id = g.id AND gm.status = 'accepted'
 		GROUP BY g.id
 		ORDER BY g.created_at DESC

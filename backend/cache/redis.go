@@ -247,7 +247,9 @@ func (rc *RedisClient) InvalidateUserNickname(ctx context.Context, nickname stri
 // ---- Group cache ----
 
 func GroupKey(groupID int64) string {
-	return "group:" + fmt.Sprint(groupID)
+	// v2: the payload switched from Group (which drops the internal numeric
+	// ids) to the id-preserving groupCacheEntry DTO.
+	return "group:v2:" + fmt.Sprint(groupID)
 }
 
 func (rc *RedisClient) CacheGroup(ctx context.Context, groupID int64, data interface{}, ttl time.Duration) error {
@@ -265,7 +267,9 @@ func (rc *RedisClient) InvalidateGroup(ctx context.Context, groupID int64) error
 // ---- Group member-list cache ----
 
 func GroupMembersKey(groupID int64) string {
-	return "group_members:" + fmt.Sprint(groupID)
+	// v2: the payload switched from []GroupMember (which drops the internal
+	// numeric ids) to the id-preserving groupMemberCacheEntry DTO.
+	return "group_members:v2:" + fmt.Sprint(groupID)
 }
 
 func (rc *RedisClient) CacheGroupMembers(ctx context.Context, groupID int64, members interface{}, ttl time.Duration) error {

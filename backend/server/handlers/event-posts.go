@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	database "social-network/backend/db/sql"
 	"social-network/backend/config"
+	database "social-network/backend/db/sql"
 	"strconv"
 	"strings"
 

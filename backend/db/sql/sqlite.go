@@ -171,7 +171,7 @@ func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-					if _, err := db.conn.ExecContext(ctx,
+			if _, err := db.conn.ExecContext(ctx,
 				`UPDATE sessions SET is_active = 0 WHERE expires_at < CURRENT_TIMESTAMP`); err != nil {
 				log.Printf("Session cleanup error: %v", err)
 			}
