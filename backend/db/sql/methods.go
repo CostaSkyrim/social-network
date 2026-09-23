@@ -1797,6 +1797,17 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 		ctx = context.Background()
 	}
 
+	// Resolve the UUID via the lookup index so the group object cache is hit
+	// instead of the database. A stale entry (deleted group) just falls
+	// through to the query below.
+	if db.redis != nil {
+		if groupID, err := db.redis.GetGroupIDByUUID(ctx, uuid); err == nil && groupID != 0 {
+			if group, err := db.GetGroup(ctx, groupID); err == nil {
+				return group, nil
+			}
+		}
+	}
+
 	group := &Group{}
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetGroupByUUID,
@@ -1821,6 +1832,7 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 	}
 
 	if db.redis != nil {
+		_ = db.redis.CacheGroupIDByUUID(ctx, group.UUID, group.ID, cache.GroupTTL)
 		_ = db.redis.CacheGroup(ctx, group.ID, groupToCache(group), cache.GroupTTL)
 	}
 
@@ -2070,6 +2082,16 @@ func (db *DataBase) DeleteGroup(ctx context.Context, groupID, creatorID int64) e
 		ctx = context.Background()
 	}
 
+	// Capture the UUID before deleting: once the row is gone the numeric id
+	// can no longer be mapped back to it, and a stale uuid→id index entry
+	// would keep resolving to a rowid that SQLite may reuse.
+	var groupUUID string
+	if db.redis != nil {
+		if group, err := db.GetGroup(ctx, groupID); err == nil {
+			groupUUID = group.UUID
+		}
+	}
+
 	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -2089,6 +2111,9 @@ func (db *DataBase) DeleteGroup(ctx context.Context, groupID, creatorID int64) e
 	if db.redis != nil {
 		_ = db.redis.InvalidateGroup(ctx, groupID)
 		_ = db.redis.InvalidateGroupMembers(ctx, groupID)
+		if groupUUID != "" {
+			_ = db.redis.InvalidateGroupUUID(ctx, groupUUID)
+		}
 	}
 
 	return nil

@@ -171,10 +171,49 @@ func (db *DataBase) sessionCleanupRoutine(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if _, err := db.conn.ExecContext(ctx,
-				`UPDATE sessions SET is_active = 0 WHERE expires_at < CURRENT_TIMESTAMP`); err != nil {
-				log.Printf("Session cleanup error: %v", err)
-			}
+			db.cleanupExpiredSessions(ctx)
+		}
+	}
+}
+
+// cleanupExpiredSessions marks expired sessions inactive and evicts their
+// cached Redis lookup. SQLite-backed sessions are also cached under
+// session:<id> with the session TTL; dropping that entry stops the session
+// authenticating immediately rather than at the end of the cache TTL.
+func (db *DataBase) cleanupExpiredSessions(ctx context.Context) {
+	rows, err := db.conn.QueryContext(ctx,
+		`SELECT session_id FROM sessions
+		 WHERE is_active = 1 AND expires_at < CURRENT_TIMESTAMP`)
+	if err != nil {
+		log.Printf("Session cleanup error: %v", err)
+		return
+	}
+
+	var expired []string
+	for rows.Next() {
+		var sessionID string
+		if err := rows.Scan(&sessionID); err != nil {
+			log.Printf("Session cleanup scan error: %v", err)
+			continue
+		}
+		expired = append(expired, sessionID)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Session cleanup iteration error: %v", err)
+	}
+	rows.Close()
+
+	if _, err := db.conn.ExecContext(ctx,
+		`UPDATE sessions SET is_active = 0 WHERE expires_at < CURRENT_TIMESTAMP`); err != nil {
+		log.Printf("Session cleanup error: %v", err)
+	}
+
+	if db.redis == nil {
+		return
+	}
+	for _, sessionID := range expired {
+		if err := db.redis.InvalidateSessionLookup(ctx, sessionID); err != nil {
+			log.Printf("Session cleanup: failed to evict cached session %s: %v", sessionID, err)
 		}
 	}
 }

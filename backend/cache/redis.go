@@ -30,7 +30,6 @@ type RedisClient struct {
 var (
 	SessionTTL = 24 * time.Hour
 	UserTTL    = 15 * time.Minute
-	PostTTL    = 10 * time.Minute
 	GroupTTL   = 10 * time.Minute
 )
 
@@ -140,6 +139,13 @@ func (rc *RedisClient) GetSession(ctx context.Context, key string) (int64, error
 	return userID, nil
 }
 
+// InvalidateSessionLookup drops the cached session→user lookup used by the
+// SQLite session backend, so a session that has expired (or been revoked) stops
+// authenticating immediately instead of at the end of its cache TTL.
+func (rc *RedisClient) InvalidateSessionLookup(ctx context.Context, sessionID string) error {
+	return rc.client.Del(ctx, SessionKey(sessionID)).Err()
+}
+
 // ---- Session store (Redis as source of truth) ----
 
 // SessionRecord is the full session payload stored in Redis when
@@ -172,16 +178,53 @@ func (rc *RedisClient) DeleteSessionRecord(ctx context.Context, sessionID string
 	return rc.client.Del(ctx, SessionRecordKey(sessionID)).Err()
 }
 
-func (rc *RedisClient) AddUserSession(ctx context.Context, userID int64, sessionID string) error {
-	return rc.client.SAdd(ctx, UserSessionsKey(userID), sessionID).Err()
+// AddUserSession tracks a session id in the user's session set. The set gets
+// the session TTL because nothing prunes it when a session simply expires, so
+// without an expiry it would grow without bound.
+func (rc *RedisClient) AddUserSession(ctx context.Context, userID int64, sessionID string, ttl time.Duration) error {
+	key := UserSessionsKey(userID)
+
+	pipe := rc.client.Pipeline()
+	pipe.SAdd(ctx, key, sessionID)
+	if ttl > 0 {
+		pipe.Expire(ctx, key, ttl)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (rc *RedisClient) RemoveUserSession(ctx context.Context, userID int64, sessionID string) error {
 	return rc.client.SRem(ctx, UserSessionsKey(userID), sessionID).Err()
 }
 
+// GetUserSessionRecords returns the live session ids tracked for a user,
+// dropping entries whose session record has already expired. The set is
+// otherwise only pruned on an explicit logout, so expired sessions would
+// accumulate in it.
 func (rc *RedisClient) GetUserSessionRecords(ctx context.Context, userID int64) ([]string, error) {
-	return rc.client.SMembers(ctx, UserSessionsKey(userID)).Result()
+	key := UserSessionsKey(userID)
+
+	tracked, err := rc.client.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	live := make([]string, 0, len(tracked))
+	for _, sessionID := range tracked {
+		exists, err := rc.client.Exists(ctx, SessionRecordKey(sessionID)).Result()
+		if err != nil {
+			return nil, err
+		}
+		if exists == 1 {
+			live = append(live, sessionID)
+			continue
+		}
+		if err := rc.client.SRem(ctx, key, sessionID).Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	return live, nil
 }
 
 func (rc *RedisClient) ClearUserSessions(ctx context.Context, userID int64) error {
@@ -282,6 +325,29 @@ func (rc *RedisClient) GetCachedGroupMembers(ctx context.Context, groupID int64,
 
 func (rc *RedisClient) InvalidateGroupMembers(ctx context.Context, groupID int64) error {
 	return rc.client.Del(ctx, GroupMembersKey(groupID)).Err()
+}
+
+// ---- Group lookup-index cache (uuid → group ID) ----
+//
+// The group object cache is keyed by numeric id, but requests arrive with the
+// group's UUID. Without this index GetGroupByUUID has to read the database on
+// every request just to translate the UUID, which makes the group cache
+// pointless on the hot path.
+
+func GroupUUIDKey(uuid string) string {
+	return "group_uuid:" + uuid
+}
+
+func (rc *RedisClient) CacheGroupIDByUUID(ctx context.Context, uuid string, groupID int64, ttl time.Duration) error {
+	return rc.client.Set(ctx, GroupUUIDKey(uuid), groupID, ttl).Err()
+}
+
+func (rc *RedisClient) GetGroupIDByUUID(ctx context.Context, uuid string) (int64, error) {
+	return rc.client.Get(ctx, GroupUUIDKey(uuid)).Int64()
+}
+
+func (rc *RedisClient) InvalidateGroupUUID(ctx context.Context, uuid string) error {
+	return rc.client.Del(ctx, GroupUUIDKey(uuid)).Err()
 }
 
 // ---- Rate limiting ----

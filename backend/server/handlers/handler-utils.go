@@ -190,7 +190,7 @@ func CreateUserSession(w http.ResponseWriter, r *http.Request, db *database.Data
 		if err := redisClient.SetSessionRecord(r.Context(), sessionID, rec, ttl); err != nil {
 			return fmt.Errorf("failed to store session: %w", err)
 		}
-		if err := redisClient.AddUserSession(r.Context(), userID, sessionID); err != nil {
+		if err := redisClient.AddUserSession(r.Context(), userID, sessionID, ttl); err != nil {
 			return fmt.Errorf("failed to track user session: %w", err)
 		}
 

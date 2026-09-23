@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,8 +47,17 @@ func AuthMiddleware(
 		return
 	}
 
-	remoteAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-	rateLimitTag := fmt.Sprint(remoteAddr, r.URL.Path)
+	// Resolve the session before rate limiting so the limits can be applied
+	// per user. Everything is proxied through Caddy, so keying on RemoteAddr
+	// alone would put every user in the same bucket.
+	user, err := GetUserFromCookie(r, db, redisClient)
+	isAuthenticated := err == nil && user != nil
+
+	rateLimitID := "ip:" + clientIP(r)
+	if isAuthenticated {
+		rateLimitID = fmt.Sprintf("user:%d", user.ID)
+	}
+	rateLimitTag := fmt.Sprint(rateLimitID, r.URL.Path)
 
 	universalCount, universalInterval := config.GetUniversalRateLimit()
 	pathCount, pathInterval := config.GetRateLimit(r.URL.Path)
@@ -55,13 +65,13 @@ func AuthMiddleware(
 	blocked := false
 
 	if redisClient != nil {
-		if isBlocked, err := redisClient.CheckRateLimit(r.Context(), remoteAddr, int64(universalCount), universalInterval); err == nil && isBlocked {
+		if isBlocked, err := redisClient.CheckRateLimit(r.Context(), rateLimitID, int64(universalCount), universalInterval); err == nil && isBlocked {
 			blocked = true
 		} else if isBlocked, err := redisClient.CheckRateLimit(r.Context(), rateLimitTag, int64(pathCount), pathInterval); err == nil && isBlocked {
 			blocked = true
 		}
 	} else {
-		if BlockRequest(int64(universalCount), int64(universalInterval*1000), remoteAddr) {
+		if BlockRequest(int64(universalCount), int64(universalInterval*1000), rateLimitID) {
 			blocked = true
 		} else if BlockRequest(int64(pathCount), int64(pathInterval*1000), rateLimitTag) {
 			blocked = true
@@ -72,9 +82,6 @@ func AuthMiddleware(
 		RespondError(w, http.StatusTooManyRequests, "Too many requests")
 		return
 	}
-
-	user, err := GetUserFromCookie(r, db, redisClient)
-	isAuthenticated := err == nil && user != nil
 
 	isJSON := r.Header.Get("Content-Type") == "application/json" || (len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api")
 
@@ -113,6 +120,28 @@ func AuthMiddleware(
 func GetUserIDFromContext(r *http.Request) (int64, bool) {
 	userID, ok := r.Context().Value(userIDKey).(int64)
 	return userID, ok
+}
+
+// clientIP returns the best-effort client address for rate limiting.
+// Requests are proxied through Caddy, so RemoteAddr is always the proxy.
+// Caddy appends the address it saw to X-Forwarded-For, which makes the
+// right-most entry the real peer (anything earlier can be supplied by the
+// client, so it is not trusted).
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+			return ip
+		}
+	}
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+		return xri
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 type requestEntry struct {
