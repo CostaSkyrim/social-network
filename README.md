@@ -23,33 +23,6 @@ A full-stack, Facebook-like social network. A Go backend serves a JSON REST API 
 - **Chat** — Real-time private messaging between mutual followers and group chat rooms, with emoji support and WebSocket-powered instant delivery.
 - **Real-time presence** — Online/offline tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub.
 
-## Current Status
-
-**Working:**
-
-- Full auth flow (signup, login, logout, session cookies, CORS, rate limiting, auto-generated nicknames)
-- Paginated, privacy-filtered news feed
-- Post + comment CRUD with ownership checks and soft deletes
-- Follow system (request / accept / decline / unfollow)
-- User profiles with follow button, edit, and privacy toggle
-- Group management (CRUD, browse, invite, join, members) with role-aware actions
-- Group posts + group chat (members only)
-- Events (create, list, RSVP, detail, reminders)
-- User search with privacy-aware results
-- OAuth (Google + GitHub)
-- Image uploads (avatars, posts, comments, events, messages)
-- Notifications (list, unread count, mark read) with real-time push
-- Direct messages with real-time WebSocket delivery
-- Profile-privacy enforcement across feed, posts, comments, and profile
-- Emoji picker + `:shortcode:` autocomplete
-- WebSocket hub at `/api/ws` — chat/group/notification/presence/typing, ping/pong keepalive
-- Redis — presence, read-through caching (users/groups), sliding-window rate limiting, pub/sub, session store
-- All API resources identified by UUID; numeric DB IDs are never exposed
-
-**Planned:** moderation endpoints, production polish.
-
-See [PLAN.md](./PLAN.md) for the full roadmap.
-
 ## Technology Stack
 
 Every technology in this project is explained below so someone unfamiliar with each tool can understand what it does and why it's used here.
@@ -72,9 +45,9 @@ Every technology in this project is explained below so someone unfamiliar with e
 
 [Redis](https://redis.io/) is an in-memory data structure store. It's dramatically faster than disk databases because data lives in RAM, making it ideal for caching, ephemeral state, and pub/sub. It supports strings, hashes, lists, sets, sorted sets, and publish/subscribe channels.
 
-**Why it's used here** (Redis is optional — the backend degrades gracefully if it's down):
+**Why it's used here** (Redis is required — with no Redis there is no in-memory or database fallback for these features):
 
-- **Sessions** — by default (`sessions.storage = "redis"`), session records are the source of truth in Redis (fail-closed if Redis is unavailable). The `"sqlite"` mode persists sessions in SQLite while Redis caches lookups.
+- **Sessions** — session records are stored in Redis as the source of truth (`sessions.storage = "redis"`). If Redis is unavailable, authentication fails closed (every request 401s); there is no SQLite fallback.
 - **Read-through cache** — user, group, and group-member lookups check Redis first, fall back to SQLite on a miss, and populate the cache. Email/nickname → user-ID index lookups are cached too, storing only the numeric ID (never the password hash). Writes invalidate the relevant keys. Gated by `use_cache`.
 - **Sliding-window rate limiting** — requests are counted in Redis sorted sets per IP and per IP+path; old entries are pruned and the count is checked atomically in a pipeline.
 - **Presence** — "online" is a Redis key with a 30s TTL that the WebSocket heartbeat refreshes; expiration marks a user offline.
@@ -252,8 +225,8 @@ populate/              Seed JSON + loader
 
 - Go 1.24+
 - Node.js 22+ (Next.js 16 requirement)
-- Docker & Docker Compose (for Redis or the full stack)
-- Redis is optional — the backend runs without it (in-memory rate limiting; sessions require Redis only in the default `redis` storage mode)
+- Redis 7 (required at runtime — sessions, caching, rate limiting, presence, and pub/sub all depend on it)
+- Docker & Docker Compose (for the full stack)
 
 ### Quick Start (from project root)
 
@@ -297,14 +270,14 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL (frontend) |
-| `REDIS_ADDR` | `localhost:6379` | Redis address (backend, optional) |
+| `REDIS_ADDR` | `localhost:6379` | Redis address (backend, required) |
 
 ### Configuration
 
 Settings live in `backend/configs.json` (local) / `backend/configs.docker.json` (Docker):
 
 - `scheduler` — event-reminder worker: `enabled`, `tick_interval`, `reminder_lead`.
-- `sessions` — `storage` (`"redis"` or `"sqlite"`) and `ttl` (e.g. `"24h"`). Redis is the source of truth (fail-closed) in the default `"redis"` mode.
+- `sessions` — `storage` (`"redis"`) and `ttl` (e.g. `"24h"`). Redis is the source of truth; if it is unavailable authentication fails closed.
 - `redis` — address, pool size, timeouts, retries.
 - `database_configuration` — path, WAL pragmas, `use_cache` (read-through caching), session cleanup interval, and validation `limits` (username/password/name/bio/title/description/post/comment/message/group-title lengths, `rows_limit` pagination cap).
 - `handlers` — image constraints and per-path `rate_limits`.
@@ -348,6 +321,5 @@ social-network/
 │   └── Dockerfile         # Backend image (dev, air hot-reload)
 ├── docker-compose.yml     # dev stack: Caddy + frontend + backend + redis
 ├── Caddyfile              # TLS termination + reverse proxy (dev)
-├── Makefile               # dev, check, build commands
-└── PLAN.md                # Full implementation plan
+└── Makefile               # dev, check, build commands
 ```
