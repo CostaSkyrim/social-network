@@ -34,6 +34,26 @@ func AuthMiddleware(
 	redisClient *cache.RedisClient,
 	nextHandler func(writer, request, *database.DataBase),
 ) {
+	// Recover from panics raised by the handler (or by the middleware itself).
+	// This must be registered before any work happens: a defer placed after
+	// nextHandler has already returned can never recover it.
+	isJSON := r.Header.Get("Content-Type") == "application/json" || (len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api")
+
+	defer func() {
+		if rec := recover(); rec != nil {
+			if isJSON {
+				RespondError(w, http.StatusInternalServerError, "Internal server error")
+			} else {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+
+			for range 10 {
+				fmt.Fprintln(os.Stderr, "UNEXPECTED PANIC IN HANDLER:")
+			}
+			fmt.Fprintf(os.Stderr, "Panic: %v\n", rec)
+		}
+	}()
+
 	// CORS compliant headers
 	frontendURL := config.GetFrontendURL()
 	w.Header().Set("Access-Control-Allow-Origin", frontendURL)
@@ -83,8 +103,6 @@ func AuthMiddleware(
 		return
 	}
 
-	isJSON := r.Header.Get("Content-Type") == "application/json" || (len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api")
-
 	if requireAuth && !isAuthenticated {
 		if isJSON {
 			RespondError(w, http.StatusUnauthorized, "Authentication required")
@@ -100,21 +118,6 @@ func AuthMiddleware(
 	}
 
 	nextHandler(w, r, db)
-
-	defer func() {
-		if rec := recover(); rec != nil {
-			if isJSON {
-				RespondError(w, http.StatusInternalServerError, "Internal server error")
-			} else {
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-
-			for range 10 {
-				fmt.Fprintln(os.Stderr, "UNEXPECTED PANIC IN HANDLER:")
-			}
-			fmt.Fprintf(os.Stderr, "Panic: %v\n", rec)
-		}
-	}()
 }
 
 func GetUserIDFromContext(r *http.Request) (int64, bool) {

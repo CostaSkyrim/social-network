@@ -3,7 +3,10 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	database "social-network/backend/db/sql"
 )
 
 func TestClientIP(t *testing.T) {
@@ -63,6 +66,52 @@ func TestClientIP(t *testing.T) {
 
 			if got := clientIP(r); got != tc.want {
 				t.Errorf("clientIP() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestAuthMiddlewareRecoversHandlerPanic is a regression test for the deferred
+// recover being registered after nextHandler had already returned, which meant
+// a panicking handler was never recovered by the middleware.
+func TestAuthMiddlewareRecoversHandlerPanic(t *testing.T) {
+	tests := []struct {
+		name        string
+		target      string
+		contentType string
+		wantJSON    bool
+	}{
+		{name: "api path gets a JSON error", target: "/api/boom", wantJSON: true},
+		{name: "json content type gets a JSON error", target: "/boom", contentType: "application/json", wantJSON: true},
+		{name: "plain path gets a plain error", target: "/boom", wantJSON: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, tc.target, nil)
+			if tc.contentType != "" {
+				r.Header.Set("Content-Type", tc.contentType)
+			}
+
+			panicking := func(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+				panic("boom")
+			}
+
+			// nil db/redis is fine: without a session cookie
+			// GetUserFromCookie returns before touching either, and the
+			// config getters fall back to defaults when unconfigured.
+			AuthMiddleware(false, rec, r, nil, nil, panicking)
+
+			if rec.Code != http.StatusInternalServerError {
+				t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+			}
+			body := rec.Body.String()
+			if !strings.Contains(body, "Internal server error") {
+				t.Errorf("body = %q, want it to mention the error", body)
+			}
+			if gotJSON := strings.Contains(body, `"error"`); gotJSON != tc.wantJSON {
+				t.Errorf("json body = %v, want %v (body = %q)", gotJSON, tc.wantJSON, body)
 			}
 		})
 	}
