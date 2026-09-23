@@ -57,6 +57,7 @@ export interface GroupEvent {
   not_going: number
   total: number
   my_response?: 'going' | 'not_going'
+  is_cancelled?: boolean
 }
 
 export interface GroupEventResponse {

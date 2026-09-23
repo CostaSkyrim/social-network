@@ -2639,6 +2639,45 @@ func (db *DataBase) CreateEvent(ctx context.Context, event *Event) (int64, error
 	return id, nil
 }
 
+// UpdateEvent updates an event's editable fields.
+func (db *DataBase) UpdateEvent(ctx context.Context, eventID int64, title, description string, imagePath *string, eventDateTime time.Time) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if _, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateEvent,
+		title,
+		description,
+		imagePath,
+		eventDateTime,
+		eventID,
+	); err != nil {
+		return fmt.Errorf("failed to update event: %w", err)
+	}
+
+	return nil
+}
+
+// CancelEvent marks an event as cancelled (kept so its content/comments remain).
+func (db *DataBase) CancelEvent(ctx context.Context, eventID int64) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if _, err := db.conn.ExecContext(dbCtx, queries.CancelEvent, eventID); err != nil {
+		return fmt.Errorf("failed to cancel event: %w", err)
+	}
+
+	return nil
+}
+
 // GetEventByID retrieves an event by ID with the creator's info
 func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, error) {
 	if ctx == nil {
@@ -2658,10 +2697,12 @@ func (db *DataBase) GetEventByID(ctx context.Context, eventID int64) (*Event, er
 		&event.UUID,
 		&event.GroupID,
 		&event.CreatorID,
+		&event.CreatorUUID,
 		&event.Title,
 		&event.Description,
 		&imagePath,
 		&event.EventDateTime,
+		&event.IsCancelled,
 		&event.CreatedAt,
 		&event.UpdatedAt,
 		&firstName,
@@ -2706,10 +2747,12 @@ func (db *DataBase) GetEventByUUID(ctx context.Context, uuid string) (*Event, er
 		&event.UUID,
 		&event.GroupID,
 		&event.CreatorID,
+		&event.CreatorUUID,
 		&event.Title,
 		&event.Description,
 		&imagePath,
 		&event.EventDateTime,
+		&event.IsCancelled,
 		&event.CreatedAt,
 		&event.UpdatedAt,
 		&firstName,
@@ -2762,10 +2805,12 @@ func (db *DataBase) GetGroupEvents(ctx context.Context, groupID int64) ([]*Event
 			&event.UUID,
 			&event.GroupID,
 			&event.CreatorID,
+			&event.CreatorUUID,
 			&event.Title,
 			&event.Description,
 			&imagePath,
 			&event.EventDateTime,
+			&event.IsCancelled,
 			&event.CreatedAt,
 			&event.UpdatedAt,
 			&firstName,
@@ -2824,10 +2869,12 @@ func (db *DataBase) GetUserGroupEvents(ctx context.Context, userID int64, limit,
 			&event.UUID,
 			&event.GroupID,
 			&event.CreatorID,
+			&event.CreatorUUID,
 			&event.Title,
 			&event.Description,
 			&imagePath,
 			&event.EventDateTime,
+			&event.IsCancelled,
 			&event.CreatedAt,
 			&event.UpdatedAt,
 			&firstName,

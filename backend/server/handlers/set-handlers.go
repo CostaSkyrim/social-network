@@ -128,6 +128,8 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/events", true, GroupEventsHandler),
 		makeEndpoint("/api/events/{id}", true, GetEventHandler),
 		makeEndpoint("/api/events/{id}/rsvp", true, EventRSVPHandler),
+		makeEndpoint("/api/events/{id}/edit", true, UpdateEventHandler),
+		makeEndpoint("/api/events/{id}/delete", true, DeleteEventHandler),
 	}
 
 	for _, ep := range endpoints {

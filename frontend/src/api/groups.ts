@@ -154,3 +154,28 @@ export async function sendGroupMessage(
   if (!res.data.data) throw new Error('Failed to send message')
   return res.data.data
 }
+
+export async function updateEvent(
+  eventId: string,
+  input: {
+    title: string
+    description?: string
+    event_datetime: string
+    image?: File
+    remove_image?: boolean
+  },
+): Promise<void> {
+  const form = new FormData()
+  form.append('title', input.title)
+  if (input.description) form.append('description', input.description)
+  form.append('event_datetime', input.event_datetime)
+  if (input.image) form.append('image', input.image)
+  if (input.remove_image) form.append('remove_image', '1')
+  await client.put(`/api/events/${eventId}/edit`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  await client.delete(`/api/events/${eventId}/delete`)
+}

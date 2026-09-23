@@ -830,6 +830,19 @@ const (
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
+	UpdateEvent = `
+		UPDATE events
+		SET title = ?, description = ?, image_path = ?, event_datetime = ?,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
+	CancelEvent = `
+		UPDATE events
+		SET is_cancelled = 1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
 	CreateEventRSVP = `
 		INSERT INTO event_responses (event_id, user_id, response)
 		VALUES (?, ?, ?)
@@ -837,8 +850,9 @@ const (
 	`
 
 	GetEventByID = `
-		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, u.uuid AS creator_uuid,
+			 e.title, e.description, e.image_path, e.event_datetime, e.is_cancelled,
+			 e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
@@ -846,8 +860,9 @@ const (
 	`
 
 	GetEventByUUID = `
-		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, u.uuid AS creator_uuid,
+			 e.title, e.description, e.image_path, e.event_datetime, e.is_cancelled,
+			 e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
@@ -855,8 +870,9 @@ const (
 	`
 
 	GetGroupEvents = `
-		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, u.uuid AS creator_uuid,
+			 e.title, e.description, e.image_path, e.event_datetime, e.is_cancelled,
+			 e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
@@ -865,14 +881,16 @@ const (
 	`
 
 	GetUserGroupEvents = `
-		SELECT e.id, e.uuid, e.group_id, e.creator_id, e.title, e.description,
-			 e.image_path, e.event_datetime, e.created_at, e.updated_at,
+		SELECT e.id, e.uuid, e.group_id, e.creator_id, u.uuid AS creator_uuid,
+			 e.title, e.description, e.image_path, e.event_datetime, e.is_cancelled,
+			 e.created_at, e.updated_at,
 			 u.first_name, u.last_name, u.nickname,
 			 g.uuid AS group_uuid, g.title AS group_title, g.avatar_path AS group_avatar_path
 		FROM events e
 		JOIN users u ON u.id = e.creator_id
 		JOIN groups g ON g.id = e.group_id
 		JOIN group_members gm ON gm.group_id = e.group_id AND gm.user_id = ? AND gm.status = 'accepted'
+			AND e.is_cancelled = 0
 		ORDER BY e.created_at DESC, e.id DESC
 		LIMIT ? OFFSET ?
 	`
@@ -898,6 +916,7 @@ const (
 		FROM events e
 		JOIN groups g ON g.id = e.group_id
 		WHERE e.reminder_sent = 0 AND e.event_datetime > ? AND e.event_datetime <= ?
+			AND e.is_cancelled = 0
 		ORDER BY e.event_datetime ASC
 	`
 
