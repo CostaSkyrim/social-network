@@ -18,6 +18,36 @@ export function truncate(text: string, max: number): string {
   return text.slice(0, max) + '...'
 }
 
+// format_post_time gives a short "when" stamp. Today → how long ago (e.g.
+// "5m ago", "3h ago"); on any earlier day → the day + month, adding the year
+// only when it isn't the current year.
+export function format_post_time(iso: string): string {
+  const date = new Date(iso)
+  const now = new Date()
+  const start_of_day = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+
+  const days_ago = Math.round(
+    (start_of_day(now) - start_of_day(date)) / 86_400_000,
+  )
+
+  if (days_ago <= 0) {
+    const mins = Math.floor((now.getTime() - date.getTime()) / 60_000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    return `${Math.floor(mins / 60)}h ago`
+  }
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  }
+  return date.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 export function format_datetime(iso: string): string {
   const date = new Date(iso)
   return date.toLocaleString(undefined, {

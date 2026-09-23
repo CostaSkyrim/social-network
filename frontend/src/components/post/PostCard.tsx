@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ImageUpload } from '@/components/common/ImageUpload'
 import { UserVisibilityPicker } from './UserVisibilityPicker'
-import { format_date } from '@/lib/format'
+import { format_post_time } from '@/lib/format'
 import { get_media_url } from '@/lib/media'
 import { cn } from '@/lib/cn'
 import { getPost } from '@/api/posts'
@@ -112,12 +112,17 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <div className="min-w-0 flex-1">
             <Link
               href={`/profile/${post.author_id}`}
-              className="relative z-10 text-sm font-medium text-gray-100 hover:underline"
+              className="relative z-10 block truncate text-sm font-medium text-gray-100 hover:underline"
             >
               {author_name}
             </Link>
-            <p className="text-xs text-gray-300">{format_date(post.created_at)}</p>
           </div>
+          <span
+            className="whitespace-nowrap text-xs font-medium text-gray-300"
+            title={new Date(post.created_at).toLocaleString()}
+          >
+            {format_post_time(post.created_at)}
+          </span>
           {is_deleted ? (
             <span className="text-xs text-red-400 font-medium">deleted</span>
           ) : post.privacy_level !== 'public' ? (
@@ -229,7 +234,7 @@ export function PostCard({ post, compact = false }: PostCardProps) {
             alt="Post image"
             className={cn(
               'w-full rounded-lg object-contain',
-              compact ? 'max-h-64' : 'max-h-96',
+              compact ? 'max-h-44' : 'max-h-96',
             )}
           />
         )}

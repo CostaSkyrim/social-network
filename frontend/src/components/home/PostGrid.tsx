@@ -30,8 +30,8 @@ export function PostGrid({
 
   return (
     <div className="space-y-4">
-      {/* Row-major masonry: cards flow left-to-right in chronological order,
-          packing tightly regardless of their height. */}
+      {/* Row-major masonry: cards flow newest → oldest left-to-right, packing
+          tightly regardless of height. */}
       <MasonryGrid>
         {posts.map((post) => (
           <MasonryItem key={post.id}>
