@@ -5,7 +5,7 @@ A full-stack, Facebook-like social network. A Go backend serves a JSON REST API 
 ## Authors
 
 - **[Konstantinos Petroutsos](https://github.com/CostaSkyrim)**
-- **[Augoustinos Andris]**
+- **[Augoustinos Andris](https://github.com/yukiblob)**
 
 ## Features
 
