@@ -113,6 +113,7 @@ export function useDeletePost() {
     mutationFn: (id: string) => apiDeletePost(id),
     onSuccess: () => {
       query_client.invalidateQueries({ queryKey: ['feed'] })
+      query_client.invalidateQueries({ queryKey: ['user-posts'] })
       show_toast({ message: 'Post deleted', type: 'success' })
     },
     onError: (err: any) => {

@@ -1,18 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import client from '@/api/client'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { ImageUpload } from '@/components/common/ImageUpload'
 import { InfiniteScroll } from '@/components/common/InfiniteScroll'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
 import { useUserPosts } from '@/hooks/usePosts'
-import { get_media_url } from '@/lib/media'
+import { PostCard } from '@/components/post/PostCard'
 import { cn } from '@/lib/cn'
 
 interface ProfileData {
@@ -274,6 +274,7 @@ export default function ProfilePage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="shrink-0 whitespace-nowrap"
                 onClick={() => set_show_edit(true)}
               >
                 Edit Profile
@@ -346,16 +347,16 @@ export default function ProfilePage() {
       </div>
 
       {show_edit && (
-        <div className="rounded-lg border border-purple-400/20 bg-[#241748] p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-100">
-            Edit Profile
-          </h2>
-          {edit_error && (
-            <div className="mb-3 rounded-lg bg-red-500/15 p-3 text-sm text-red-200">
-              {edit_error}
-            </div>
-          )}
-          <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-semibold text-gray-100">Edit profile</h2>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {edit_error && (
+              <div className="rounded-lg bg-red-500/15 p-3 text-sm text-red-200">
+                {edit_error}
+              </div>
+            )}
             <Input
               id="nickname"
               label="Nickname"
@@ -374,7 +375,7 @@ export default function ProfilePage() {
                   set_edit_form((f) => ({ ...f, about_me: e.target.value }))
                 }
                 rows={3}
-                className="mt-1 block w-full rounded-lg border border-purple-400/30 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                className="mt-1 block w-full resize-none rounded-lg border border-purple-400/30 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
             </label>
             <label className="flex items-center gap-2">
@@ -388,20 +389,20 @@ export default function ProfilePage() {
               />
               <span className="text-sm text-gray-300">Public profile</span>
             </label>
-            <div className="flex gap-2">
-              <Button onClick={handleSave} loading={edit_saving} size="sm">
-                Save
-              </Button>
+            <div className="flex justify-end gap-2 border-t border-purple-400/20 pt-4">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => set_show_edit(false)}
+                disabled={edit_saving}
               >
                 Cancel
               </Button>
+              <Button onClick={handleSave} loading={edit_saving}>
+                Save changes
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       <div>
@@ -422,33 +423,7 @@ export default function ProfilePage() {
           >
             <div className="space-y-3">
               {all_posts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/posts/${post.id}`}
-                  className="block rounded-lg border border-purple-400/20 bg-[#241748] p-4 transition-colors hover:border-violet-400/40 hover:bg-[#2b1a55]"
-                >
-                  <p className="text-sm text-gray-100 whitespace-pre-wrap">
-                    {post.content}
-                  </p>
-                  {post.image_path && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={get_media_url(post.image_path)}
-                      alt="Post image"
-                      className="mt-2 max-h-64 w-full rounded-lg object-contain"
-                    />
-                  )}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-300">
-                    <span>
-                      {new Date(post.created_at).toLocaleDateString()}
-                    </span>
-                    {post.privacy_level !== 'public' && (
-                      <span className="rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                        {post.privacy_level}
-                      </span>
-                    )}
-                  </div>
-                </Link>
+                <PostCard key={post.id} post={post} hide_author hide_actions />
               ))}
             </div>
           </InfiniteScroll>

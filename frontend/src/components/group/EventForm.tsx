@@ -130,10 +130,10 @@ export function EventForm({ groupId }: EventFormProps) {
               <ImageUpload on_select={handle_select_image}>
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
-                  title="Add event image"
+                  className="rounded-lg px-2 py-1.5 text-base text-gray-300 hover:bg-purple-400/15 hover:text-gray-100"
+                  title={image ? 'Change image' : 'Add image'}
                 >
-                  📷 Add image
+                  📷
                 </button>
               </ImageUpload>
               {image && (

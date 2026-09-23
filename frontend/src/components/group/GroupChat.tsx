@@ -387,18 +387,10 @@ export function GroupChat({ groupId, groupTitle, groupAvatar, members }: GroupCh
           <ImageUpload on_select={handle_select_image}>
             <button
               type="button"
-              className="rounded-lg p-2 text-gray-300 hover:bg-purple-400/15 hover:text-gray-300"
+              className="rounded-lg p-2 text-base text-gray-300 hover:bg-purple-400/15 hover:text-gray-100"
               title="Attach image"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              📷
             </button>
           </ImageUpload>
           <EmojiPicker on_select={insert_at_cursor} direction="up" />

@@ -143,9 +143,13 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
               )}
               <div className="flex items-center justify-between gap-2">
                 <ImageUpload on_select={handle_edit_image}>
-                  <Button type="button" variant="ghost" size="sm">
-                    {comment.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
-                  </Button>
+                  <button
+                    type="button"
+                    className="rounded-lg px-2 py-1.5 text-base text-gray-300 hover:bg-purple-400/15 hover:text-gray-100"
+                    title={comment.image_path && !edit_remove_image ? 'Change image' : 'Add image'}
+                  >
+                    📷
+                  </button>
                 </ImageUpload>
                 <div className="flex items-center gap-2">
                   <Button

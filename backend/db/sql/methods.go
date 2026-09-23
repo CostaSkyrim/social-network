@@ -1059,6 +1059,7 @@ func (db *DataBase) GetUserPostsForViewer(ctx context.Context, authorID, viewerI
 			&post.CreatedAt,
 			&post.UpdatedAt,
 			&post.IsDeleted,
+			&post.CommentCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user post: %w", err)
