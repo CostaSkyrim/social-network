@@ -142,7 +142,7 @@ func GetUserPostsForViewerHandler(w http.ResponseWriter, r *http.Request, db *da
 
 	limit := 5
 	offset := 0
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= maxPageLimit() {
 		limit = v
 	}
 	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
@@ -297,7 +297,7 @@ func SearchUsersHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 
 	limit := 20
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= maxPageLimit() {
 			limit = v
 		}
 	}

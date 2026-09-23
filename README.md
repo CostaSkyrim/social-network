@@ -1,8 +1,9 @@
 # Social Network
 
-A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Query, and Redis.
+A full-stack, Facebook-like social network. A Go backend serves a JSON REST API plus a WebSocket hub for real-time chat and notifications; a React/TypeScript frontend (Next.js App Router) consumes it. SQLite is the durable store, Redis provides session storage, caching, rate limiting, and cross-instance pub/sub, and Caddy terminates TLS at the edge.
 
 ## Authors
+
 - **[Konstantinos Petroutsos](https://github.com/CostaSkyrim)**
 - **[Augoustinos Andris]**
 
@@ -10,118 +11,240 @@ A Facebook-like social network built with Go, TypeScript, Next.js, TanStack Quer
 
 - **Followers** — Follow/unfollow users. Public profiles allow instant following. Private profiles require a follow request that the recipient can accept or decline.
 - **Profile** — View user profiles with posts, followers, and following lists. Toggle profile visibility between public and private.
-- **Posts** — Create text/image posts with privacy levels: public (everyone), followers only, or private (specific followers). Private-profile users' posts are visible only to their accepted followers. Group members can post to their group too. Comment on posts with image support. Edit and soft-delete your own posts (deleted posts render as `[deleted]` with comments intact, Reddit-style).
-- **Comments** — Nested reply threads. Edit and soft-delete your own comments (deleted comments render as `[deleted]` with replies intact).
-- **Image support** — Upload avatars for your profile and your groups, and attach images to posts, comments, events, and DM/group messages. Images are stored locally and served from `/images/...` (20MB max, jpg/png/gif).
-- **User search** — Find people by name or `@nickname`; results respect profile privacy (private users appear only if you're connected) and include an inline follow button.
-- **Emoji support** — Emoji picker button plus `:shortcode:` autocomplete (e.g. type `:cat` → pick 🐱) with keyboard navigation.
-- **OAuth** — Sign in or sign up with Google or GitHub. GitHub linking uses only verified emails.
-- **Groups** — Create groups with a title, description, and optional photo. Invite users by nickname or accept join requests. Group members can post, comment, create events, and chat in a shared group room.
-- **Events** — Group members can create events with title, description, optional image, and date/time. RSVP with Going / Not Going. Live counts per event, your own response, and a "starts in …" hint for upcoming events. A background scheduler sends a reminder notification to everyone who RSVP'd **going** shortly before the event begins.
-- **Notifications** — Real-time notifications for follow requests, group invitations, group join requests, new events, and upcoming-event reminders. Notifications appear across all pages.
-- **Chat** — Real-time private messaging between users who follow each other. Group chat rooms for group members. Emoji support. WebSocket-powered instant delivery.
-- **Real-time presence** — Online/offline status tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub (`/api/ws`).
+- **Posts** — Text/image posts with privacy levels: public, followers-only, or private (specific followers). Comment with image support. Edit and soft-delete your own posts (deleted posts render as `[deleted]` with comments intact, Reddit-style).
+- **Comments** — Nested reply threads. Edit and soft-delete your own comments.
+- **Image support** — Avatars for users and groups, plus images on posts, comments, events, and messages. Stored locally and served from `/images/...` (20MB max; jpg/png/gif).
+- **User search** — Find people by name or `@nickname`; results respect profile privacy and include an inline follow button.
+- **Emoji support** — Emoji picker plus `:shortcode:` autocomplete with keyboard navigation.
+- **OAuth** — Sign in/up with Google or GitHub (GitHub linking uses only verified emails).
+- **Groups** — Create groups with a title, description, and optional photo. Invite by nickname or accept join requests. Members post, comment, create events, and chat in a shared room.
+- **Events** — Create events with title, description, optional image, and date/time. RSVP Going / Not Going with live counts. A background scheduler sends reminders before events start.
+- **Notifications** — Real-time notifications (follow requests, group invites, join requests, events, reminders) across all pages.
+- **Chat** — Real-time private messaging between mutual followers and group chat rooms, with emoji support and WebSocket-powered instant delivery.
+- **Real-time presence** — Online/offline tracked via Redis (30s TTL keys) and broadcast over the WebSocket hub.
 
 ## Current Status
 
 **Working:**
+
 - Full auth flow (signup, login, logout, session cookies, CORS, rate limiting, auto-generated nicknames)
-- Paginated privacy-filtered news feed
-- Post + comment CRUD with ownership checks
-- Reddit-style soft deletes (`[deleted]` placeholders, nested replies preserved)
+- Paginated, privacy-filtered news feed
+- Post + comment CRUD with ownership checks and soft deletes
 - Follow system (request / accept / decline / unfollow)
-- User profiles with functional follow button (view + edit + privacy toggle)
-- Group management (CRUD, browse, invite by nickname, join, accept, reject, leave, members)
-- Group membership UI — role-aware join/leave actions, accept/decline in the member list
+- User profiles with follow button, edit, and privacy toggle
+- Group management (CRUD, browse, invite, join, members) with role-aware actions
 - Group posts + group chat (members only)
-- Events (create, list with going/not_going counts, single event detail, RSVP upsert, optional event image) + frontend event UI (EventCard/EventList/EventForm with optimistic RSVP)
-- Event reminder scheduler — background worker sends a one-time reminder to members who RSVP'd "going" before the event starts (configurable tick + lead time)
-- Groups browse list + group detail page (header, member count, membership actions, events, posts, chat)
-- User search (by name/nickname) with privacy-aware results and inline follow buttons
-- OAuth sign-in via Google and GitHub (verified-email linking for GitHub)
-- Image uploads — user/group avatars, post/comment/event images, DM/group message images
-- Notifications (list, unread count, mark read / mark all) with real-time WebSocket push
-- Actionable group-join notifications — accept/decline inline, outcome shown in the notification
-- Direct messages (send, history, unread count) with real-time delivery over WebSocket
-- Profile-privacy enforcement — a private profile's posts/comments are only visible to accepted followers (feed, single post, comments, and profile "recent posts" all respect it)
-- Burger navigation menu (desktop + mobile) replacing the sidebar
-- Emoji picker + `:shortcode:` autocomplete in the post composer
-- WebSocket hub at `/api/ws` (auth required) — chat/group/notification/presence/typing message dispatch, ping/pong keepalive (singleton connection per tab)
-- Redis integration — presence tracking, JSON caching (sessions/users/posts/groups), sliding-window rate limiting, pub/sub channels; sessions are stored in Redis by default (`sessions.storage`, fail-closed); WebSocket messages fan out across backend instances via the `ws:fanout` channel
-- All API resources (users, groups, events, posts, comments) identified by **UUID** in routes and responses — numeric DB IDs are never exposed
+- Events (create, list, RSVP, detail, reminders)
+- User search with privacy-aware results
+- OAuth (Google + GitHub)
+- Image uploads (avatars, posts, comments, events, messages)
+- Notifications (list, unread count, mark read) with real-time push
+- Direct messages with real-time WebSocket delivery
+- Profile-privacy enforcement across feed, posts, comments, and profile
+- Emoji picker + `:shortcode:` autocomplete
+- WebSocket hub at `/api/ws` — chat/group/notification/presence/typing, ping/pong keepalive
+- Redis — presence, read-through caching (users/groups), sliding-window rate limiting, pub/sub, session store
+- All API resources identified by UUID; numeric DB IDs are never exposed
 
 **Planned:** moderation endpoints, production polish.
 
-See [PLAN.md](./PLAN.md) for the full implementation roadmap.
+See [PLAN.md](./PLAN.md) for the full roadmap.
 
-## Tech Stack
+## Technology Stack
 
-### Frontend
-| Tool | Purpose |
-|------|---------|
-| Next.js 16 | Framework (App Router, Turbopack) |
-| React 19 | UI library |
-| TypeScript | Type safety |
-| TanStack Query v5 | Server state, caching, pagination |
-| Axios | HTTP client with session cookie support |
-| TailwindCSS | Utility-first styling |
-| emoji-picker-react | Emoji picker UI |
-| @emoji-mart/data | Emoji shortcode data for autocomplete |
+Every technology in this project is explained below so someone unfamiliar with each tool can understand what it does and why it's used here.
 
 ### Backend
-| Tool | Purpose |
-|------|---------|
-| Go 1.24 | Server language |
-| SQLite | Persistent storage for all business data |
-| Redis 7 | Presence tracking, caching, rate limiting, pub/sub (optional) |
-| gorilla/websocket | WebSocket connections (`/api/ws`) |
-| golang-migrate | Database migrations |
-| golang.org/x/crypto | bcrypt password hashing |
 
-## Architecture
+#### Go 1.24
+
+[Go](https://go.dev/) is a statically-typed, compiled language designed at Google for server software. It compiles to a single native binary, has first-class concurrency (goroutines and channels), and a standard library that covers HTTP servers, JSON, and databases without extra frameworks.
+
+**Why it's used here:** the entire backend API is written in Go using only the standard library `net/http` (no web framework). Goroutines run background workers (WAL checkpointing, session cleanup, the event-reminder scheduler) concurrently with the HTTP server.
+
+#### SQLite (via mattn/go-sqlite3)
+
+[SQLite](https://www.sqlite.org/) is a self-contained, file-based SQL database. It needs no separate database server — the entire database lives in a single `.db` file and is accessed through a C library.
+
+**Why it's used here:** all persistent business data (users, posts, comments, groups, events, messages, notifications, sessions) lives in one SQLite file. It runs in [WAL mode](https://www.sqlite.org/wal.html) (Write-Ahead Logging) for better concurrent read/write throughput, with `foreign_keys` and `busy_timeout` pragmas enabled. `mattn/go-sqlite3` is the Go driver that links SQLite's C library into the binary (via cgo).
+
+#### Redis 7 (via go-redis/v9)
+
+[Redis](https://redis.io/) is an in-memory data structure store. It's dramatically faster than disk databases because data lives in RAM, making it ideal for caching, ephemeral state, and pub/sub. It supports strings, hashes, lists, sets, sorted sets, and publish/subscribe channels.
+
+**Why it's used here** (Redis is optional — the backend degrades gracefully if it's down):
+
+- **Sessions** — by default (`sessions.storage = "redis"`), session records are the source of truth in Redis (fail-closed if Redis is unavailable). The `"sqlite"` mode persists sessions in SQLite while Redis caches lookups.
+- **Read-through cache** — user, group, and group-member lookups check Redis first, fall back to SQLite on a miss, and populate the cache. Email/nickname → user-ID index lookups are cached too, storing only the numeric ID (never the password hash). Writes invalidate the relevant keys. Gated by `use_cache`.
+- **Sliding-window rate limiting** — requests are counted in Redis sorted sets per IP and per IP+path; old entries are pruned and the count is checked atomically in a pipeline.
+- **Presence** — "online" is a Redis key with a 30s TTL that the WebSocket heartbeat refreshes; expiration marks a user offline.
+- **Pub/sub fan-out** — the `ws:fanout` channel broadcasts WebSocket messages across multiple backend instances so a message received on one instance reaches clients on others.
+
+`go-redis/v9` is the Go client library.
+
+#### gorilla/websocket
+
+[gorilla/websocket](https://github.com/gorilla/websocket) is a widely-used, well-tested Go library implementing the WebSocket protocol (RFC 6455). WebSockets upgrade a single HTTP connection into a persistent, bidirectional channel — unlike normal HTTP, the server can push data to the client at any time without the client first making a request.
+
+**Why it's used here:** the `/api/ws` endpoint upgrades the connection and feeds a Hub that tracks connected clients and dispatches messages. Real-time chat, group chat, notifications, presence, and typing indicators all flow over this one shared connection (one singleton connection per browser tab), with ping/pong keepalive to drop dead connections.
+
+#### golang-migrate
+
+[golang-migrate](https://github.com/golang-migrate/migrate) is a database migration tool. Migrations are numbered SQL files (`000001_create_users_table.up.sql` / `.down.sql`) applied in order to evolve a schema without wiping data. The tool tracks which migrations have run and applies only the new ones.
+
+**Why it's used here:** the 21 migrations defining the full schema (up through `oauth_accounts` and event reminders) run automatically on startup; `up` applies forward changes and `down` rolls them back.
+
+#### golang.org/x/crypto (bcrypt)
+
+[`golang.org/x/crypto`](https://pkg.go.dev/golang.org/x/crypto) is Google's extended crypto library for Go. The `bcrypt` package implements the bcrypt password-hashing function, which salts each password and is deliberately slow (through a configurable cost factor), making brute-force attacks impractical.
+
+**Why it's used here:** every password is hashed with bcrypt before storage; plain-text passwords are never written to the database.
+
+#### google/uuid
+
+[`google/uuid`](https://github.com/google/uuid) generates Universally Unique Identifiers (UUIDs) version 4 (random). UUIDs are 128-bit identifiers guaranteed unique without a central coordinator.
+
+**Why it's used here:** every user, post, comment, group, event, and session is addressed publicly by a UUID rather than its sequential numeric database ID, so internal row numbers are never exposed in URLs or API responses (prevents enumeration and leaks nothing about row counts).
+
+#### Air (backend hot-reload, dev only)
+
+[Air](https://github.com/air-verse/air) is a live-reload development tool for Go. It watches source files and automatically rebuilds and restarts the server when they change, giving a near-instant feedback loop during development.
+
+**Why it's used here:** the backend Docker image's entrypoint is `air`, configured via `.air.toml` to rebuild `./backend/cmd` and restart on any `.go` change. Local development uses `make backend-run` (`go run`), while the containerized dev environment uses Air for hot reload.
+
+### Frontend
+
+#### Next.js 16 (App Router + Turbopack)
+
+[Next.js](https://nextjs.org/) is a React framework that adds file-based routing, server-side rendering, and an optimized build system. The **App Router** is its current routing model, where folders under `app/` define routes and special `layout.tsx`/`page.tsx` files define shared layouts and pages. **Turbopack** is the Rust-based bundler/dev server that replaces Webpack for much faster builds.
+
+**Why it's used here:** the frontend uses the App Router with route groups `(auth)` (login/signup) and `(main)` (all authenticated pages), each with its own `layout.tsx` guard that redirects unauthenticated users to `/login`. `error.tsx` and `not-found.tsx` provide the global error boundary and 404 page.
+
+#### React 19
+
+[React](https://react.dev/) is a JavaScript library for building user interfaces from reusable, stateful components. Each component declares how the UI should look for a given state, and React updates the DOM efficiently when that state changes.
+
+**Why it's used here:** the entire UI is composed of React components (UI primitives — Button, Modal, Input, Toast — plus feature components — PostCard, GroupChat, CommentList). Function components and hooks (`useState`, `useEffect`, custom hooks) are used throughout.
+
+#### TypeScript 5
+
+[TypeScript](https://www.typescriptlang.org/) is a superset of JavaScript that adds static types. Types are checked at compile time, catching errors (typos, wrong argument types, missing properties) before the code runs.
+
+**Why it's used here:** all frontend code is written in TypeScript with `strict: true`, `noUnusedLocals`, and `noUnusedParameters`. Data field names use snake_case to match the backend JSON exactly, and shared interfaces live in `src/types/`.
+
+#### TanStack Query v5
+
+[TanStack Query](https://tanstack.com/query) (formerly React Query) is a server-state library. It caches API responses, deduplicates in-flight requests, handles background refetching, and manages loading/error/success states, so components stay in sync with the server without manual `useEffect`+`fetch` boilerplate.
+
+**Why it's used here:** every API call goes through a TanStack Query hook (`useFeed`, `useGroupPosts`, `useComments`, `useGroups`, `usePost`, etc.), which gives automatic caching, optimistic RSVP updates on events, and invalidation on mutations.
+
+#### Axios
+
+[Axios](https://axios-http.com/) is a promise-based HTTP client for the browser and Node. It provides a consistent API, automatic JSON handling, request/response interceptors, and `withCredentials` support for sending cookies cross-origin.
+
+**Why it's used here:** `src/api/client.ts` creates a single Axios instance with `withCredentials: true` (so the session cookie travels with every request) and a response interceptor that redirects to `/login` on 401.
+
+#### Tailwind CSS
+
+[Tailwind CSS](https://tailwindcss.com/) is a utility-first CSS framework. Instead of writing custom CSS classes, you compose styling from small single-purpose utility classes (e.g. `flex items-center gap-2`) directly in the markup.
+
+**Why it's used here:** all styling is done with Tailwind utility classes; `src/lib/cn.ts` merges conditional classes using `clsx` and `tailwind-merge`.
+
+#### emoji-picker-react
+
+[emoji-picker-react](https://github.com/ealush/emoji-picker-react) is a React component that renders a searchable, categorized emoji picker.
+
+**Why it's used here:** the post composer and chat inputs include an emoji-picker button that opens this picker to insert emoji.
+
+#### @emoji-mart/data
+
+[`@emoji-mart/data`](https://github.com/missive/emoji-mart) provides structured emoji data (names, shortcodes, keywords, categories) used to build custom emoji experiences.
+
+**Why it's used here:** it powers the `:shortcode:` autocomplete — typing `:cat` shows matching emoji suggestions filtered from this dataset, with keyboard navigation.
+
+### Infrastructure / Tooling
+
+#### Caddy 2
+
+[Caddy](https://caddyserver.com/) is a web server and reverse proxy that automatically manages HTTPS certificates. Its config is a simple text file ("Caddyfile"), and it can terminate TLS with automatically-provisioned certificates.
+
+**Why it's used here:** in the Docker dev stack, Caddy terminates HTTPS at `https://localhost` (using an internal CA/self-signed cert for local development) and reverse-proxies `/api/*` and `/images/*` to the Go backend and everything else to the Next.js dev server. The backend itself serves plain HTTP; TLS is handled entirely at the edge.
+
+#### Docker & Docker Compose
+
+[Docker](https://www.docker.com/) packages applications with their dependencies into portable containers; Docker Compose orchestrates multi-container setups described in `docker-compose.yml`.
+
+**Why it's used here:** the dev stack runs four services — `caddy`, `frontend` (Next.js dev server), `backend` (Go with Air hot-reload), and `redis` — connected on a private `social-net` bridge network, with named volumes for the database, uploaded images, and Redis data.
+
+### How it all connects
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  Caddy      │     │   Backend    │     │    Redis    │
 │  :443 (TLS) │────▶│   :8080      │────▶│   :6379     │
-│  reverse    │     │   Go API     │     │  presence,  │
-│  proxy      │     │   SQLite     │     │  cache, rl  │
-│      │      │     │   WS :/api/ws│     │  pub/sub    │
+│  reverse    │     │   Go API     │     │  sessions,  │
+│  proxy      │     │   SQLite     │     │  cache,     │
+│      │      │     │   WS :/api/ws│     │  rl, pub/sub│
 │      ▼      │     └──────────────┘     └─────────────┘
 │  Frontend   │
 │  :3000      │
 │  Next.js    │
-│  App Router │
 └─────────────┘
 ```
 
-- Frontend: Next.js App Router with route groups `(auth)` and `(main)` — auth guards redirect unauthenticated users to `/login`.
-- Backend: Go REST API with session-cookie auth, rate limiting, and CORS. WebSocket hub on `/api/ws` (auth required).
-- Background workers: WAL checkpointing, session cleanup, and the event-reminder scheduler run as goroutines tied to the shutdown context.
-- Caddy terminates HTTPS and reverse-proxies `/api/*` to the backend; everything else to the frontend dev server.
-- SQLite stores all persistent data. Redis is optional — presence tracking, JSON caching, rate limiting, and pub/sub channels. If Redis is down, the backend continues with in-memory fallbacks.
+- **Frontend → Backend**: Axios calls the REST API; a shared WebSocket connects to `/api/ws` for real-time events.
+- **Backend → SQLite**: the durable store for all business data, accessed through `database/sql`.
+- **Backend → Redis**: sessions, read-through caching, rate limiting, presence, and cross-instance pub/sub.
+- **Caddy → Backend/Frontend**: terminates TLS and routes `/api/*` and `/images/*` to Go, everything else to Next.js.
+
+## Architecture
+
+### Backend
+
+```
+cmd/main.go            Entry point — parses --reseed, calls entry.Start
+entry/                 Startup/shutdown orchestration (DB, Redis, server, seed, drain)
+config/                Typed config loaded from backend/configs.json
+global/                Shutdown context + path/duration/size helpers
+db/sql/                Data layer: models, CRUD methods, SQLite connection
+db/queries/            SQL string constants
+db/migrations/         21 up/down migration pairs
+cache/                 Redis client (sessions, caching, rate limiting, presence, pub/sub)
+server/handlers/       HTTP handlers, middleware, CORS, helpers
+server/websocket/      WebSocket hub, client pumps, message types
+populate/              Seed JSON + loader
+```
+
+- **Auth**: session cookies (`session_token`, HTTP-only, Lax SameSite, 24h TTL). `AuthMiddleware` sets CORS, rate-limits, resolves the session, injects `userID` into the request context, and recovers panics.
+- **Handlers** follow `func SomeHandler(w, r, db)` and are registered via `makeEndpoint(path, requireAuth, handler)`.
+- **Background goroutines**: WAL checkpointing, session cleanup, and the event-reminder scheduler, all tied to the shutdown context for graceful drain on SIGINT/SIGTERM.
+
+### Frontend
+
+- **State**: React Context — `AuthProvider` (session), `UIProvider` (toasts), `NotificationProvider` (real-time). Server state via TanStack Query.
+- **WebSocket**: `useWebSocket` keeps one singleton connection per tab with auto-reconnect; derives `ws://`/`wss://` from `NEXT_PUBLIC_API_URL`.
 
 ## Database Schema
 
-15 tables across the SQLite database:
+15 tables:
 
 | Table | Purpose |
 |-------|---------|
-| `users` | User accounts with profile info |
-| `sessions` | Session tracking (migrating to Redis) |
+| `users` | Accounts and profile info |
+| `sessions` | Session records (SQLite mode) |
 | `followers` | Follow relationships + request status |
 | `posts` | User and group posts (soft-delete via `is_deleted`) |
-| `post_visibility` | Privacy controls for private posts |
-| `comments` | Post comments with nested replies (soft-delete via `is_deleted`) |
+| `post_visibility` | Privacy targets for private posts |
+| `comments` | Comments with nested replies (soft-delete via `is_deleted`) |
 | `groups` | Group metadata |
-| `group_members` | Group membership with invite status |
+| `group_members` | Membership with invite status |
 | `events` | Group events |
-| `event_responses` | RSVP responses to events |
+| `event_responses` | RSVP responses |
 | `direct_messages` | Private conversation threads |
 | `messages` | Individual messages (DM or group) |
 | `message_reads` | Read receipts |
 | `notifications` | User notifications |
-| `oauth_accounts` | OAuth provider links (Google/GitHub) per user |
+| `oauth_accounts` | OAuth provider links per user |
 
 ## Getting Started
 
@@ -129,14 +252,15 @@ See [PLAN.md](./PLAN.md) for the full implementation roadmap.
 
 - Go 1.24+
 - Node.js 22+ (Next.js 16 requirement)
-- Docker and Docker Compose (for Redis or full stack)
-- Redis is optional — the backend runs fine without it (in-memory fallbacks)
+- Docker & Docker Compose (for Redis or the full stack)
+- Redis is optional — the backend runs without it (in-memory rate limiting; sessions require Redis only in the default `redis` storage mode)
 
 ### Quick Start (from project root)
 
 ```bash
 make dev
 ```
+
 - Backend: `http://localhost:8080`
 - Frontend: `http://localhost:3000`
 - Log in with a seed account (`alice@example.com` / `password123`)
@@ -146,24 +270,27 @@ make dev
 ```bash
 make docker-up
 ```
+
 - App over HTTPS (Caddy): `https://localhost`
 - Backend health: `http://localhost:8080/api/health`
 
-Caddy terminates TLS and routes `/api/*` to the backend and everything else to the Next.js dev server. The backend itself serves plain HTTP only.
+Caddy terminates TLS and routes `/api/*` to the backend and everything else to the Next.js dev server.
 
-> **Note:** On first run, the backend automatically creates the database, applies migrations, and populates seed data. Use `make backend-run-reseed` to wipe and reseed.
+> **Note:** on first run the backend creates the database, applies migrations, and loads seed data. Use `make backend-run-reseed` to wipe and reseed.
 
 ### Individual commands
 
 | Command | What it does |
 |---------|-------------|
-| `make backend-run` | Start the Go backend |
+| `make backend-run` | Start the Go backend (`go run`) |
 | `make backend-run-reseed` | Start backend with fresh seed data |
 | `make frontend-dev` | Start the Next.js dev server |
 | `make frontend-build` | Production build |
 | `make frontend-check` | TypeScript type check |
-| `make check` | Run `go vet` + TypeScript check |
+| `make check` | `go vet` + TypeScript check |
+| `make redis-start` / `make redis-stop` | Start/stop Redis |
 | `make kill-ports` | Free ports 3000/5173/5174/5175/8080 |
+| `make db-reset` / `make db-seed` / `make db-delete` | Manage the database |
 
 ### Environment Variables
 
@@ -172,25 +299,20 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL (frontend) |
 | `REDIS_ADDR` | `localhost:6379` | Redis address (backend, optional) |
 
-The event-reminder scheduler is configured in `configs.json` under `scheduler` (`enabled`, `tick_interval`, `reminder_lead`).
+### Configuration
 
-Session storage is configured in `configs.json` under `sessions` — `storage` is `"redis"` (default; Redis is the source of truth, fail-closed) or `"sqlite"` (SQLite persists sessions, Redis caches lookups), plus a `ttl` (e.g. `"24h"`). Redis must be running when using the default.
+Settings live in `backend/configs.json` (local) / `backend/configs.docker.json` (Docker):
+
+- `scheduler` — event-reminder worker: `enabled`, `tick_interval`, `reminder_lead`.
+- `sessions` — `storage` (`"redis"` or `"sqlite"`) and `ttl` (e.g. `"24h"`). Redis is the source of truth (fail-closed) in the default `"redis"` mode.
+- `redis` — address, pool size, timeouts, retries.
+- `database_configuration` — path, WAL pragmas, `use_cache` (read-through caching), session cleanup interval, and validation `limits` (username/password/name/bio/title/description/post/comment/message/group-title lengths, `rows_limit` pagination cap).
+- `handlers` — image constraints and per-path `rate_limits`.
+- `oauth` — Google/GitHub provider credentials (`client_id`, `client_secret`, scopes, endpoints, redirect URIs).
 
 ### Seed Data
 
-On first launch, 7 users are pre-loaded. All share the same password: `password123`
-
-| Email | Name | Profile |
-|-------|------|---------|
-| `alice@example.com` | Alice Johnson | Public, active poster |
-| `bob@example.com` | Bob Smith | Private profile |
-| `carol@example.com` | Carol Williams | Public, group creator |
-| `dave@example.com` | Dave Brown | Public, backend dev |
-| `eve@example.com` | Eve Davis | Private, lurker |
-| `frank@example.com` | Frank Miller | Public, photographer |
-| `yuki@example.com` | Yuki Minakami | Public, photographer |
-
-The seed also includes 28 posts (2 deleted), 35 comments (2 deleted), 2 groups, 5 events (with going/not_going RSVPs), group members, DMs, and notifications — useful for testing soft-delete rendering, privacy filtering, group membership, and events.
+On first launch 7 users are loaded (all with password `password123`): Alice Johnson, Bob Smith, Carol Williams, Dave Brown, Eve Davis, Frank Miller, and Yuki Minakami. The seed also includes posts, comments (some soft-deleted), groups, events, DMs, and notifications for exercising privacy, soft-delete, membership, and event features.
 
 ## Project Structure
 
@@ -201,26 +323,27 @@ social-network/
 │   │   ├── app/           # Next.js App Router (layouts, route groups, error/404)
 │   │   ├── api/           # Axios client + endpoint functions
 │   │   ├── components/    # UI primitives + feature components
-│   │   ├── context/       # Auth + UI providers
-│   │   ├── hooks/         # TanStack Query hooks + emoji autocomplete
-│   │   ├── lib/           # Utilities (cn, format, validators, nav-link)
-│   │   ├── types/         # TypeScript interfaces
+│   │   ├── context/       # Auth + UI + Notification providers
+│   │   ├── hooks/         # TanStack Query hooks + WebSocket + emoji autocomplete
+│   │   ├── lib/           # Utilities (cn, format, media, validators, nav)
+│   │   ├── types/         # TypeScript interfaces (snake_case, matches JSON)
 │   │   └── views/         # Page components (mirrors route structure)
 │   ├── next.config.ts
+│   ├── .env.example
 │   └── Dockerfile         # Frontend image (dev, Next.js dev server)
 ├── backend/
 │   ├── cmd/main.go        # Entry point
 │   ├── entry/             # Server startup sequence
-│   ├── config/            # Config structs + rate limit helpers
+│   ├── config/            # Config structs + rate-limit/limit helpers
 │   ├── configs.json       # All configuration
-│   ├── global/            # Path/duration helper functions
+│   ├── global/            # Path/duration/size helpers
 │   ├── db/
 │   │   ├── migrations/    # SQL migration files (up/down)
 │   │   ├── queries/       # SQL query constants
-│   │   ├── sql/           # Models + methods + connection
+│   │   └── sql/           # Models, methods, connection
 │   ├── server/handlers/   # HTTP handlers + middleware + CORS
 │   ├── server/websocket/  # WebSocket hub, client, handler, types
-│   ├── cache/             # Redis client (presence, caching, rate limit)
+│   ├── cache/             # Redis client (sessions, caching, rl, presence, pub/sub)
 │   ├── populate/          # Seed data (seed.json + seed.go)
 │   └── Dockerfile         # Backend image (dev, air hot-reload)
 ├── docker-compose.yml     # dev stack: Caddy + frontend + backend + redis

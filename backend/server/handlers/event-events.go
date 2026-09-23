@@ -97,6 +97,12 @@ func validateEventRequest(req *CreateEventRequest) (time.Time, string) {
 		return time.Time{}, "Title must be at most 300 characters long"
 	}
 
+	if cfg != nil {
+		if msg := validateLengthLimits(strings.TrimSpace(req.Description), "Description", 0, cfg.DatabaseConfiguration.Limits.MaxDescription); msg != "" {
+			return time.Time{}, msg
+		}
+	}
+
 	if req.EventDatetime == "" {
 		return time.Time{}, "Event datetime is required"
 	}
@@ -283,7 +289,7 @@ func GetUserGroupEventsHandler(w http.ResponseWriter, r *http.Request, db *datab
 
 	limit := 10
 	offset := 0
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= maxPageLimit() {
 		limit = v
 	}
 	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {

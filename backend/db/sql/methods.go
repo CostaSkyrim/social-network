@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"social-network/backend/cache"
 	"social-network/backend/db/queries"
 )
 
@@ -58,6 +59,13 @@ func (db *DataBase) AddUser(ctx context.Context, user *User) (int64, error) {
 		return 0, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.CacheUserIDByEmail(ctx, user.Email, id, cache.UserTTL)
+		if user.Nickname != nil && *user.Nickname != "" {
+			_ = db.redis.CacheUserIDByNickname(ctx, *user.Nickname, id, cache.UserTTL)
+		}
+	}
+
 	return id, nil
 }
 
@@ -67,10 +75,64 @@ func (db *DataBase) GetUserByEmail(ctx context.Context, email string) (*User, er
 		ctx = context.Background()
 	}
 
+	// Look up the email → user ID index cache first.
+	if db.redis != nil {
+		if userID, err := db.redis.GetUserIDByEmail(ctx, email); err == nil && userID != 0 {
+			if u, err := db.GetUserByID(ctx, userID); err == nil {
+				return u, nil
+			}
+		}
+	}
+
 	user := &User{}
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetUserByEmail,
 		email,
+	).Scan(
+		&user.ID,
+		&user.UUID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.FirstName,
+		&user.LastName,
+		&user.Nickname,
+		&user.DateOfBirth,
+		&user.AboutMe,
+		&user.AvatarPath,
+		&user.IsPublic,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.CacheUserIDByEmail(ctx, email, user.ID, cache.UserTTL)
+	}
+
+	return user, nil
+}
+
+// GetUserForAuth resolves a user by email or nickname for authentication,
+// always returning the password hash (never served from the JSON cache, which
+// deliberately omits the hash).
+func (db *DataBase) GetUserForAuth(ctx context.Context, identifier string) (*User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	user := &User{}
+	err := db.conn.QueryRowContext(ctx,
+		`SELECT id, uuid, email, password_hash, first_name, last_name, nickname,
+		 date_of_birth, about_me, avatar_path, is_public, is_active, created_at, updated_at
+		 FROM users
+		 WHERE (email = ? OR nickname = ?) AND is_active = 1`,
+		identifier, identifier,
 	).Scan(
 		&user.ID,
 		&user.UUID,
@@ -103,6 +165,14 @@ func (db *DataBase) GetUserByNickname(ctx context.Context, nickname string) (*Us
 		ctx = context.Background()
 	}
 
+	if db.redis != nil {
+		if userID, err := db.redis.GetUserIDByNickname(ctx, nickname); err == nil && userID != 0 {
+			if u, err := db.GetUserByID(ctx, userID); err == nil {
+				return u, nil
+			}
+		}
+	}
+
 	user := &User{}
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetUserByNickname,
@@ -130,6 +200,10 @@ func (db *DataBase) GetUserByNickname(ctx context.Context, nickname string) (*Us
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.CacheUserIDByNickname(ctx, nickname, user.ID, cache.UserTTL)
+	}
+
 	return user, nil
 }
 
@@ -137,6 +211,13 @@ func (db *DataBase) GetUserByNickname(ctx context.Context, nickname string) (*Us
 func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error) {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	if db.redis != nil {
+		var cached User
+		if err := db.redis.GetCachedUser(ctx, userID, &cached); err == nil && cached.ID != 0 {
+			return &cached, nil
+		}
 	}
 
 	user := &User{}
@@ -161,6 +242,10 @@ func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.CacheUser(ctx, userID, user, cache.UserTTL)
 	}
 
 	return user, nil
@@ -196,6 +281,10 @@ func (db *DataBase) GetUserByUUID(ctx context.Context, uuid string) (*User, erro
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.CacheUser(ctx, user.ID, user, cache.UserTTL)
+	}
+
 	return user, nil
 }
 
@@ -208,15 +297,34 @@ func (db *DataBase) UpdateUserProfile(ctx context.Context, userID int64, user *U
 	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Capture the old nickname so we can invalidate the nickname→id index
+	// cache if it changes.
+	var oldNickname string
+	if db.redis != nil {
+		if existing, err := db.GetUserByID(ctx, userID); err == nil && existing.Nickname != nil {
+			oldNickname = *existing.Nickname
+		}
+	}
+
 	_, err := db.conn.ExecContext(dbCtx,
 		queries.UpdateUserProfile,
-		user.Nickname,
-		user.AboutMe,
-		user.AvatarPath,
+		user.Nickname, user.Nickname,
+		user.AboutMe, user.AboutMe,
+		user.AvatarPath, user.AvatarPath,
 		userID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.InvalidateUser(ctx, userID)
+		if oldNickname != "" {
+			_ = db.redis.InvalidateUserNickname(ctx, oldNickname)
+		}
+		if user.Nickname != nil && *user.Nickname != "" {
+			_ = db.redis.InvalidateUserNickname(ctx, *user.Nickname)
+		}
 	}
 
 	return nil
@@ -240,6 +348,10 @@ func (db *DataBase) UpdateUserAvatar(ctx context.Context, userID int64, avatarPa
 		return fmt.Errorf("failed to update user avatar: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.InvalidateUser(ctx, userID)
+	}
+
 	return nil
 }
 
@@ -261,6 +373,10 @@ func (db *DataBase) UpdateUserPrivacy(ctx context.Context, userID int64, isPubli
 		return fmt.Errorf("failed to update user privacy: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.InvalidateUser(ctx, userID)
+	}
+
 	return nil
 }
 
@@ -273,12 +389,27 @@ func (db *DataBase) DeleteUser(ctx context.Context, userID int64) error {
 	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	var existing *User
+	if db.redis != nil {
+		existing, _ = db.GetUserByID(ctx, userID)
+	}
+
 	_, err := db.conn.ExecContext(dbCtx,
 		queries.DeleteUser,
 		userID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.InvalidateUser(ctx, userID)
+		if existing != nil {
+			_ = db.redis.InvalidateUserEmail(ctx, existing.Email)
+			if existing.Nickname != nil && *existing.Nickname != "" {
+				_ = db.redis.InvalidateUserNickname(ctx, *existing.Nickname)
+			}
+		}
 	}
 
 	return nil
@@ -1612,6 +1743,13 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 		ctx = context.Background()
 	}
 
+	if db.redis != nil {
+		var cached Group
+		if err := db.redis.GetCachedGroup(ctx, groupID, &cached); err == nil && cached.ID != 0 {
+			return &cached, nil
+		}
+	}
+
 	group := &Group{}
 	err := db.conn.QueryRowContext(ctx,
 		queries.GetGroupByID,
@@ -1633,6 +1771,10 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 			return nil, fmt.Errorf("group not found")
 		}
 		return nil, fmt.Errorf("failed to query group: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.CacheGroup(ctx, groupID, group, cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1665,6 +1807,10 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 			return nil, fmt.Errorf("group not found")
 		}
 		return nil, fmt.Errorf("failed to query group: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.CacheGroup(ctx, group.ID, group, cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1726,6 +1872,10 @@ func (db *DataBase) UpdateGroup(ctx context.Context, groupID int64, title, descr
 		return fmt.Errorf("failed to update group: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.InvalidateGroup(ctx, groupID)
+	}
+
 	return nil
 }
 
@@ -1746,6 +1896,10 @@ func (db *DataBase) UpdateGroupAvatar(ctx context.Context, groupID int64, avatar
 		return fmt.Errorf("failed to update group avatar: %w", err)
 	}
 
+	if db.redis != nil {
+		_ = db.redis.InvalidateGroup(ctx, groupID)
+	}
+
 	return nil
 }
 
@@ -1764,6 +1918,10 @@ func (db *DataBase) AddGroupMember(ctx context.Context, groupID, userID int64, i
 	)
 	if err != nil {
 		return fmt.Errorf("failed to add group member: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.InvalidateGroupMembers(ctx, groupID)
 	}
 
 	return nil
@@ -1791,6 +1949,10 @@ func (db *DataBase) UpdateMemberStatus(ctx context.Context, groupID, userID int6
 		return fmt.Errorf("member not found")
 	}
 
+	if db.redis != nil {
+		_ = db.redis.InvalidateGroupMembers(ctx, groupID)
+	}
+
 	return nil
 }
 
@@ -1798,6 +1960,13 @@ func (db *DataBase) UpdateMemberStatus(ctx context.Context, groupID, userID int6
 func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]GroupMember, error) {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	if db.redis != nil {
+		var cached []GroupMember
+		if err := db.redis.GetCachedGroupMembers(ctx, groupID, &cached); err == nil {
+			return cached, nil
+		}
 	}
 
 	rows, err := db.conn.QueryContext(ctx, queries.GetGroupMembers, groupID)
@@ -1837,6 +2006,10 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	if db.redis != nil {
+		_ = db.redis.CacheGroupMembers(ctx, groupID, members, cache.GroupTTL)
 	}
 
 	return members, nil
@@ -1895,6 +2068,11 @@ func (db *DataBase) DeleteGroup(ctx context.Context, groupID, creatorID int64) e
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return fmt.Errorf("group not found or not authorized")
+	}
+
+	if db.redis != nil {
+		_ = db.redis.InvalidateGroup(ctx, groupID)
+		_ = db.redis.InvalidateGroupMembers(ctx, groupID)
 	}
 
 	return nil

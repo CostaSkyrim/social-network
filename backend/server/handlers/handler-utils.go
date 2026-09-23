@@ -33,6 +33,28 @@ func getRedis() *cache.RedisClient {
 	return globalRedis
 }
 
+// maxPageLimit returns the configured maximum page size (rows_limit), or a
+// sane default (50) when unset.
+func maxPageLimit() int {
+	if cfg := config.GetConfig(); cfg != nil && cfg.DatabaseConfiguration.Limits.RowsLimit > 0 {
+		return cfg.DatabaseConfiguration.Limits.RowsLimit
+	}
+	return 50
+}
+
+// validateLengthLimits checks value against a configured minimum/maximum length
+// and returns a user-facing error message, or "" when the value is within bounds
+// (or the corresponding limit is unset/zero). label is used in the message.
+func validateLengthLimits(value, label string, min, max int) string {
+	if max > 0 && len(value) > max {
+		return fmt.Sprintf("%s must be at most %d characters long", label, max)
+	}
+	if min > 0 && len(value) < min {
+		return fmt.Sprintf("%s must be at least %d characters long", label, min)
+	}
+	return ""
+}
+
 func resolveUserID(r *http.Request, db *database.DataBase, idStr string) (int64, error) {
 	userID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {

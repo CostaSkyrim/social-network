@@ -26,7 +26,7 @@ func GetFeedHandler(w http.ResponseWriter, r *http.Request, db *database.DataBas
 	offset := 0
 
 	if limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= maxPageLimit() {
 			limit = v
 		}
 	}
@@ -63,7 +63,7 @@ func GetFollowingPostsHandler(w http.ResponseWriter, r *http.Request, db *databa
 
 	limit := 10
 	offset := 0
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= maxPageLimit() {
 		limit = v
 	}
 	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {
@@ -97,7 +97,7 @@ func GetExplorePostsHandler(w http.ResponseWriter, r *http.Request, db *database
 
 	limit := 10
 	offset := 0
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 50 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= maxPageLimit() {
 		limit = v
 	}
 	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {

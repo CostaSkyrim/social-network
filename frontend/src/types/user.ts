@@ -12,18 +12,6 @@ export interface User {
   is_online?: boolean
 }
 
-export interface Session {
-  session_id: string
-  user_id: number
-  expires_at: string
-}
-
-export interface Follow {
-  follower_id: string
-  following_id: string
-  status: 'pending' | 'accepted' | 'declined'
-}
-
 export interface SearchUser {
   id: string
   first_name: string

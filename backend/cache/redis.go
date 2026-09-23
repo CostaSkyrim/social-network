@@ -93,10 +93,6 @@ func (rc *RedisClient) Close() error {
 	return rc.client.Close()
 }
 
-func (rc *RedisClient) Client() *redis.Client {
-	return rc.client
-}
-
 // ---- Generic helpers ----
 
 func (rc *RedisClient) SetJSON(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -198,14 +194,6 @@ func UserKey(userID int64) string {
 	return "user:" + fmt.Sprint(userID)
 }
 
-func UserByEmailKey(email string) string {
-	return "user:email:" + email
-}
-
-func UserByUUIDKey(uuid string) string {
-	return "user:uuid:" + uuid
-}
-
 func (rc *RedisClient) CacheUser(ctx context.Context, userID int64, data interface{}, ttl time.Duration) error {
 	return rc.SetJSON(ctx, UserKey(userID), data, ttl)
 }
@@ -215,39 +203,51 @@ func (rc *RedisClient) GetCachedUser(ctx context.Context, userID int64, dest int
 }
 
 func (rc *RedisClient) InvalidateUser(ctx context.Context, userID int64) error {
-	return rc.client.Del(ctx, UserKey(userID), UserByUUIDKey("")).Err()
+	return rc.client.Del(ctx, UserKey(userID)).Err()
 }
 
-// ---- Post cache ----
+// ---- User lookup-index cache (email / nickname → user ID) ----
+//
+// These store only a numeric user ID (never the password hash or other
+// sensitive fields) so the hot login/signup/invite/nickname-collision lookups
+// can skip a full table scan on the email/nickname column.
 
-func PostKey(postID int64) string {
-	return "post:" + fmt.Sprint(postID)
+func UserEmailKey(email string) string {
+	return "user_email:" + email
 }
 
-func UserPostsKey(userID int64) string {
-	return "user_posts:" + fmt.Sprint(userID)
+func UserNicknameKey(nickname string) string {
+	return "user_nickname:" + nickname
 }
 
-func (rc *RedisClient) CachePost(ctx context.Context, postID int64, data interface{}, ttl time.Duration) error {
-	return rc.SetJSON(ctx, PostKey(postID), data, ttl)
+func (rc *RedisClient) CacheUserIDByEmail(ctx context.Context, email string, userID int64, ttl time.Duration) error {
+	return rc.client.Set(ctx, UserEmailKey(email), userID, ttl).Err()
 }
 
-func (rc *RedisClient) GetCachedPost(ctx context.Context, postID int64, dest interface{}) error {
-	return rc.GetJSON(ctx, PostKey(postID), dest)
+func (rc *RedisClient) GetUserIDByEmail(ctx context.Context, email string) (int64, error) {
+	return rc.client.Get(ctx, UserEmailKey(email)).Int64()
 }
 
-func (rc *RedisClient) InvalidatePost(ctx context.Context, postID int64) error {
-	return rc.client.Del(ctx, PostKey(postID)).Err()
+func (rc *RedisClient) CacheUserIDByNickname(ctx context.Context, nickname string, userID int64, ttl time.Duration) error {
+	return rc.client.Set(ctx, UserNicknameKey(nickname), userID, ttl).Err()
+}
+
+func (rc *RedisClient) GetUserIDByNickname(ctx context.Context, nickname string) (int64, error) {
+	return rc.client.Get(ctx, UserNicknameKey(nickname)).Int64()
+}
+
+func (rc *RedisClient) InvalidateUserEmail(ctx context.Context, email string) error {
+	return rc.client.Del(ctx, UserEmailKey(email)).Err()
+}
+
+func (rc *RedisClient) InvalidateUserNickname(ctx context.Context, nickname string) error {
+	return rc.client.Del(ctx, UserNicknameKey(nickname)).Err()
 }
 
 // ---- Group cache ----
 
 func GroupKey(groupID int64) string {
 	return "group:" + fmt.Sprint(groupID)
-}
-
-func UserGroupsKey(userID int64) string {
-	return "user_groups:" + fmt.Sprint(userID)
 }
 
 func (rc *RedisClient) CacheGroup(ctx context.Context, groupID int64, data interface{}, ttl time.Duration) error {
@@ -260,6 +260,24 @@ func (rc *RedisClient) GetCachedGroup(ctx context.Context, groupID int64, dest i
 
 func (rc *RedisClient) InvalidateGroup(ctx context.Context, groupID int64) error {
 	return rc.client.Del(ctx, GroupKey(groupID)).Err()
+}
+
+// ---- Group member-list cache ----
+
+func GroupMembersKey(groupID int64) string {
+	return "group_members:" + fmt.Sprint(groupID)
+}
+
+func (rc *RedisClient) CacheGroupMembers(ctx context.Context, groupID int64, members interface{}, ttl time.Duration) error {
+	return rc.SetJSON(ctx, GroupMembersKey(groupID), members, ttl)
+}
+
+func (rc *RedisClient) GetCachedGroupMembers(ctx context.Context, groupID int64, dest interface{}) error {
+	return rc.GetJSON(ctx, GroupMembersKey(groupID), dest)
+}
+
+func (rc *RedisClient) InvalidateGroupMembers(ctx context.Context, groupID int64) error {
+	return rc.client.Del(ctx, GroupMembersKey(groupID)).Err()
 }
 
 // ---- Rate limiting ----
@@ -346,14 +364,6 @@ func (rc *RedisClient) GetOnlineUsers(ctx context.Context, userIDs []int64) ([]i
 	return online, nil
 }
 
-// Pre-defined channel names for future use
-const (
-	ChannelNewMessage      = "chat:new_message"
-	ChannelNewNotification = "notification:new"
-	ChannelGroupMessage    = "group:message"
-	ChannelUserOnline      = "presence:online"
-	ChannelUserOffline     = "presence:offline"
-	// ChannelWSFanout carries WebSocket messages between backend instances so a
-	// message delivered on one instance reaches clients connected to another.
-	ChannelWSFanout = "ws:fanout"
-)
+// ChannelWSFanout carries WebSocket messages between backend instances so a
+// message delivered on one instance reaches clients connected to another.
+const ChannelWSFanout = "ws:fanout"

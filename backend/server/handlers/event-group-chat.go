@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 	ws "social-network/backend/server/websocket"
 
@@ -136,6 +137,13 @@ func SendGroupMessageHandler(w http.ResponseWriter, r *http.Request, db *databas
 	if strings.TrimSpace(req.Content) == "" && imagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
 		return
+	}
+
+	if cfg := config.GetConfig(); cfg != nil {
+		if msg := validateLengthLimits(strings.TrimSpace(req.Content), "Message", 0, cfg.DatabaseConfiguration.Limits.MaxMessageBody); msg != "" {
+			RespondError(w, http.StatusBadRequest, msg)
+			return
+		}
 	}
 
 	msg := &database.Message{

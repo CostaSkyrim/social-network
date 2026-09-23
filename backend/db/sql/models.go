@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -42,15 +41,6 @@ type UserSearchResult struct {
 	IsFollowPending bool
 }
 
-type UserQueries struct {
-	Create        *sql.Stmt
-	GetByEmail    *sql.Stmt
-	GetByID       *sql.Stmt
-	GetByUUID     *sql.Stmt
-	UpdatePrivacy *sql.Stmt
-	UpdateProfile *sql.Stmt
-}
-
 type Session struct {
 	ID        int64  `json:"-"`
 	SessionID string `json:"session_id"`
@@ -62,29 +52,11 @@ type Session struct {
 	CreatedAt time.Time
 }
 
-type SessionQueries struct {
-	Create           *sql.Stmt
-	Get              *sql.Stmt
-	Delete           *sql.Stmt
-	Cleanup          *sql.Stmt
-	GetUserBySession *sql.Stmt
-}
-
 type Follow struct {
 	FollowerID  int64     `json:"follower_id"`
 	FollowingID int64     `json:"following_id"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
-}
-
-type FollowQueries struct {
-	Create       *sql.Stmt
-	Update       *sql.Stmt
-	GetRequest   *sql.Stmt
-	GetFollowers *sql.Stmt
-	GetFollowing *sql.Stmt
-	Check        *sql.Stmt
-	GetPending   *sql.Stmt
 }
 
 type FollowerWithDM struct {
@@ -131,23 +103,6 @@ type Comment struct {
 	IsDeleted         bool      `json:"is_deleted"`
 }
 
-type CommentQueries struct {
-	Create          *sql.Stmt
-	GetPostComments *sql.Stmt
-	Delete          *sql.Stmt
-}
-
-type PostQueries struct {
-	Create           *sql.Stmt
-	GetByID          *sql.Stmt
-	GetFeed          *sql.Stmt
-	Delete           *sql.Stmt
-	AddVisibility    *sql.Stmt
-	GetVisible       *sql.Stmt
-	RemoveVisibility *sql.Stmt
-	GetUserPosts     *sql.Stmt
-}
-
 type Group struct {
 	ID            int64      `json:"-"`
 	UUID          string     `json:"id"`
@@ -171,16 +126,6 @@ type GroupMember struct {
 	InvitedByUUID *string   `json:"invited_by,omitempty"`
 	JoinedAt      time.Time `json:"joined_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
-}
-
-type GroupQueries struct {
-	Create        *sql.Stmt
-	GetByID       *sql.Stmt
-	GetUserGroups *sql.Stmt
-	AddMember     *sql.Stmt
-	UpdateStatus  *sql.Stmt
-	GetMembers    *sql.Stmt
-	GetAllGroups  *sql.Stmt
 }
 
 type Event struct {
@@ -228,12 +173,6 @@ type EventResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type EventQueries struct {
-	Create         *sql.Stmt
-	RSVP           *sql.Stmt
-	GetGroupEvents *sql.Stmt
-}
-
 type Message struct {
 	ID              int64     `json:"-"`
 	UUID            string    `json:"uuid"`
@@ -257,18 +196,6 @@ type DirectMessage struct {
 	CreatedAt     time.Time  `json:"created_at"`
 }
 
-type MessageQueries struct {
-	Create        *sql.Stmt
-	GetByID       *sql.Stmt
-	GetOrCreate   *sql.Stmt
-	GetGroup      *sql.Stmt
-	GetAll        *sql.Stmt
-	GetPrivate    *sql.Stmt
-	MarkRead      *sql.Stmt
-	UpdateMessage *sql.Stmt
-	UpdateDM      *sql.Stmt
-}
-
 type Notification struct {
 	ID           int64     `json:"id"`
 	UserID       int64     `json:"-"`
@@ -282,11 +209,4 @@ type Notification struct {
 	IsRead       bool      `json:"is_read"`
 	ReadAt       time.Time `json:"read_at"`
 	CreatedAt    time.Time `json:"created_at"`
-}
-
-type NotificationQueries struct {
-	Create    *sql.Stmt
-	Get       *sql.Stmt
-	MarkRead  *sql.Stmt
-	GetUnread *sql.Stmt
 }

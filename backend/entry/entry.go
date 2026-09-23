@@ -46,6 +46,11 @@ func Start(reseed bool) error {
 		log.Printf("Warning: Redis not available, continuing without cache: %v", err)
 	} else {
 		defer redisClient.Close()
+		// Attach the cache to the data layer for read-through caching of
+		// users and groups (gated by use_cache).
+		if cfg.DatabaseConfiguration.UseCache {
+			db.SetRedis(redisClient)
+		}
 	}
 
 	if redisClient == nil && cfg.SessionStorage() == "redis" {

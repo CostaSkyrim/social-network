@@ -1,5 +1,4 @@
 import client from './client'
-import type { DirectMessage } from '@/types/message'
 import type { User } from '@/types/user'
 
 interface FollowerWithDM extends User {

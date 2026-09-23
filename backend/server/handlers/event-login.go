@@ -52,13 +52,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase)
 		return
 	}
 
-	user, err := db.GetUserByEmail(r.Context(), req.Email)
+	user, err := db.GetUserForAuth(r.Context(), req.Email)
 	if err != nil {
-		user, err = db.GetUserByNickname(r.Context(), req.Email)
-		if err != nil {
-			RespondError(w, http.StatusUnauthorized, "Invalid email/nickname or password")
-			return
-		}
+		RespondError(w, http.StatusUnauthorized, "Invalid email/nickname or password")
+		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {

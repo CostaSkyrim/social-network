@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	database "social-network/backend/db/sql"
+	"social-network/backend/config"
 	"strings"
 
 	"github.com/google/uuid"
@@ -71,6 +73,13 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 	if strings.TrimSpace(req.Content) == "" && req.ImagePath == nil {
 		RespondError(w, http.StatusBadRequest, "Content cannot be empty")
+		return
+	}
+
+	if cfg := config.GetConfig(); cfg != nil && cfg.DatabaseConfiguration.Limits.MaxCommentBody > 0 &&
+		len(req.Content) > cfg.DatabaseConfiguration.Limits.MaxCommentBody {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("Comment body must be at most %d characters long", cfg.DatabaseConfiguration.Limits.MaxCommentBody))
 		return
 	}
 

@@ -83,7 +83,12 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 
 	if len(req.Password) < limits.MinPass {
 		RespondError(w, http.StatusBadRequest,
-			fmt.Sprintf("Password must be at least %d characters long", limits.MaxPass))
+			fmt.Sprintf("Password must be at least %d characters long", limits.MinPass))
+		return
+	}
+	if len(req.Password) > limits.MaxPass {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("Password must be at most %d characters long", limits.MaxPass))
 		return
 	}
 
@@ -96,6 +101,13 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 	if len(firstName) > limits.MaxFirstName {
 		RespondError(w, http.StatusBadRequest,
 			fmt.Sprintf("First name must be at most %d characters long", limits.MaxFirstName))
+		return
+	}
+
+	lastName := strings.TrimSpace(req.LastName)
+	if limits.MaxLastName > 0 && len(lastName) > limits.MaxLastName {
+		RespondError(w, http.StatusBadRequest,
+			fmt.Sprintf("Last name must be at most %d characters long", limits.MaxLastName))
 		return
 	}
 
