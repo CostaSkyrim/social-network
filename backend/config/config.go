@@ -67,6 +67,7 @@ type DatabaseConfig struct {
 	Path            []string            `json:"path"`
 	WAL             WALConfig           `json:"wal"`
 	CleanupSessions string              `json:"clean_up_sessions"`
+	UseCache        bool                `json:"use_cache"`
 	Limits          LimitsConfig        `json:"limits"`
 	SystemImages    map[string]struct{} `json:"system_images"`
 }
@@ -79,20 +80,23 @@ type WALConfig struct {
 }
 
 type LimitsConfig struct {
-	RowsLimit      int `json:"rows_limit"`
-	MaxUsername    int `json:"max_username"`
-	MinUsername    int `json:"min_username"`
-	MaxPass        int `json:"max_pass"`
-	MinPass        int `json:"min_pass"`
-	MaxBio         int `json:"max_bio"`
-	MaxFirstName   int `json:"max_first_name"`
-	MinFirstName   int `json:"min_first_name"`
-	MaxTitle       int `json:"max_title"`
-	MinTitle       int `json:"min_title"`
-	MaxCommentBody int `json:"max_comment_body"`
-	MaxPostBody    int `json:"max_post_body"`
-	MinBody        int `json:"min_body"`
-	MaxCategories  int `json:"max_categories"`
+	RowsLimit       int `json:"rows_limit"`
+	MaxUsername     int `json:"max_username"`
+	MinUsername     int `json:"min_username"`
+	MaxPass         int `json:"max_pass"`
+	MinPass         int `json:"min_pass"`
+	MaxBio          int `json:"max_bio"`
+	MaxFirstName    int `json:"max_first_name"`
+	MinFirstName    int `json:"min_first_name"`
+	MaxLastName     int `json:"max_last_name"`
+	MaxTitle        int `json:"max_title"`
+	MinTitle        int `json:"min_title"`
+	MaxCommentBody  int `json:"max_comment_body"`
+	MaxPostBody     int `json:"max_post_body"`
+	MinBody         int `json:"min_body"`
+	MaxDescription  int `json:"max_description"`
+	MaxMessageBody  int `json:"max_message_body"`
+	MaxGroupTitle   int `json:"max_group_title"`
 }
 
 type ServerConfig struct {
@@ -100,10 +104,8 @@ type ServerConfig struct {
 }
 
 type HandlersConfig struct {
-	Image                 ImageConfig                `json:"image"`
-	MaxPostSize           string                     `json:"max_post_size"`
-	CookieExpirationHours string                     `json:"cookie_expiration_hours"`
-	RateLimits            map[string]RateLimitConfig `json:"rate_limits"`
+	Image      ImageConfig                `json:"image"`
+	RateLimits map[string]RateLimitConfig `json:"rate_limits"`
 }
 
 type ImageConfig struct {
@@ -329,30 +331,4 @@ func (c *OAuthProvider) FetchUserEmails(accessToken string) ([]byte, error) {
 	}
 
 	return io.ReadAll(response.Body)
-}
-
-func GetCookieExpiration() time.Duration {
-	config := GetConfig()
-	if config == nil {
-		return 24 * time.Hour
-	}
-
-	duration, err := time.ParseDuration(config.Handlers.CookieExpirationHours)
-	if err != nil {
-		return 24 * time.Hour
-	}
-	return duration
-}
-
-func GetSessionCleanupInterval() time.Duration {
-	config := GetConfig()
-	if config == nil {
-		return 10 * time.Minute
-	}
-
-	duration, err := time.ParseDuration(config.DatabaseConfiguration.CleanupSessions)
-	if err != nil {
-		return 10 * time.Minute
-	}
-	return duration
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/gif"
@@ -172,12 +173,24 @@ func imageMaxSize() int64 {
 }
 
 // parseMultipartForm parses the request body as multipart/form-data once, using
-// the configured image size limit as the memory threshold.
+// the configured image size limit as the memory threshold and capping the total
+// request body so oversized uploads are rejected before they are fully read.
 func parseMultipartForm(r *http.Request) error {
 	if r.MultipartForm != nil {
 		return nil
 	}
-	if err := r.ParseMultipartForm(imageMaxSize() + 1<<20); err != nil {
+
+	// imageMaxSize() + 1MiB: the image file limit is imageMaxSize(); the extra
+	// megabyte headroom covers the surrounding form fields (content, privacy,
+	// etc.). MaxBytesReader rejects the request as soon as the body exceeds it.
+	maxBody := imageMaxSize() + 1<<20
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBody)
+
+	if err := r.ParseMultipartForm(maxBody); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return fmt.Errorf("request too large (max %d bytes)", maxBody)
+		}
 		return fmt.Errorf("failed to parse multipart form: %w", err)
 	}
 	return nil

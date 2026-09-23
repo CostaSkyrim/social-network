@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
 
@@ -87,6 +88,18 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	if req.Title == "" {
 		RespondError(w, http.StatusBadRequest, "Title is required")
 		return
+	}
+
+	if cfg := config.GetConfig(); cfg != nil {
+		limits := cfg.DatabaseConfiguration.Limits
+		if msg := validateLengthLimits(req.Title, "Title", 0, limits.MaxGroupTitle); msg != "" {
+			RespondError(w, http.StatusBadRequest, msg)
+			return
+		}
+		if msg := validateLengthLimits(strings.TrimSpace(req.Description), "Description", 0, limits.MaxDescription); msg != "" {
+			RespondError(w, http.StatusBadRequest, msg)
+			return
+		}
 	}
 
 	group := &database.Group{
@@ -189,6 +202,18 @@ func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 	req.Title = strings.TrimSpace(req.Title)
 	if req.Title == "" {
 		req.Title = group.Title
+	}
+
+	if cfg := config.GetConfig(); cfg != nil {
+		limits := cfg.DatabaseConfiguration.Limits
+		if msg := validateLengthLimits(req.Title, "Title", 0, limits.MaxGroupTitle); msg != "" {
+			RespondError(w, http.StatusBadRequest, msg)
+			return
+		}
+		if msg := validateLengthLimits(strings.TrimSpace(req.Description), "Description", 0, limits.MaxDescription); msg != "" {
+			RespondError(w, http.StatusBadRequest, msg)
+			return
+		}
 	}
 
 	if err := db.UpdateGroup(r.Context(), groupID, req.Title, req.Description, req.AvatarPath); err != nil {

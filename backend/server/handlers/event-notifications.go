@@ -26,7 +26,7 @@ func GetNotificationsHandler(w http.ResponseWriter, r *http.Request, db *databas
 	offset := 0
 
 	if limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= maxPageLimit() {
 			limit = v
 		}
 	}

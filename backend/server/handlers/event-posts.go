@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	database "social-network/backend/db/sql"
+	"social-network/backend/config"
 	"strconv"
 	"strings"
 
@@ -124,8 +125,18 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		return
 	}
 
-	if req.PrivacyLevel == "" {
-		req.PrivacyLevel = "public"
+	if cfg := config.GetConfig(); cfg != nil {
+		limits := cfg.DatabaseConfiguration.Limits
+		if content := strings.TrimSpace(req.Content); limits.MinBody > 0 && content != "" && len(content) < limits.MinBody {
+			RespondError(w, http.StatusBadRequest,
+				fmt.Sprintf("Post body must be at least %d characters long", limits.MinBody))
+			return
+		}
+		if limits.MaxPostBody > 0 && len(req.Content) > limits.MaxPostBody {
+			RespondError(w, http.StatusBadRequest,
+				fmt.Sprintf("Post body must be at most %d characters long", limits.MaxPostBody))
+			return
+		}
 	}
 
 	var groupID *int64
@@ -199,7 +210,7 @@ func GetUserPostsHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 	offset := 0
 
 	if limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= maxPageLimit() {
 			limit = v
 		}
 	}
@@ -246,7 +257,7 @@ func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request, db *database.D
 	offset := 0
 
 	if limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 50 {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= maxPageLimit() {
 			limit = v
 		}
 	}

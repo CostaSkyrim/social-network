@@ -15,11 +15,9 @@ import (
 var GlobalHub *ws.Hub
 
 type endpoint struct {
-	path                 string
-	rateLimitMaxRequests int
-	rateLimitInterval    float64
-	requireAuth          bool // this will be true if the endpoint needs you to be logged in
-	nextHandler          func(http.ResponseWriter, *http.Request, *database.DataBase)
+	path        string
+	requireAuth bool // this will be true if the endpoint needs you to be logged in
+	nextHandler func(http.ResponseWriter, *http.Request, *database.DataBase)
 }
 
 func makeEndpoint(path string, requireAuth bool, nextHandler func(http.ResponseWriter, *http.Request, *database.DataBase)) endpoint {

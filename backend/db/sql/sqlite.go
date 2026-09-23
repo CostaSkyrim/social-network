@@ -15,6 +15,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/mattn/go-sqlite3"
+
+	"social-network/backend/cache"
 )
 
 type DataBase struct {
@@ -23,6 +25,13 @@ type DataBase struct {
 	cfg          *DBConfig
 	SystemImages map[string]struct{}
 	wg           sync.WaitGroup
+	redis        *cache.RedisClient
+}
+
+// SetRedis attaches an optional Redis client used for read-through caching of
+// users, posts, and groups. It is nil-safe: caching is skipped when unset.
+func (db *DataBase) SetRedis(rc *cache.RedisClient) {
+	db.redis = rc
 }
 
 type DBConfig struct {
