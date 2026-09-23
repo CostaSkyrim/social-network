@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthProvider'
 import client from '@/api/client'
@@ -421,9 +422,10 @@ export default function ProfilePage() {
           >
             <div className="space-y-3">
               {all_posts.map((post) => (
-                <div
+                <Link
                   key={post.id}
-                  className="rounded-lg border border-purple-400/20 bg-[#241748] p-4"
+                  href={`/posts/${post.id}`}
+                  className="block rounded-lg border border-purple-400/20 bg-[#241748] p-4 transition-colors hover:border-violet-400/40 hover:bg-[#2b1a55]"
                 >
                   <p className="text-sm text-gray-100 whitespace-pre-wrap">
                     {post.content}
@@ -446,7 +448,7 @@ export default function ProfilePage() {
                       </span>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </InfiniteScroll>

@@ -1,6 +1,7 @@
 'use client'
 
 import { PostCard } from '@/components/post/PostCard'
+import { MasonryGrid, MasonryItem } from '@/components/common/MasonryGrid'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -29,13 +30,15 @@ export function PostGrid({
 
   return (
     <div className="space-y-4">
-      {/* Grid flows left-to-right, top-to-bottom (row-major): 1 col on phones,
-          2 on md, 3 on lg. */}
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Row-major masonry: cards flow newest → oldest left-to-right, packing
+          tightly regardless of height. */}
+      <MasonryGrid>
         {posts.map((post) => (
-          <PostCard key={post.id} post={post} />
+          <MasonryItem key={post.id}>
+            <PostCard post={post} compact />
+          </MasonryItem>
         ))}
-      </div>
+      </MasonryGrid>
 
       {has_next && (
         <div className="flex justify-center py-2">

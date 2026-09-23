@@ -7,8 +7,9 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ImageUpload } from '@/components/common/ImageUpload'
 import { UserVisibilityPicker } from './UserVisibilityPicker'
-import { format_date } from '@/lib/format'
+import { format_post_time } from '@/lib/format'
 import { get_media_url } from '@/lib/media'
+import { cn } from '@/lib/cn'
 import { getPost } from '@/api/posts'
 import { useAuth } from '@/context/AuthProvider'
 import { useEditPost, useDeletePost } from '@/hooks/usePosts'
@@ -17,9 +18,11 @@ import type { Post } from '@/types/post'
 
 interface PostCardProps {
   post: Post
+  /** Uniform card for grid layouts: equal height, fixed image frame, clamped text. */
+  compact?: boolean
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, compact = false }: PostCardProps) {
   const { user } = useAuth()
   const edit_mutation = useEditPost()
   const delete_mutation = useDeletePost()
@@ -109,12 +112,17 @@ export function PostCard({ post }: PostCardProps) {
           <div className="min-w-0 flex-1">
             <Link
               href={`/profile/${post.author_id}`}
-              className="relative z-10 text-sm font-medium text-gray-100 hover:underline"
+              className="relative z-10 block truncate text-sm font-medium text-gray-100 hover:underline"
             >
               {author_name}
             </Link>
-            <p className="text-xs text-gray-300">{format_date(post.created_at)}</p>
           </div>
+          <span
+            className="whitespace-nowrap text-xs font-medium text-gray-300"
+            title={new Date(post.created_at).toLocaleString()}
+          >
+            {format_post_time(post.created_at)}
+          </span>
           {is_deleted ? (
             <span className="text-xs text-red-400 font-medium">deleted</span>
           ) : post.privacy_level !== 'public' ? (
@@ -209,7 +217,14 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-100 whitespace-pre-wrap">{post.content}</p>
+          <p
+            className={cn(
+              'text-sm text-gray-100 whitespace-pre-wrap',
+              compact && 'line-clamp-3',
+            )}
+          >
+            {post.content}
+          </p>
         )}
 
         {!is_deleted && !is_editing && post.image_path && (
@@ -217,7 +232,10 @@ export function PostCard({ post }: PostCardProps) {
           <img
             src={get_media_url(post.image_path)}
             alt="Post image"
-            className="max-h-96 w-full rounded-lg object-contain"
+            className={cn(
+              'w-full rounded-lg object-contain',
+              compact ? 'max-h-44' : 'max-h-96',
+            )}
           />
         )}
 
