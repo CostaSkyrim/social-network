@@ -62,19 +62,23 @@ export function PostCard({ post, compact = false, hide_author = false, hide_acti
   }
 
   const handle_edit = async () => {
-    await edit_mutation.mutateAsync({
-      id: post.id,
-      content: edit_content,
-      privacy_level: edit_privacy,
-      image: edit_image ?? undefined,
-      remove_image: edit_remove_image,
-      visible_user_ids: edit_privacy === 'private' ? edit_visible_user_ids : [],
-    })
-    set_editing(false)
-    set_edit_image(null)
-    set_edit_remove_image(false)
-    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
-    set_edit_preview_url(null)
+    try {
+      await edit_mutation.mutateAsync({
+        id: post.id,
+        content: edit_content,
+        privacy_level: edit_privacy,
+        image: edit_image ?? undefined,
+        remove_image: edit_remove_image,
+        visible_user_ids: edit_privacy === 'private' ? edit_visible_user_ids : [],
+      })
+      set_editing(false)
+      set_edit_image(null)
+      set_edit_remove_image(false)
+      if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+      set_edit_preview_url(null)
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   const handle_edit_image = (file: File) => {

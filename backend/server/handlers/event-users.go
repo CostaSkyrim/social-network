@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"social-network/backend/config"
 	database "social-network/backend/db/sql"
 )
 
@@ -197,11 +198,33 @@ func UpdateUserProfileHandler(w http.ResponseWriter, r *http.Request, db *databa
 	}
 
 	if req.Nickname != nil && *req.Nickname != "" {
-		existing, _ := db.GetUserByNickname(r.Context(), *req.Nickname)
-		if existing != nil && existing.ID != userID {
+		cfg := config.GetConfig()
+		if cfg == nil {
+			RespondError(w, http.StatusInternalServerError, "Server configuration error")
+			return
+		}
+		limits := cfg.DatabaseConfiguration.Limits
+
+		// Store the handle in the same normalised form signup uses, so an
+		// account can never differ from another only by case.
+		nickname := sanitizeNickname(*req.Nickname, limits.MaxUsername)
+		if len(nickname) < limits.MinUsername {
+			RespondError(w, http.StatusBadRequest,
+				"Nickname must be at least "+strconv.Itoa(limits.MinUsername)+" characters long")
+			return
+		}
+
+		taken, err := db.NicknameTaken(r.Context(), nickname, userID)
+		if err != nil {
+			RespondError(w, http.StatusInternalServerError, "Failed to update profile")
+			return
+		}
+		if taken {
 			RespondError(w, http.StatusConflict, "Nickname already taken")
 			return
 		}
+
+		req.Nickname = &nickname
 	}
 
 	user := &database.User{

@@ -156,10 +156,12 @@ function NotificationRow({
     try {
       await accept_mutation.mutateAsync(requester_id)
       await on_mark_read()
+      await on_after_action()
+    } catch {
+      // error toast handled by mutation
     } finally {
       set_action(null)
     }
-    await on_after_action()
   }
 
   async function handle_decline() {
@@ -168,10 +170,12 @@ function NotificationRow({
     try {
       await reject_mutation.mutateAsync(requester_id)
       await on_mark_read()
+      await on_after_action()
+    } catch {
+      // error toast handled by mutation
     } finally {
       set_action(null)
     }
-    await on_after_action()
   }
 
   const is_pending =

@@ -88,15 +88,19 @@ export function CommentForm({ postId, parentCommentId, onSubmitted }: CommentFor
   async function handle_submit(e: React.FormEvent) {
     e.preventDefault()
     if (!content.trim() && !image) return
-    await create_comment.mutateAsync({
-      post_id: postId,
-      parent_comment_id: parentCommentId,
-      content: content.trim(),
-      image: image ?? undefined,
-    })
-    set_content('')
-    clear_image()
-    onSubmitted?.()
+    try {
+      await create_comment.mutateAsync({
+        post_id: postId,
+        parent_comment_id: parentCommentId,
+        content: content.trim(),
+        image: image ?? undefined,
+      })
+      set_content('')
+      clear_image()
+      onSubmitted?.()
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   return (

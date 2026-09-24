@@ -65,21 +65,25 @@ export function EventCard({ event, groupId }: EventCardProps) {
   }
 
   async function handle_save() {
-    await update_event.mutateAsync({
-      eventId: event.id,
-      input: {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        event_datetime: new Date(datetime).toISOString(),
-        image: image ?? undefined,
-        remove_image,
-      },
-    })
-    set_editing(false)
-    set_image(null)
-    set_remove_image(false)
-    if (preview_url) URL.revokeObjectURL(preview_url)
-    set_preview_url(null)
+    try {
+      await update_event.mutateAsync({
+        eventId: event.id,
+        input: {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          event_datetime: new Date(datetime).toISOString(),
+          image: image ?? undefined,
+          remove_image,
+        },
+      })
+      set_editing(false)
+      set_image(null)
+      set_remove_image(false)
+      if (preview_url) URL.revokeObjectURL(preview_url)
+      set_preview_url(null)
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   function handle_cancel_event() {

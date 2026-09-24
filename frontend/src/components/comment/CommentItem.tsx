@@ -35,17 +35,21 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
   const is_owner = user && String(comment.author_id) === String(user.id)
 
   const handle_edit = async () => {
-    await edit_mutation.mutateAsync({
-      id: comment.id,
-      content: edit_content,
-      image: edit_image ?? undefined,
-      remove_image: edit_remove_image,
-    })
-    set_editing(false)
-    set_edit_image(null)
-    set_edit_remove_image(false)
-    if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
-    set_edit_preview_url(null)
+    try {
+      await edit_mutation.mutateAsync({
+        id: comment.id,
+        content: edit_content,
+        image: edit_image ?? undefined,
+        remove_image: edit_remove_image,
+      })
+      set_editing(false)
+      set_edit_image(null)
+      set_edit_remove_image(false)
+      if (edit_preview_url) URL.revokeObjectURL(edit_preview_url)
+      set_edit_preview_url(null)
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   const handle_edit_image = (file: File) => {

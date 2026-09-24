@@ -38,6 +38,14 @@ const (
 		LIMIT 2
 	`
 
+	// NicknameTaken counts the accounts (other than the excluded one) using a
+	// nickname, compared case-insensitively so two users cannot differ only by
+	// case.
+	NicknameTaken = `
+		SELECT COUNT(*) FROM users
+		WHERE nickname = ? COLLATE NOCASE AND id != ?
+	`
+
 	GetUserByID = `
 		SELECT id, uuid, email, first_name, last_name, nickname,
 		 date_of_birth, about_me, avatar_path, is_public, created_at

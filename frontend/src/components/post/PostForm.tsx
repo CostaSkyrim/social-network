@@ -98,17 +98,21 @@ export function PostForm({ groupId }: PostFormProps = {}) {
   async function handle_submit(e: React.FormEvent) {
     e.preventDefault()
     if (!content.trim() && !image) return
-    await create_post.mutateAsync({
-      content: content.trim(),
-      privacy_level: privacy,
-      group_id: groupId,
-      image: image ?? undefined,
-      visible_user_ids: privacy === 'private' ? visible_user_ids : undefined,
-    })
-    set_content('')
-    set_privacy('public')
-    set_visible_user_ids([])
-    clear_image()
+    try {
+      await create_post.mutateAsync({
+        content: content.trim(),
+        privacy_level: privacy,
+        group_id: groupId,
+        image: image ?? undefined,
+        visible_user_ids: privacy === 'private' ? visible_user_ids : undefined,
+      })
+      set_content('')
+      set_privacy('public')
+      set_visible_user_ids([])
+      clear_image()
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   return (

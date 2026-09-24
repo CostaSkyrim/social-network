@@ -258,6 +258,23 @@ func (db *DataBase) GetUserByNicknameFold(ctx context.Context, nickname string) 
 	return found, nil
 }
 
+// NicknameTaken reports whether another account already uses nickname. The
+// comparison is case-insensitive, so two users cannot be created differing
+// only by case.
+func (db *DataBase) NicknameTaken(ctx context.Context, nickname string, exceptUserID int64) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var count int64
+	err := db.conn.QueryRowContext(ctx, queries.NicknameTaken, nickname, exceptUserID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check nickname: %w", err)
+	}
+
+	return count > 0, nil
+}
+
 // GetUserByID retrieves a user by ID
 func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error) {
 	if ctx == nil {

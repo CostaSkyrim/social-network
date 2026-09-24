@@ -21,9 +21,13 @@ export function NavMenu({
   const logout_mutation = useLogout()
 
   async function handle_logout() {
-    await logout_mutation.mutateAsync()
-    disconnectWebSocket()
-    router.push('/login')
+    try {
+      await logout_mutation.mutateAsync()
+      disconnectWebSocket()
+      router.push('/login')
+    } catch {
+      // error toast handled by mutation
+    }
   }
 
   return (

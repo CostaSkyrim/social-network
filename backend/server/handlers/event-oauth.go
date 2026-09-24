@@ -301,7 +301,8 @@ func findOrCreateOAuthUser(r *http.Request, db *database.DataBase, provider stri
 	base := sanitizeOAuthNickname(info.Nickname, info.Email, limits.MaxUsername)
 	nickname := base
 	for i := 0; ; i++ {
-		if _, err := db.GetUserByNickname(r.Context(), nickname); err != nil {
+		taken, err := db.NicknameTaken(r.Context(), nickname, 0)
+		if err != nil || !taken {
 			break
 		}
 		nickname = fmt.Sprintf("%s_%d", base, 1000+i)

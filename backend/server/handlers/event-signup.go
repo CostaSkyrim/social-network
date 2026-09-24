@@ -147,8 +147,8 @@ func SignupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 	}
 
 	for {
-		_, err := db.GetUserByNickname(r.Context(), nickname)
-		if err != nil {
+		taken, err := db.NicknameTaken(r.Context(), nickname, 0)
+		if err != nil || !taken {
 			break
 		}
 		nickname = generateNicknameWithSuffix(req.Email, limits.MinUsername, limits.MaxUsername, rand.Intn(9000)+1000)
