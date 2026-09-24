@@ -316,6 +316,13 @@ func GetUserGroupsHandler(w http.ResponseWriter, r *http.Request, db *database.D
 	RespondSuccess(w, http.StatusOK, "User groups retrieved", groups)
 }
 
+// normalizeNickname cleans a hand-typed handle: surrounding whitespace and a
+// leading "@" are dropped, because nicknames are displayed as "@handle"
+// elsewhere in the UI and users copy them verbatim.
+func normalizeNickname(raw string) string {
+	return strings.TrimLeft(strings.TrimSpace(raw), "@")
+}
+
 func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -360,15 +367,29 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 
 	var targetUser *database.User
 	if req.Nickname != "" {
-		targetUser, err = db.GetUserByNickname(r.Context(), req.Nickname)
+		nickname := normalizeNickname(req.Nickname)
+		if nickname == "" {
+			RespondError(w, http.StatusBadRequest, "Provide a nickname or user ID to invite")
+			return
+		}
+		targetUser, err = db.GetUserByNickname(r.Context(), nickname)
+		if err != nil {
+			// Stored nicknames are normally lowercase, but accept any casing
+			// the inviter typed.
+			targetUser, err = db.GetUserByNicknameFold(r.Context(), nickname)
+		}
+		if err != nil {
+			RespondError(w, http.StatusNotFound, "No user found with nickname "+strconv.Quote(nickname))
+			return
+		}
 	} else if req.UserID != "" {
 		targetUser, err = db.GetUserByUUID(r.Context(), req.UserID)
+		if err != nil {
+			RespondError(w, http.StatusNotFound, "No user found with that id")
+			return
+		}
 	} else {
 		RespondError(w, http.StatusBadRequest, "Provide a nickname or user ID to invite")
-		return
-	}
-	if err != nil {
-		RespondError(w, http.StatusNotFound, "User not found")
 		return
 	}
 

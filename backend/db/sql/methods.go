@@ -207,6 +207,57 @@ func (db *DataBase) GetUserByNickname(ctx context.Context, nickname string) (*Us
 	return user, nil
 }
 
+// GetUserByNicknameFold resolves a nickname case-insensitively, for callers
+// that accept a hand-typed handle (group invites). It is a scan rather than an
+// indexed lookup, so it is meant to be used as a fallback, and it refuses to
+// guess when two users differ only by case.
+func (db *DataBase) GetUserByNicknameFold(ctx context.Context, nickname string) (*User, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := db.conn.QueryContext(ctx, queries.GetUserByNicknameFold, nickname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+	defer rows.Close()
+
+	var found *User
+	for rows.Next() {
+		user := &User{}
+		err := rows.Scan(
+			&user.ID,
+			&user.UUID,
+			&user.Email,
+			&user.FirstName,
+			&user.LastName,
+			&user.Nickname,
+			&user.DateOfBirth,
+			&user.AboutMe,
+			&user.AvatarPath,
+			&user.IsPublic,
+			&user.IsActive,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		if found != nil {
+			return nil, fmt.Errorf("nickname is ambiguous")
+		}
+		found = user
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+	if found == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return found, nil
+}
+
 // GetUserByID retrieves a user by ID
 func (db *DataBase) GetUserByID(ctx context.Context, userID int64) (*User, error) {
 	if ctx == nil {

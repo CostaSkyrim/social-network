@@ -25,6 +25,19 @@ const (
 		WHERE nickname = ? AND is_active = 1
 	`
 
+	// GetUserByNicknameFold is the case-insensitive counterpart of
+	// GetUserByNickname, used where the handle is typed by hand (group
+	// invites). LIMIT 2 lets the caller detect a nickname that is ambiguous
+	// when compared case-insensitively.
+	GetUserByNicknameFold = `
+		SELECT id, uuid, email, first_name,
+		 last_name, nickname, date_of_birth, about_me, avatar_path,
+		 is_public, is_active, created_at, updated_at
+		FROM users
+		WHERE nickname = ? COLLATE NOCASE AND is_active = 1
+		LIMIT 2
+	`
+
 	GetUserByID = `
 		SELECT id, uuid, email, first_name, last_name, nickname,
 		 date_of_birth, about_me, avatar_path, is_public, created_at
