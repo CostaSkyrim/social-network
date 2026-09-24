@@ -1,7 +1,14 @@
 import type { ReactNode } from 'react'
+import type { Metadata } from 'next'
 import { Orbitron } from 'next/font/google'
 import { Providers } from './providers'
 import './globals.css'
+
+export const metadata: Metadata = {
+  title: 'Andromeda',
+  description:
+    'Andromeda is a social network for sharing posts, joining groups and organising events with your people.',
+}
 
 const orbitron = Orbitron({
   subsets: ['latin'],
