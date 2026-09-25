@@ -477,6 +477,52 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 	RespondSuccess(w, http.StatusOK, "Join request sent", nil)
 }
 
+// canDecideMembership reports whether the caller identified by actorUUID may
+// accept or decline the membership in the given status.
+//
+// A join request (pending) is the group creator's decision. An invitation
+// (invited) is the invited user's own decision — the creator must not accept or
+// decline on their behalf. Anything else has no pending decision.
+func canDecideMembership(status, creatorUUID, targetUUID, actorUUID string) bool {
+	if actorUUID == "" {
+		return false
+	}
+	switch status {
+	case "pending":
+		return actorUUID == creatorUUID
+	case "invited":
+		return actorUUID == targetUUID
+	default:
+		return false
+	}
+}
+
+// authorizeMembershipDecision checks that the caller may respond to a pending
+// membership and returns its current status.
+func authorizeMembershipDecision(w http.ResponseWriter, r *http.Request, db *database.DataBase, groupID int64, group *database.Group, targetUser *database.User) (string, bool) {
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
+
+	status, err := db.GetGroupMemberStatus(r.Context(), groupID, targetUser.ID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "No pending request or invitation for this user")
+		return "", false
+	}
+
+	if !canDecideMembership(status, group.CreatorUUID, targetUser.UUID, currentUserUUID) {
+		switch status {
+		case "pending":
+			RespondError(w, http.StatusForbidden, "Only the group creator can respond to join requests")
+		case "invited":
+			RespondError(w, http.StatusForbidden, "Only the invited user can respond to this invitation")
+		default:
+			RespondError(w, http.StatusConflict, "No pending request or invitation for this user")
+		}
+		return "", false
+	}
+
+	return status, true
+}
+
 func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -489,8 +535,6 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	currentUserUUID, _ := GetUserUUIDFromContext(r)
-
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
 		return
@@ -499,11 +543,6 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 	group, err := db.GetGroup(r.Context(), groupID)
 	if err != nil {
 		RespondError(w, http.StatusNotFound, "Group not found")
-		return
-	}
-
-	if group.CreatorUUID != currentUserUUID {
-		RespondError(w, http.StatusForbidden, "Only the group creator can accept members")
 		return
 	}
 
@@ -519,14 +558,32 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
+	status, ok := authorizeMembershipDecision(w, r, db, groupID, group, targetUser)
+	if !ok {
+		return
+	}
+
 	if err := db.UpdateMemberStatus(r.Context(), groupID, targetUser.ID, "accepted"); err != nil {
 		RespondError(w, http.StatusNotFound, "Member not found")
 		return
 	}
 
-	db.UpdateGroupJoinNotification(r.Context(), group.UUID, targetUser.ID, "You have accepted "+getDisplayName(targetUser)+"'s request to join "+group.Title)
-
-	sendNotification(db, targetUser.ID, currentUserID, NotifGroupAccepted, "accepted your request to join group: "+group.Title, &groupID, &group.UUID)
+	if status == "pending" {
+		// The creator accepted a join request: update their own notification and
+		// tell the requester.
+		db.UpdateGroupJoinNotification(r.Context(), group.UUID, targetUser.ID,
+			"You have accepted "+getDisplayName(targetUser)+"'s request to join "+group.Title)
+		sendNotification(db, targetUser.ID, currentUserID, NotifGroupAccepted,
+			"accepted your request to join group: "+group.Title, &groupID, &group.UUID)
+	} else {
+		// The invitee accepted: update their invitation and let the creator know.
+		db.UpdateGroupInvitationNotification(r.Context(), group.UUID, targetUser.ID,
+			"You joined group: "+group.Title)
+		if creator, err := db.GetUserByUUID(r.Context(), group.CreatorUUID); err == nil {
+			sendNotification(db, creator.ID, targetUser.ID, NotifGroupAccepted,
+				getDisplayName(targetUser)+" joined your group: "+group.Title, &groupID, &group.UUID)
+		}
+	}
 
 	RespondSuccess(w, http.StatusOK, "Member accepted", nil)
 }
@@ -542,8 +599,6 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	currentUserUUID, _ := GetUserUUIDFromContext(r)
-
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
 		return
@@ -552,11 +607,6 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 	group, err := db.GetGroup(r.Context(), groupID)
 	if err != nil {
 		RespondError(w, http.StatusNotFound, "Group not found")
-		return
-	}
-
-	if group.CreatorUUID != currentUserUUID {
-		RespondError(w, http.StatusForbidden, "Only the group creator can reject members")
 		return
 	}
 
@@ -572,12 +622,23 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
+	status, ok := authorizeMembershipDecision(w, r, db, groupID, group, targetUser)
+	if !ok {
+		return
+	}
+
 	if err := db.UpdateMemberStatus(r.Context(), groupID, targetUser.ID, "declined"); err != nil {
 		RespondError(w, http.StatusNotFound, "Member not found")
 		return
 	}
 
-	db.UpdateGroupJoinNotification(r.Context(), group.UUID, targetUser.ID, "You have declined "+getDisplayName(targetUser)+"'s request to join "+group.Title)
+	if status == "pending" {
+		db.UpdateGroupJoinNotification(r.Context(), group.UUID, targetUser.ID,
+			"You have declined "+getDisplayName(targetUser)+"'s request to join "+group.Title)
+	} else {
+		db.UpdateGroupInvitationNotification(r.Context(), group.UUID, targetUser.ID,
+			"You declined the invitation to join "+group.Title)
+	}
 
 	RespondSuccess(w, http.StatusOK, "Member rejected", nil)
 }

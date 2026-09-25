@@ -1,6 +1,6 @@
 'use client'
 
-import { useJoinGroup, useLeaveGroup } from '@/hooks/useGroups'
+import { useJoinGroup, useLeaveGroup, useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
 import type { GroupMember } from '@/types/group'
 
 interface GroupActionsProps {
@@ -18,6 +18,9 @@ export function GroupActions({
 }: GroupActionsProps) {
   const join_mutation = useJoinGroup(groupId)
   const leave_mutation = useLeaveGroup(groupId)
+  const accept_mutation = useAcceptGroupMember(groupId)
+  const reject_mutation = useRejectGroupMember(groupId)
+  const is_responding = accept_mutation.isPending || reject_mutation.isPending
 
   const is_creator = creatorId === currentUserId
   const my_membership = members.find((m) => m.user.id === currentUserId)
@@ -45,11 +48,34 @@ export function GroupActions({
     )
   }
 
-  // Pending / invited
-  if (status !== 'accepted') {
+  // Invitation: the invited user decides, not the creator.
+  if (status === 'invited') {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-purple-400/10 px-3 py-2 text-xs text-gray-300">
+        <span>You've been invited to this group.</span>
+        <button
+          onClick={() => accept_mutation.mutate(currentUserId)}
+          disabled={is_responding}
+          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+        >
+          {accept_mutation.isPending ? 'Accepting…' : 'Accept'}
+        </button>
+        <button
+          onClick={() => reject_mutation.mutate(currentUserId)}
+          disabled={is_responding}
+          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          {reject_mutation.isPending ? 'Declining…' : 'Decline'}
+        </button>
+      </div>
+    )
+  }
+
+  // Join request: awaiting the creator's approval.
+  if (status === 'pending') {
     return (
       <div className="rounded-lg bg-purple-400/10 px-3 py-2 text-xs text-gray-300">
-        {status === 'pending' ? 'Request sent — awaiting approval' : 'Invited — awaiting response'}
+        Request sent — awaiting approval
       </div>
     )
   }

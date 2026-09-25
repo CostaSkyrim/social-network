@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useNotifications } from '@/context/NotificationProvider'
+import { useAuth } from '@/context/AuthProvider'
 import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
 import { EmptyState } from '@/components/common/EmptyState'
 import { cn } from '@/lib/cn'
@@ -142,19 +143,25 @@ function NotificationRow({
   on_mark_read: () => void
   on_after_action: () => Promise<void>
 }) {
-  const is_actionable =
+  const { user } = useAuth()
+  const is_join_request =
     notif.type === 'group_join_request' && !notif.is_read
+  const is_invitation =
+    notif.type === 'group_invitation' && !notif.is_read
+  const is_actionable = is_join_request || is_invitation
   const group_id = notif.related_id
-  const requester_id = notif.from_user_id
+  // A join request targets the requester and is decided by the creator; an
+  // invitation targets (and is decided by) the invited user.
+  const target_id = is_invitation ? user?.id : notif.from_user_id
   const [action, set_action] = useState<'accept' | 'decline' | null>(null)
   const accept_mutation = useAcceptGroupMember(group_id ?? '')
   const reject_mutation = useRejectGroupMember(group_id ?? '')
 
   async function handle_accept() {
-    if (!group_id || !requester_id) return
+    if (!group_id || !target_id) return
     set_action('accept')
     try {
-      await accept_mutation.mutateAsync(requester_id)
+      await accept_mutation.mutateAsync(target_id)
       await on_mark_read()
       await on_after_action()
     } catch {
@@ -165,10 +172,10 @@ function NotificationRow({
   }
 
   async function handle_decline() {
-    if (!group_id || !requester_id) return
+    if (!group_id || !target_id) return
     set_action('decline')
     try {
-      await reject_mutation.mutateAsync(requester_id)
+      await reject_mutation.mutateAsync(target_id)
       await on_mark_read()
       await on_after_action()
     } catch {

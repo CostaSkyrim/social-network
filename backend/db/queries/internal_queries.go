@@ -587,6 +587,12 @@ const (
 		WHERE group_id = ? AND user_id = ?
 	`
 
+	GetGroupMemberStatus = `
+		SELECT status
+		FROM group_members
+		WHERE group_id = ? AND user_id = ?
+	`
+
 	GetGroupMembers = `
 		SELECT u.id, u.uuid, u.email, u.first_name, u.last_name, u.nickname,
 		 u.avatar_path, gm.status, gm.joined_at, inv.uuid as invited_by_uuid
@@ -838,6 +844,14 @@ const (
 		WHERE type = 'group_join_request'
 			AND related_uuid = ?
 			AND from_user_id = ?
+	`
+
+	UpdateGroupInvitationNotification = `
+		UPDATE notifications
+		SET content = ?, is_read = 1, read_at = CURRENT_TIMESTAMP
+		WHERE type = 'group_invitation'
+			AND related_uuid = ?
+			AND user_id = ?
 	`
 
 	GetUnreadCount = `

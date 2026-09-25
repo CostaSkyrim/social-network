@@ -2053,6 +2053,32 @@ func (db *DataBase) UpdateMemberStatus(ctx context.Context, groupID, userID int6
 	return nil
 }
 
+// GetGroupMemberStatus returns a single membership's status, so a handler can
+// tell a join request (pending) from an invitation (invited) without loading
+// the whole member list.
+func (db *DataBase) GetGroupMemberStatus(ctx context.Context, groupID, userID int64) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var status string
+	err := db.conn.QueryRowContext(dbCtx,
+		queries.GetGroupMemberStatus,
+		groupID, userID,
+	).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("member not found")
+		}
+		return "", fmt.Errorf("failed to query member status: %w", err)
+	}
+
+	return status, nil
+}
+
 // GetGroupMembers retrieves members of a group
 func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]GroupMember, error) {
 	if ctx == nil {
@@ -2672,6 +2698,29 @@ func (db *DataBase) UpdateGroupJoinNotification(ctx context.Context, groupUUID s
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update group join notification: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateGroupInvitationNotification updates the invited user's own invitation
+// notification with the accept/decline outcome, marking it read so the bell and
+// notifications list stay in sync when the response happens from the group page
+// rather than the notifications list.
+func (db *DataBase) UpdateGroupInvitationNotification(ctx context.Context, groupUUID string, userID int64, content string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := db.conn.ExecContext(dbCtx,
+		queries.UpdateGroupInvitationNotification,
+		content, groupUUID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update group invitation notification: %w", err)
 	}
 
 	return nil

@@ -13,6 +13,7 @@ interface MemberListProps {
   groupId: string
   isCreator: boolean
   creatorId: string
+  currentUserId: string
 }
 
 const status_meta: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' }> = {
@@ -35,7 +36,7 @@ function sort_members(members: GroupMember[], creatorId: string): GroupMember[] 
   return [...creator.sort(by_name), ...rest]
 }
 
-export function MemberList({ members, groupId, isCreator, creatorId }: MemberListProps) {
+export function MemberList({ members, groupId, isCreator, creatorId, currentUserId }: MemberListProps) {
   const { subscribe } = useWebSocket()
   const [online_overrides, set_online_overrides] = useState<Record<string, boolean>>({})
 
@@ -64,8 +65,12 @@ export function MemberList({ members, groupId, isCreator, creatorId }: MemberLis
   function render_member(m: GroupMember) {
     const name = `${m.user.first_name} ${m.user.last_name}`
     const meta = status_meta[m.status] ?? status_meta.accepted
+    const is_me = m.user.id === currentUserId
+    // A join request is the creator's to decide; an invitation belongs to the
+    // invited user. The creator must not respond to an invitation.
     const show_actions =
-      isCreator && (m.status === 'pending' || m.status === 'invited')
+      (isCreator && m.status === 'pending') ||
+      (is_me && m.status === 'invited')
     const is_creator = m.user.id === creatorId
     const is_online = online_overrides[m.user.id] ?? m.user.is_online ?? false
 

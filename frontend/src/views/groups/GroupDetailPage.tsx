@@ -194,7 +194,7 @@ export default function GroupDetailPage() {
           {active_tab === 'members' && (
             <>
               {is_member && <InviteMember groupId={group.id} />}
-              <MemberList members={members} groupId={group.id} isCreator={is_creator} creatorId={group.creator_id} />
+              <MemberList members={members} groupId={group.id} isCreator={is_creator} creatorId={group.creator_id} currentUserId={currentUserId} />
             </>
           )}
         </CardContent>
