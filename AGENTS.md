@@ -115,7 +115,7 @@ Endpoints are registered in `SetHandlers()` via `makeEndpoint(path, requireAuth,
 - Comments: `POST /comments`, `GET /posts/{id}/comments`, `DELETE /comments/{id}`, `POST /comments/{id}/edit`
 - Follows: `POST /follow/request`, `POST /follow/accept`, `POST /follow/decline`, `POST /follow/remove`, `GET /followers`, `GET /following`, `GET /follow/pending`
 - Users: `GET /users/{id}`, `POST /users/{id}/edit`, `POST /users/{id}/avatar`
-- Groups: `POST /groups`, `GET /groups/{id}`, `POST /groups/{id}/update`, `POST /groups/{id}/delete`, `GET /groups/browse`, `GET /user/groups`, invite/join/accept/reject/leave/members/posts/avatar
+- Groups: `POST /groups`, `GET /groups/{id}`, `POST /groups/{id}/update`, `POST /groups/{id}/delete`, `GET /groups/browse`, `GET /user/groups`, invite/join/accept/reject/leave/kick/members/posts/avatar
 - Events: `GET /groups/{id}/events`, `GET /events/{id}`, `POST /events/{id}/rsvp`
 - Notifications: `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/read-all`
 - Chat: `GET /chat/dms`, `GET /chat/dms/{id}/messages`, `POST /chat/send/{id}`, `GET /chat/unread-count`

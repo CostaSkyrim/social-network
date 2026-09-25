@@ -689,6 +689,85 @@ func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 	RespondSuccess(w, http.StatusOK, "Left the group", nil)
 }
 
+// removableMemberError reports the HTTP status and message for a kick attempt,
+// or (0, "") when it may proceed.
+//
+// Only the group creator may remove members, the creator cannot be removed, and
+// only accepted members are in the group to remove. An empty targetStatus means
+// the target has no membership row.
+func removableMemberError(actorUUID, creatorUUID, targetUUID, targetStatus string) (int, string) {
+	if actorUUID == "" || actorUUID != creatorUUID {
+		return http.StatusForbidden, "Only the group creator can remove members"
+	}
+	if targetUUID == creatorUUID {
+		return http.StatusBadRequest, "The group creator cannot be removed"
+	}
+	if targetStatus == "" {
+		return http.StatusNotFound, "Not a member of this group"
+	}
+	if targetStatus != "accepted" {
+		return http.StatusConflict, "Only accepted members can be removed"
+	}
+	return 0, ""
+}
+
+// KickGroupMemberHandler removes an accepted member from a group. The creator
+// does this; the member is free to request to join again afterwards.
+func KickGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	if r.Method != http.MethodPost {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	if _, ok := GetUserIDFromContext(r); !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
+
+	groupID, ok := resolveGroupID(w, r, db)
+	if !ok {
+		return
+	}
+
+	group, err := db.GetGroup(r.Context(), groupID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "Group not found")
+		return
+	}
+
+	var req GroupMemberRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	targetUser, err := db.GetUserByUUID(r.Context(), req.UserID)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	status, err := db.GetGroupMemberStatus(r.Context(), groupID, targetUser.ID)
+	if err != nil {
+		status = ""
+	}
+
+	if code, msg := removableMemberError(currentUserUUID, group.CreatorUUID, targetUser.UUID, status); code != 0 {
+		RespondError(w, code, msg)
+		return
+	}
+
+	// Marking the membership "declined" takes them out of the group while
+	// leaving them free to request to join again (see canRejoinOrReinvite).
+	if err := db.UpdateMemberStatus(r.Context(), groupID, targetUser.ID, "declined"); err != nil {
+		RespondError(w, http.StatusNotFound, "Member not found")
+		return
+	}
+
+	RespondSuccess(w, http.StatusOK, "Member removed", nil)
+}
+
 func UpdateGroupAvatarHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")

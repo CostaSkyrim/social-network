@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { useAcceptGroupMember, useRejectGroupMember } from '@/hooks/useGroups'
+import { useAcceptGroupMember, useRejectGroupMember, useKickGroupMember } from '@/hooks/useGroups'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import type { GroupMember } from '@/types/group'
 
@@ -104,6 +104,8 @@ export function MemberList({ members, groupId, isCreator, creatorId, currentUser
           <div className="flex items-center gap-1.5">
             <AcceptDeclineButtons member={m} groupId={groupId} />
           </div>
+        ) : m.status === 'accepted' && isCreator && !is_creator ? (
+          <KickMemberButton member={m} groupId={groupId} />
         ) : m.status !== 'accepted' ? (
           <Badge variant={meta.variant}>{meta.label}</Badge>
         ) : null}
@@ -156,5 +158,20 @@ function AcceptDeclineButtons({ member, groupId }: { member: GroupMember; groupI
         Decline
       </button>
     </>
+  )
+}
+
+function KickMemberButton({ member, groupId }: { member: GroupMember; groupId: string }) {
+  const kick_mutation = useKickGroupMember(groupId)
+
+  return (
+    <button
+      onClick={() => kick_mutation.mutate(member.user.id)}
+      disabled={kick_mutation.isPending}
+      title={`Remove ${member.user.first_name} from the group`}
+      className="rounded-lg bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
+    >
+      {kick_mutation.isPending ? 'Removing…' : 'Remove'}
+    </button>
   )
 }

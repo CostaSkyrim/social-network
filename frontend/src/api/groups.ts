@@ -94,6 +94,10 @@ export async function leaveGroup(groupId: string): Promise<void> {
   await client.post(`/api/groups/${groupId}/leave`)
 }
 
+export async function kickGroupMember(groupId: string, userId: string): Promise<void> {
+  await client.post(`/api/groups/${groupId}/kick`, { user_id: userId })
+}
+
 export async function inviteGroupMember(groupId: string, nickname: string): Promise<void> {
   await client.post(`/api/groups/${groupId}/invite`, { nickname })
 }

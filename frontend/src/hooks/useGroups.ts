@@ -13,6 +13,7 @@ import {
   rejectGroupMember as apiRejectGroupMember,
   joinGroup as apiJoinGroup,
   leaveGroup as apiLeaveGroup,
+  kickGroupMember as apiKickGroupMember,
   inviteGroupMember as apiInviteGroupMember,
   uploadGroupAvatar as apiUploadGroupAvatar,
   updateEvent as apiUpdateEvent,
@@ -221,6 +222,25 @@ export function useLeaveGroup(groupId: string) {
     onError: (err: any) => {
       show_toast({
         message: err?.response?.data?.error || 'Failed to leave group',
+        type: 'error',
+      })
+    },
+  })
+}
+
+export function useKickGroupMember(groupId: string) {
+  const query_client = useQueryClient()
+  const { show_toast } = useUI()
+
+  return useMutation({
+    mutationFn: (userId: string) => apiKickGroupMember(groupId, userId),
+    onSuccess: () => {
+      query_client.invalidateQueries({ queryKey: ['group', groupId] })
+      show_toast({ message: 'Member removed', type: 'success' })
+    },
+    onError: (err: any) => {
+      show_toast({
+        message: err?.response?.data?.error || 'Failed to remove member',
         type: 'error',
       })
     },

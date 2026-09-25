@@ -1,6 +1,9 @@
 package handlers
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 func TestNormalizeNickname(t *testing.T) {
 	tests := []struct {
@@ -84,6 +87,46 @@ func TestCanRejoinOrReinvite(t *testing.T) {
 		t.Run(tc.status, func(t *testing.T) {
 			if got := canRejoinOrReinvite(tc.status); got != tc.want {
 				t.Errorf("canRejoinOrReinvite(%q) = %v, want %v", tc.status, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRemovableMemberError covers who may kick a member. Only the creator may,
+// the creator is not removable, and only accepted members can be kicked.
+func TestRemovableMemberError(t *testing.T) {
+	const (
+		creator = "creator-uuid"
+		member  = "member-uuid"
+		other   = "other-uuid"
+	)
+
+	tests := []struct {
+		name   string
+		actor  string
+		target string
+		status string
+		want   int
+	}{
+		{name: "creator removes an accepted member", actor: creator, target: member, status: "accepted", want: 0},
+		{name: "non-creator cannot remove", actor: other, target: member, status: "accepted", want: http.StatusForbidden},
+		{name: "unauthenticated cannot remove", actor: "", target: member, status: "accepted", want: http.StatusForbidden},
+		{name: "creator cannot be removed", actor: creator, target: creator, status: "accepted", want: http.StatusBadRequest},
+		{name: "non-member cannot be removed", actor: creator, target: member, status: "", want: http.StatusNotFound},
+		{name: "pending member cannot be kicked", actor: creator, target: member, status: "pending", want: http.StatusConflict},
+		{name: "invited member cannot be kicked", actor: creator, target: member, status: "invited", want: http.StatusConflict},
+		{name: "declined member cannot be kicked", actor: creator, target: member, status: "declined", want: http.StatusConflict},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, msg := removableMemberError(tc.actor, creator, tc.target, tc.status)
+			if got != tc.want {
+				t.Errorf("removableMemberError(%q, creator, %q, %q) status = %d, want %d",
+					tc.actor, tc.target, tc.status, got, tc.want)
+			}
+			if (msg == "") != (got == 0) {
+				t.Errorf("message presence = %q does not match status %d", msg, got)
 			}
 		})
 	}

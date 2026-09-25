@@ -103,6 +103,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/groups/{id}/accept", true, AcceptGroupMemberHandler),
 		makeEndpoint("/api/groups/{id}/reject", true, RejectGroupMemberHandler),
 		makeEndpoint("/api/groups/{id}/leave", true, LeaveGroupHandler),
+		makeEndpoint("/api/groups/{id}/kick", true, KickGroupMemberHandler),
 		makeEndpoint("/api/groups/{id}/members", false, GetGroupMembersHandler),
 		makeEndpoint("/api/groups/{id}/posts", true, GetGroupPostsHandler),
 		makeEndpoint("/api/groups/{id}/avatar", true, UpdateGroupAvatarHandler),
