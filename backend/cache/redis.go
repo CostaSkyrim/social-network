@@ -290,10 +290,8 @@ func (rc *RedisClient) InvalidateUserNickname(ctx context.Context, nickname stri
 // ---- Group cache ----
 
 func GroupKey(groupID int64) string {
-	// Group is cached as-is; its hidden numeric ID is rebuilt from this key on
-	// read (see database.GetGroup). The v2 prefix is a leftover from the retired
-	// DTO format, whose entries no longer decode into Group and fall through to
-	// the database.
+	// Versioned so a change to the cached payload invalidates entries written
+	// by an older binary.
 	return "group:v2:" + fmt.Sprint(groupID)
 }
 
@@ -312,9 +310,8 @@ func (rc *RedisClient) InvalidateGroup(ctx context.Context, groupID int64) error
 // ---- Group member-list cache ----
 
 func GroupMembersKey(groupID int64) string {
-	// v3: the payload is []GroupMember again. Its identity fields are UUIDs
-	// (nested user uuid + inviter uuid), so nothing is lost on a cache
-	// round-trip and no id-preserving DTO is needed.
+	// Versioned so a change to the cached payload invalidates entries written
+	// by an older binary.
 	return "group_members:v3:" + fmt.Sprint(groupID)
 }
 
@@ -381,7 +378,7 @@ func (rc *RedisClient) CheckRateLimit(ctx context.Context, key string, limit int
 	return false, nil
 }
 
-// ---- Pub/Sub for future WebSocket + RabbitMQ integration ----
+// ---- Pub/Sub (cross-instance WebSocket fan-out) ----
 
 func (rc *RedisClient) Publish(ctx context.Context, channel string, message interface{}) error {
 	data, err := json.Marshal(message)
