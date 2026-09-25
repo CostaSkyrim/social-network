@@ -325,6 +325,15 @@ func normalizeNickname(raw string) string {
 	return strings.TrimLeft(strings.TrimSpace(raw), "@")
 }
 
+// canRejoinOrReinvite reports whether a membership in the given status may be
+// replaced by a fresh invitation or join request.
+//
+// Only a declined membership can — which includes a user who left the group.
+// Accepted, pending, and invited memberships must not be overwritten.
+func canRejoinOrReinvite(status string) bool {
+	return status == "declined"
+}
+
 func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	if r.Method != http.MethodPost {
 		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -398,7 +407,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 	}
 
 	for _, m := range members {
-		if memberUUID(m) == targetUser.UUID {
+		if memberUUID(m) == targetUser.UUID && !canRejoinOrReinvite(m.Status) {
 			RespondError(w, http.StatusConflict, "User is already a member or has a pending invitation")
 			return
 		}
@@ -447,7 +456,7 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
 	for _, m := range members {
-		if memberUUID(m) == currentUserUUID && m.Status != "declined" {
+		if memberUUID(m) == currentUserUUID && !canRejoinOrReinvite(m.Status) {
 			if m.Status == "accepted" {
 				RespondError(w, http.StatusConflict, "Already a member")
 			} else {

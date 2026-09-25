@@ -572,7 +572,7 @@ const (
 		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(group_id, user_id) DO UPDATE SET
 			status = CASE
-				WHEN status = 'declined' THEN 'pending'
+				WHEN status = 'declined' THEN excluded.status
 				ELSE status
 			END,
 			invited_by = ?,

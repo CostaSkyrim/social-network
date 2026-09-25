@@ -64,3 +64,27 @@ func TestCanDecideMembership(t *testing.T) {
 		})
 	}
 }
+
+// TestCanRejoinOrReinvite covers re-inviting someone who previously declined or
+// left the group (both stored as "declined"), while refusing to clobber an
+// accepted, pending, or invited membership.
+func TestCanRejoinOrReinvite(t *testing.T) {
+	tests := []struct {
+		status string
+		want   bool
+	}{
+		{status: "declined", want: true},
+		{status: "accepted", want: false},
+		{status: "pending", want: false},
+		{status: "invited", want: false},
+		{status: "", want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.status, func(t *testing.T) {
+			if got := canRejoinOrReinvite(tc.status); got != tc.want {
+				t.Errorf("canRejoinOrReinvite(%q) = %v, want %v", tc.status, got, tc.want)
+			}
+		})
+	}
+}
