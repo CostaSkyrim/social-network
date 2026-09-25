@@ -67,6 +67,15 @@ func resolveUserID(r *http.Request, db *database.DataBase, idStr string) (int64,
 	return userID, nil
 }
 
+// memberUUID returns a group member's public identifier. Membership and
+// creator checks compare UUIDs rather than the internal numeric ids.
+func memberUUID(m database.GroupMember) string {
+	if m.User == nil {
+		return ""
+	}
+	return m.User.UUID
+}
+
 func sendNotification(db *database.DataBase, userID int64, fromUserID int64, notifType string, content string, relatedID *int64, relatedUUID *string) {
 	notif, err := db.CreateNotification(context.Background(), &database.Notification{
 		UserID:      userID,

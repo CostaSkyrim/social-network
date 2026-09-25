@@ -60,7 +60,7 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request, db *database.
 		}
 	}
 
-	targetUser.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(targetUser.ID)
+	targetUser.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnectedUUID(targetUser.UUID)
 
 	followers, _ := db.GetFollowers(r.Context(), targetUser.ID)
 	following, _ := db.GetFollowing(r.Context(), targetUser.ID)
@@ -356,7 +356,7 @@ func SearchUsersHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 			Nickname:        res.Nickname,
 			AvatarPath:      res.AvatarPath,
 			IsPublic:        res.IsPublic,
-			IsOnline:        GlobalHub != nil && GlobalHub.IsUserConnected(res.ID),
+			IsOnline:        GlobalHub != nil && GlobalHub.IsUserConnectedUUID(res.UUID),
 			IsFollowing:     res.IsFollowing,
 			IsFollowPending: res.IsFollowPending,
 		})

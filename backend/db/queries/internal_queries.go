@@ -538,7 +538,7 @@ const (
 	`
 
 	GetGroupByID = `
-		SELECT g.id, g.uuid, g.creator_id, cu.uuid as creator_uuid,
+		SELECT g.id, g.uuid, cu.uuid as creator_uuid,
 		 g.title, g.description, g.avatar_path, g.created_at, g.updated_at,
 		 g.last_message_at
 		FROM groups g
@@ -547,7 +547,7 @@ const (
 	`
 
 	GetGroupByUUID = `
-		SELECT g.id, g.uuid, g.creator_id, cu.uuid as creator_uuid,
+		SELECT g.id, g.uuid, cu.uuid as creator_uuid,
 		 g.title, g.description, g.avatar_path, g.created_at, g.updated_at,
 		 g.last_message_at
 		FROM groups g
@@ -556,7 +556,7 @@ const (
 	`
 
 	GetUserGroups = `
-		SELECT g.id, g.uuid, g.creator_id, cu.uuid AS creator_uuid,
+		SELECT g.id, g.uuid, cu.uuid AS creator_uuid,
 		 g.title, g.description, g.avatar_path, g.last_message_at,
 		 g.created_at, g.updated_at
 		FROM groups g
@@ -598,7 +598,7 @@ const (
 	`
 
 	GetAllGroups = `
-		SELECT g.id, g.uuid, g.creator_id, cu.uuid AS creator_uuid,
+		SELECT g.id, g.uuid, cu.uuid AS creator_uuid,
 			 g.title, g.description, g.avatar_path, g.last_message_at,
 			 g.created_at, g.updated_at, COUNT(gm.user_id) as member_count
 		FROM groups g

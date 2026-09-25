@@ -32,19 +32,25 @@ type eventWithMeta struct {
 
 // requireGroupMember checks that the requesting user is an accepted member or the creator of a group.
 func requireGroupMember(w http.ResponseWriter, r *http.Request, db *database.DataBase, groupID, userID int64) bool {
+	userUUID, ok := GetUserUUIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return false
+	}
+
 	group, err := db.GetGroup(r.Context(), groupID)
 	if err != nil {
 		RespondError(w, http.StatusNotFound, "Group not found")
 		return false
 	}
 
-	if group.CreatorID == userID {
+	if group.CreatorUUID == userUUID {
 		return true
 	}
 
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
 	for _, m := range members {
-		if m.UserID == userID && m.Status == "accepted" {
+		if m.Status == "accepted" && memberUUID(m) == userUUID {
 			return true
 		}
 	}
@@ -162,6 +168,7 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
+	userUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -215,14 +222,20 @@ func createEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	// Notify all accepted members except the creator
+	// Notify all accepted members except the creator. Notifications key off the
+	// recipient's internal id, so the member's UUID is resolved to one here.
 	group, _ := db.GetGroup(r.Context(), groupID)
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
 	for _, m := range members {
-		if m.UserID == userID || m.Status != "accepted" {
+		id := memberUUID(m)
+		if id == "" || id == userUUID || m.Status != "accepted" {
 			continue
 		}
-		sendNotification(db, m.UserID, userID, NotifNewEvent, "New event '"+req.Title+"' in group: "+group.Title, &eventID, &group.UUID)
+		member, err := db.GetUserByUUID(r.Context(), id)
+		if err != nil {
+			continue
+		}
+		sendNotification(db, member.ID, userID, NotifNewEvent, "New event '"+req.Title+"' in group: "+group.Title, &eventID, &group.UUID)
 	}
 
 	RespondSuccess(w, http.StatusCreated, "Event created", map[string]interface{}{
@@ -408,15 +421,19 @@ func EventRSVPHandler(w http.ResponseWriter, r *http.Request, db *database.DataB
 
 // canManageEvent reports whether the user may edit or cancel an event (its
 // creator, or the group's creator).
-func canManageEvent(r *http.Request, db *database.DataBase, event *database.Event, userID int64) bool {
-	if event.CreatorID == userID {
+func canManageEvent(r *http.Request, db *database.DataBase, event *database.Event) bool {
+	userUUID, ok := GetUserUUIDFromContext(r)
+	if !ok {
+		return false
+	}
+	if event.CreatorUUID == userUUID {
 		return true
 	}
 	group, err := db.GetGroup(r.Context(), event.GroupID)
 	if err != nil {
 		return false
 	}
-	return group.CreatorID == userID
+	return group.CreatorUUID == userUUID
 }
 
 func UpdateEventHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
@@ -425,8 +442,7 @@ func UpdateEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	userID, ok := GetUserIDFromContext(r)
-	if !ok {
+	if _, ok := GetUserIDFromContext(r); !ok {
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
@@ -436,7 +452,7 @@ func UpdateEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	if !canManageEvent(r, db, event, userID) {
+	if !canManageEvent(r, db, event) {
 		RespondError(w, http.StatusForbidden, "You cannot edit this event")
 		return
 	}
@@ -491,8 +507,7 @@ func DeleteEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	userID, ok := GetUserIDFromContext(r)
-	if !ok {
+	if _, ok := GetUserIDFromContext(r); !ok {
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
@@ -502,7 +517,7 @@ func DeleteEventHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	if !canManageEvent(r, db, event, userID) {
+	if !canManageEvent(r, db, event) {
 		RespondError(w, http.StatusForbidden, "You cannot cancel this event")
 		return
 	}

@@ -15,6 +15,7 @@ import (
 
 type Hub struct {
 	clients    map[int64]map[*Client]bool
+	uuidToID   map[string]int64
 	register   chan *Client
 	Unregister chan *Client
 	broadcast  chan *WSMessage
@@ -41,6 +42,7 @@ func NewHub(db *database.DataBase, redisClient *cache.RedisClient) *Hub {
 
 	return &Hub{
 		clients:       make(map[int64]map[*Client]bool),
+		uuidToID:      make(map[string]int64),
 		register:      make(chan *Client),
 		Unregister:    make(chan *Client),
 		broadcast:     make(chan *WSMessage, 256),
@@ -58,6 +60,7 @@ func NewHubForTest(db *database.DataBase) *Hub {
 
 	return &Hub{
 		clients:       make(map[int64]map[*Client]bool),
+		uuidToID:      make(map[string]int64),
 		register:      make(chan *Client),
 		Unregister:    make(chan *Client),
 		broadcast:     make(chan *WSMessage, 256),
@@ -82,6 +85,9 @@ func (h *Hub) Run() {
 				h.clients[client.UserID] = make(map[*Client]bool)
 			}
 			h.clients[client.UserID][client] = true
+			if client.UserUUID != "" {
+				h.uuidToID[client.UserUUID] = client.UserID
+			}
 			h.mu.Unlock()
 
 			h.handleUserOnline(client)
@@ -96,6 +102,9 @@ func (h *Hub) Run() {
 					close(client.Send)
 					if len(clients) == 0 {
 						delete(h.clients, client.UserID)
+						if client.UserUUID != "" {
+							delete(h.uuidToID, client.UserUUID)
+						}
 					}
 				}
 			}
@@ -152,9 +161,16 @@ func (h *Hub) ClientCount() int {
 	return count
 }
 
-func (h *Hub) IsUserConnected(userID int64) bool {
+// IsUserConnectedUUID reports whether a user with the given public UUID has a
+// live connection, checking Redis presence first (so it works across instances)
+// and falling back to this instance's local registry.
+func (h *Hub) IsUserConnectedUUID(userUUID string) bool {
+	if userUUID == "" {
+		return false
+	}
+
 	if h.redisClient != nil {
-		online, err := h.redisClient.IsUserOnline(context.Background(), userID)
+		online, err := h.redisClient.IsUserOnline(context.Background(), userUUID)
 		if err == nil {
 			return online
 		}
@@ -163,7 +179,11 @@ func (h *Hub) IsUserConnected(userID int64) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	clients, ok := h.clients[userID]
+	id, ok := h.uuidToID[userUUID]
+	if !ok {
+		return false
+	}
+	clients, ok := h.clients[id]
 	return ok && len(clients) > 0
 }
 
@@ -190,7 +210,7 @@ func (h *Hub) HandleMessage(client *Client, msg *WSMessage) {
 			return
 		}
 		if payload.IsGroup {
-			h.PublishBroadcastGroup(payload.TargetID, client.UserID, msg)
+			h.PublishBroadcastGroup(payload.TargetID, client.UserUUID, msg)
 		} else {
 			h.PublishToUser(payload.TargetID, msg)
 		}
@@ -218,7 +238,7 @@ func (h *Hub) handleUserOnline(client *Client) {
 	if clientCount == 1 {
 		presencePayload, _ := json.Marshal(PresencePayload{
 			UserID:   client.UserID,
-			UserUUID: getClientUUID(h, client),
+			UserUUID: client.UserUUID,
 			IsOnline: true,
 		})
 		h.PublishBroadcastAll(&WSMessage{
@@ -228,7 +248,7 @@ func (h *Hub) handleUserOnline(client *Client) {
 		})
 
 		if h.redisClient != nil {
-			h.redisClient.SetUserOnline(client.Context(), client.UserID)
+			h.redisClient.SetUserOnline(client.Context(), client.UserUUID)
 		}
 
 		log.Printf("User %d is now online", client.UserID)
@@ -243,7 +263,7 @@ func (h *Hub) isUserConnectedLocked(userID int64) bool {
 }
 
 func (h *Hub) scheduleOffline(client *Client) {
-	userUUID := getClientUUID(h, client)
+	userUUID := client.UserUUID
 	userID := client.UserID
 
 	h.timersMu.Lock()
@@ -271,7 +291,7 @@ func (h *Hub) scheduleOffline(client *Client) {
 		})
 
 		if h.redisClient != nil {
-			h.redisClient.SetUserOffline(context.Background(), userID)
+			h.redisClient.SetUserOffline(context.Background(), userUUID)
 		}
 
 		h.timersMu.Lock()
@@ -297,6 +317,25 @@ func (h *Hub) SendToUser(userID int64, msg *WSMessage) {
 	}
 }
 
+// SendToUserUUID delivers a message to the local connections of the user with
+// the given public UUID. Relaying to other instances is the caller's job via
+// the fan-out envelope.
+func (h *Hub) SendToUserUUID(userUUID string, msg *WSMessage) {
+	if userUUID == "" {
+		return
+	}
+
+	h.mu.RLock()
+	id, ok := h.uuidToID[userUUID]
+	h.mu.RUnlock()
+
+	if !ok {
+		return
+	}
+
+	h.SendToUser(id, msg)
+}
+
 func (h *Hub) SendToUsers(userIDs []int64, msg *WSMessage) {
 	for _, userID := range userIDs {
 		h.SendToUser(userID, msg)
@@ -304,17 +343,22 @@ func (h *Hub) SendToUsers(userIDs []int64, msg *WSMessage) {
 }
 
 // BroadcastGroup sends a message to all accepted members of a group except the
-// sender (who is the origin of the message and already has it locally).
-func (h *Hub) BroadcastGroup(groupID int64, excludeUserID int64, msg *WSMessage) {
+// sender (who is the origin of the message and already has it locally). Members
+// are addressed by their public UUID; the sender is excluded by UUID too.
+func (h *Hub) BroadcastGroup(groupID int64, excludeUUID string, msg *WSMessage) {
 	members, err := h.db.GetGroupMembers(context.Background(), groupID)
 	if err != nil {
 		return
 	}
 
 	for _, member := range members {
-		if member.UserID != excludeUserID && member.Status == "accepted" {
-			h.SendToUser(member.UserID, msg)
+		if member.Status != "accepted" || member.User == nil {
+			continue
 		}
+		if member.User.UUID == excludeUUID {
+			continue
+		}
+		h.SendToUserUUID(member.User.UUID, msg)
 	}
 }
 
@@ -327,18 +371,6 @@ func (h *Hub) BroadcastToAll(msg *WSMessage) {
 			client.SendMessage(msg)
 		}
 	}
-}
-
-func getClientUUID(h *Hub, client *Client) string {
-	if client.UserUUID != "" {
-		return client.UserUUID
-	}
-	user, err := h.db.GetUserByID(client.Context(), client.UserID)
-	if err != nil {
-		return ""
-	}
-	client.UserUUID = user.UUID
-	return client.UserUUID
 }
 
 func (h *Hub) dispatchMessage(msg *WSMessage) {
@@ -356,7 +388,7 @@ func (h *Hub) dispatchMessage(msg *WSMessage) {
 		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 			return
 		}
-		h.PublishBroadcastGroup(payload.GroupID, msg.SenderID, msg)
+		h.PublishBroadcastGroup(payload.GroupID, msg.SenderUUID, msg)
 
 	case TypeNotification:
 		var payload NotificationPayload
@@ -382,23 +414,23 @@ func init() {
 	}()
 }
 
-func (h *Hub) GetOnlineUsers(userIDs []int64) ([]int64, error) {
+func (h *Hub) GetOnlineUsers(userUUIDs []string) ([]string, error) {
 	if h.redisClient == nil {
-		var online []int64
-		for _, id := range userIDs {
-			if h.IsUserConnected(id) {
+		var online []string
+		for _, id := range userUUIDs {
+			if h.IsUserConnectedUUID(id) {
 				online = append(online, id)
 			}
 		}
 		return online, nil
 	}
 
-	return h.redisClient.GetOnlineUsers(context.Background(), userIDs)
+	return h.redisClient.GetOnlineUsers(context.Background(), userUUIDs)
 }
 
-func (h *Hub) HeartbeatUser(userID int64) {
+func (h *Hub) HeartbeatUser(userUUID string) {
 	if h.redisClient != nil {
-		h.redisClient.SetUserOnline(context.Background(), userID)
+		h.redisClient.SetUserOnline(context.Background(), userUUID)
 	}
 }
 
@@ -419,10 +451,10 @@ func (h *Hub) PublishBroadcastAll(msg *WSMessage) {
 }
 
 // PublishBroadcastGroup delivers a message to a group's local members (except
-// excludeUserID) and fans it out to other backend instances.
-func (h *Hub) PublishBroadcastGroup(groupID, excludeUserID int64, msg *WSMessage) {
-	h.BroadcastGroup(groupID, excludeUserID, msg)
-	h.publishFanout(FanoutEnvelope{Kind: "group", GroupID: groupID, Exclude: excludeUserID, Message: *msg})
+// excludeUUID) and fans it out to other backend instances.
+func (h *Hub) PublishBroadcastGroup(groupID int64, excludeUUID string, msg *WSMessage) {
+	h.BroadcastGroup(groupID, excludeUUID, msg)
+	h.publishFanout(FanoutEnvelope{Kind: "group", GroupID: groupID, Exclude: excludeUUID, Message: *msg})
 }
 
 func (h *Hub) publishFanout(env FanoutEnvelope) {

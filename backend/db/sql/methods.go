@@ -1787,8 +1787,10 @@ func (db *DataBase) GetCommentByUUID(ctx context.Context, commentUUID string) (*
 // GROUP METHODS
 //====================================
 
-// CreateGroup creates a new group
-func (db *DataBase) CreateGroup(ctx context.Context, group *Group) (int64, error) {
+// CreateGroup creates a new group. The creator is passed separately because
+// Group deliberately carries only the creator's public UUID, while the groups
+// table stores the creator as a numeric foreign key.
+func (db *DataBase) CreateGroup(ctx context.Context, group *Group, creatorID int64) (int64, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1799,7 +1801,7 @@ func (db *DataBase) CreateGroup(ctx context.Context, group *Group) (int64, error
 	result, err := db.conn.ExecContext(dbCtx,
 		queries.CreateGroup,
 		group.UUID,
-		group.CreatorID,
+		creatorID,
 		group.Title,
 		group.Description,
 		group.AvatarPath,
@@ -1823,9 +1825,12 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	}
 
 	if db.redis != nil {
-		var cached groupCacheEntry
+		var cached Group
 		if err := db.redis.GetCachedGroup(ctx, groupID, &cached); err == nil {
-			return groupFromCache(cached), nil
+			// Group.ID is json:"-" so it never lands in the cache payload;
+			// rebuild it from the key, as GetUserByID does for User.ID.
+			cached.ID = groupID
+			return &cached, nil
 		}
 	}
 
@@ -1836,7 +1841,6 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	).Scan(
 		&group.ID,
 		&group.UUID,
-		&group.CreatorID,
 		&group.CreatorUUID,
 		&group.Title,
 		&group.Description,
@@ -1853,7 +1857,7 @@ func (db *DataBase) GetGroup(ctx context.Context, groupID int64) (*Group, error)
 	}
 
 	if db.redis != nil {
-		_ = db.redis.CacheGroup(ctx, groupID, groupToCache(group), cache.GroupTTL)
+		_ = db.redis.CacheGroup(ctx, groupID, group, cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1883,7 +1887,6 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 	).Scan(
 		&group.ID,
 		&group.UUID,
-		&group.CreatorID,
 		&group.CreatorUUID,
 		&group.Title,
 		&group.Description,
@@ -1901,7 +1904,7 @@ func (db *DataBase) GetGroupByUUID(ctx context.Context, uuid string) (*Group, er
 
 	if db.redis != nil {
 		_ = db.redis.CacheGroupIDByUUID(ctx, group.UUID, group.ID, cache.GroupTTL)
-		_ = db.redis.CacheGroup(ctx, group.ID, groupToCache(group), cache.GroupTTL)
+		_ = db.redis.CacheGroup(ctx, group.ID, group, cache.GroupTTL)
 	}
 
 	return group, nil
@@ -1928,7 +1931,6 @@ func (db *DataBase) GetUserGroups(ctx context.Context, userID int64) ([]*Group, 
 		err := rows.Scan(
 			&group.ID,
 			&group.UUID,
-			&group.CreatorID,
 			&group.CreatorUUID,
 			&group.Title,
 			&group.Description,
@@ -2058,9 +2060,9 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 	}
 
 	if db.redis != nil {
-		var cached []groupMemberCacheEntry
+		var cached []GroupMember
 		if err := db.redis.GetCachedGroupMembers(ctx, groupID, &cached); err == nil {
-			return groupMembersFromCache(cached), nil
+			return cached, nil
 		}
 	}
 
@@ -2090,8 +2092,6 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 		if avatarPath.Valid {
 			u.AvatarPath = &avatarPath.String
 		}
-		gm.GroupID = groupID
-		gm.UserID = u.ID
 		gm.User = u
 		if invitedByUUID.Valid {
 			gm.InvitedByUUID = &invitedByUUID.String
@@ -2104,7 +2104,7 @@ func (db *DataBase) GetGroupMembers(ctx context.Context, groupID int64) ([]Group
 	}
 
 	if db.redis != nil {
-		_ = db.redis.CacheGroupMembers(ctx, groupID, groupMembersToCache(members), cache.GroupTTL)
+		_ = db.redis.CacheGroupMembers(ctx, groupID, members, cache.GroupTTL)
 	}
 
 	return members, nil
@@ -2127,7 +2127,7 @@ func (db *DataBase) GetAllGroups(ctx context.Context, limit, offset int) ([]Grou
 		var g Group
 		var memberCount int
 		err := rows.Scan(
-			&g.ID, &g.UUID, &g.CreatorID, &g.CreatorUUID, &g.Title,
+			&g.ID, &g.UUID, &g.CreatorUUID, &g.Title,
 			&g.Description, &g.AvatarPath, &g.LastMessageAt,
 			&g.CreatedAt, &g.UpdatedAt, &memberCount,
 		)

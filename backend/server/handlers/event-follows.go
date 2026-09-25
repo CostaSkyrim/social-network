@@ -221,7 +221,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 	}
 
 	for i := range followers {
-		followers[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(followers[i].User.ID)
+		followers[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnectedUUID(followers[i].User.UUID)
 	}
 
 	RespondSuccess(w, http.StatusOK, "Followers retrieved", followers)
@@ -256,7 +256,7 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request, db *database.Da
 	}
 
 	for i := range following {
-		following[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(following[i].User.ID)
+		following[i].User.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnectedUUID(following[i].User.UUID)
 	}
 
 	RespondSuccess(w, http.StatusOK, "Following retrieved", following)

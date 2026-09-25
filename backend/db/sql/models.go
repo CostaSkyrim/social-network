@@ -106,7 +106,6 @@ type Comment struct {
 type Group struct {
 	ID            int64      `json:"-"`
 	UUID          string     `json:"id"`
-	CreatorID     int64      `json:"-"`
 	CreatorUUID   string     `json:"creator_id"`
 	Title         string     `json:"title"`
 	Description   string     `json:"description"`
@@ -116,13 +115,13 @@ type Group struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
+// GroupMember is a user's membership in a group. Identity is carried by the
+// nested user's UUID and the inviter UUID; the internal numeric ids are
+// deliberately not part of this type, so a cache round-trip cannot lose them
+// and no consumer can come to depend on them.
 type GroupMember struct {
-	ID            int64     `json:"-"`
-	GroupID       int64     `json:"-"`
-	UserID        int64     `json:"-"`
 	User          *User     `json:"user,omitempty"`
 	Status        string    `json:"status"`
-	InvitedBy     int64     `json:"-"`
 	InvitedByUUID *string   `json:"invited_by,omitempty"`
 	JoinedAt      time.Time `json:"joined_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

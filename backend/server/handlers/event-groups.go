@@ -102,15 +102,17 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		}
 	}
 
+	userUUID, _ := GetUserUUIDFromContext(r)
+
 	group := &database.Group{
 		UUID:        generateUUID(),
-		CreatorID:   userID,
+		CreatorUUID: userUUID,
 		Title:       req.Title,
 		Description: req.Description,
 		AvatarPath:  req.AvatarPath,
 	}
 
-	groupID, err := db.CreateGroup(r.Context(), group)
+	groupID, err := db.CreateGroup(r.Context(), group, userID)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "Failed to create group")
 		return
@@ -160,7 +162,7 @@ func enrichMembersPresence(members []database.GroupMember) {
 	}
 	for i := range members {
 		if members[i].User != nil {
-			members[i].User.IsOnline = GlobalHub.IsUserConnected(members[i].User.ID)
+			members[i].User.IsOnline = GlobalHub.IsUserConnectedUUID(members[i].User.UUID)
 		}
 	}
 }
@@ -171,11 +173,11 @@ func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	userID, ok := GetUserIDFromContext(r)
-	if !ok {
+	if _, ok := GetUserIDFromContext(r); !ok {
 		RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
+	userUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -188,7 +190,7 @@ func UpdateGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Dat
 		return
 	}
 
-	if group.CreatorID != userID {
+	if group.CreatorUUID != userUUID {
 		RespondError(w, http.StatusForbidden, "Only the creator can update the group")
 		return
 	}
@@ -346,15 +348,17 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 		return
 	}
 
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
+
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
 	isMember := false
 	for _, m := range members {
-		if m.UserID == currentUserID && m.Status == "accepted" {
+		if m.Status == "accepted" && memberUUID(m) == currentUserUUID {
 			isMember = true
 			break
 		}
 	}
-	if !isMember && group.CreatorID != currentUserID {
+	if !isMember && group.CreatorUUID != currentUserUUID {
 		RespondError(w, http.StatusForbidden, "Must be a group member to invite")
 		return
 	}
@@ -394,7 +398,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request, db *database.D
 	}
 
 	for _, m := range members {
-		if m.UserID == targetUser.ID {
+		if memberUUID(m) == targetUser.UUID {
 			RespondError(w, http.StatusConflict, "User is already a member or has a pending invitation")
 			return
 		}
@@ -439,9 +443,11 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 		return
 	}
 
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
+
 	members, _ := db.GetGroupMembers(r.Context(), groupID)
 	for _, m := range members {
-		if m.UserID == currentUserID && m.Status != "declined" {
+		if memberUUID(m) == currentUserUUID && m.Status != "declined" {
 			if m.Status == "accepted" {
 				RespondError(w, http.StatusConflict, "Already a member")
 			} else {
@@ -462,7 +468,11 @@ func RequestJoinGroupHandler(w http.ResponseWriter, r *http.Request, db *databas
 		requesterName = getDisplayName(requester)
 	}
 
-	sendNotification(db, group.CreatorID, currentUserID, NotifGroupJoinRequest, requesterName+" wants to join your group: "+group.Title, &groupID, &group.UUID)
+	// Notify the group creator. Only the creator's public UUID is carried by
+	// the group, so resolve the numeric id the notification insert needs.
+	if creator, err := db.GetUserByUUID(r.Context(), group.CreatorUUID); err == nil {
+		sendNotification(db, creator.ID, currentUserID, NotifGroupJoinRequest, requesterName+" wants to join your group: "+group.Title, &groupID, &group.UUID)
+	}
 
 	RespondSuccess(w, http.StatusOK, "Join request sent", nil)
 }
@@ -479,6 +489,8 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
+
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
 		return
@@ -490,7 +502,7 @@ func AcceptGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	if group.CreatorID != currentUserID {
+	if group.CreatorUUID != currentUserUUID {
 		RespondError(w, http.StatusForbidden, "Only the group creator can accept members")
 		return
 	}
@@ -525,11 +537,12 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	currentUserID, ok := GetUserIDFromContext(r)
-	if !ok {
+	if _, ok := GetUserIDFromContext(r); !ok {
 		RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
+
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -542,7 +555,7 @@ func RejectGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	if group.CreatorID != currentUserID {
+	if group.CreatorUUID != currentUserUUID {
 		RespondError(w, http.StatusForbidden, "Only the group creator can reject members")
 		return
 	}
@@ -580,6 +593,7 @@ func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -592,7 +606,7 @@ func LeaveGroupHandler(w http.ResponseWriter, r *http.Request, db *database.Data
 		return
 	}
 
-	if group.CreatorID == currentUserID {
+	if group.CreatorUUID == currentUserUUID {
 		RespondError(w, http.StatusBadRequest, "Creator cannot leave the group. Delete it instead.")
 		return
 	}
@@ -611,11 +625,11 @@ func UpdateGroupAvatarHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	currentUserID, ok := GetUserIDFromContext(r)
-	if !ok {
+	if _, ok := GetUserIDFromContext(r); !ok {
 		RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -628,7 +642,7 @@ func UpdateGroupAvatarHandler(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	if group.CreatorID != currentUserID {
+	if group.CreatorUUID != currentUserUUID {
 		RespondError(w, http.StatusForbidden, "Only the group creator can change the avatar")
 		return
 	}

@@ -24,17 +24,23 @@ type WSMessage struct {
 	SenderID  int64           `json:"sender_id,omitempty"`
 	GroupID   *int64          `json:"group_id,omitempty"`
 	Timestamp time.Time       `json:"timestamp"`
+
+	// SenderUUID identifies the sender for server-side routing only. It is
+	// deliberately never serialized, so the client-facing wire format (which
+	// still carries the numeric sender_id) is unchanged.
+	SenderUUID string `json:"-"`
 }
 
 // FanoutEnvelope wraps a WSMessage for cross-instance delivery over Redis
 // pub/sub. Origin is the instance that produced the message, so the publisher
-// can ignore its own echo (it already delivered locally).
+// can ignore its own echo (it already delivered locally). Target and Exclude
+// are user UUIDs; GroupID is the internal group id.
 type FanoutEnvelope struct {
 	Origin  string    `json:"origin"`
 	Kind    string    `json:"kind"` // "user" | "all" | "group"
 	Target  int64     `json:"target,omitempty"`
 	GroupID int64     `json:"group_id,omitempty"`
-	Exclude int64     `json:"exclude,omitempty"`
+	Exclude string    `json:"exclude,omitempty"`
 	Message WSMessage `json:"message"`
 }
 

@@ -17,12 +17,18 @@ import (
 // isGroupMember checks whether the user is an accepted member (or creator) of
 // the group and writes a 403 error response if not.
 func isGroupMember(w http.ResponseWriter, r *http.Request, db *database.DataBase, groupID, userID int64) bool {
+	userUUID, ok := GetUserUUIDFromContext(r)
+	if !ok {
+		RespondError(w, http.StatusUnauthorized, "Authentication required")
+		return false
+	}
+
 	group, err := db.GetGroup(r.Context(), groupID)
 	if err != nil {
 		RespondError(w, http.StatusNotFound, "Group not found")
 		return false
 	}
-	if group.CreatorID == userID {
+	if group.CreatorUUID == userUUID {
 		return true
 	}
 
@@ -32,7 +38,7 @@ func isGroupMember(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		return false
 	}
 	for _, m := range members {
-		if m.UserID == userID && m.Status == "accepted" {
+		if m.Status == "accepted" && memberUUID(m) == userUUID {
 			return true
 		}
 	}
@@ -103,6 +109,7 @@ func SendGroupMessageHandler(w http.ResponseWriter, r *http.Request, db *databas
 		RespondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
+	currentUserUUID, _ := GetUserUUIDFromContext(r)
 
 	groupID, ok := resolveGroupID(w, r, db)
 	if !ok {
@@ -190,7 +197,7 @@ func SendGroupMessageHandler(w http.ResponseWriter, r *http.Request, db *databas
 			"created_at": now.Format(time.RFC3339),
 		})
 
-		GlobalHub.PublishBroadcastGroup(groupID, currentUserID, &ws.WSMessage{
+		GlobalHub.PublishBroadcastGroup(groupID, currentUserUUID, &ws.WSMessage{
 			Type:      ws.TypeGroupMessage,
 			Payload:   groupPayload,
 			SenderID:  currentUserID,

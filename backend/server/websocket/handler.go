@@ -15,14 +15,14 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, userID int64) {
+func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, userID int64, userUUID string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed for user %d: %v", userID, err)
 		return
 	}
 
-	client := NewClient(hub, conn, userID)
+	client := NewClient(hub, conn, userID, userUUID)
 	hub.RegisterClient(client)
 
 	go client.WritePump()

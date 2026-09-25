@@ -161,7 +161,8 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 					RespondError(w, http.StatusUnauthorized, "Authentication required")
 					return
 				}
-				ws.ServeWS(GlobalHub, w, r, userID)
+				userUUID, _ := GetUserUUIDFromContext(r)
+				ws.ServeWS(GlobalHub, w, r, userID, userUUID)
 			},
 		)
 	})

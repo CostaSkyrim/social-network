@@ -290,8 +290,10 @@ func (rc *RedisClient) InvalidateUserNickname(ctx context.Context, nickname stri
 // ---- Group cache ----
 
 func GroupKey(groupID int64) string {
-	// v2: the payload switched from Group (which drops the internal numeric
-	// ids) to the id-preserving groupCacheEntry DTO.
+	// Group is cached as-is; its hidden numeric ID is rebuilt from this key on
+	// read (see database.GetGroup). The v2 prefix is a leftover from the retired
+	// DTO format, whose entries no longer decode into Group and fall through to
+	// the database.
 	return "group:v2:" + fmt.Sprint(groupID)
 }
 
@@ -310,9 +312,10 @@ func (rc *RedisClient) InvalidateGroup(ctx context.Context, groupID int64) error
 // ---- Group member-list cache ----
 
 func GroupMembersKey(groupID int64) string {
-	// v2: the payload switched from []GroupMember (which drops the internal
-	// numeric ids) to the id-preserving groupMemberCacheEntry DTO.
-	return "group_members:v2:" + fmt.Sprint(groupID)
+	// v3: the payload is []GroupMember again. Its identity fields are UUIDs
+	// (nested user uuid + inviter uuid), so nothing is lost on a cache
+	// round-trip and no id-preserving DTO is needed.
+	return "group_members:v3:" + fmt.Sprint(groupID)
 }
 
 func (rc *RedisClient) CacheGroupMembers(ctx context.Context, groupID int64, members interface{}, ttl time.Duration) error {
@@ -393,42 +396,55 @@ func (rc *RedisClient) Subscribe(ctx context.Context, channels ...string) *redis
 }
 
 // ---- Presence tracking ----
+//
+// Presence is keyed by the user's public UUID rather than the internal numeric
+// id: the inbound identifiers the API works with are UUIDs, so keying by UUID
+// avoids a lookup on the realtime path and keeps internal ids out of Redis.
 
 const presencePrefix = "presence:"
 const presenceTTL = 30 * time.Second
 
-func (rc *RedisClient) SetUserOnline(ctx context.Context, userID int64) error {
-	return rc.client.Set(ctx, presencePrefix+fmt.Sprint(userID), "1", presenceTTL).Err()
+func (rc *RedisClient) SetUserOnline(ctx context.Context, userUUID string) error {
+	if userUUID == "" {
+		return nil
+	}
+	return rc.client.Set(ctx, presencePrefix+userUUID, "1", presenceTTL).Err()
 }
 
-func (rc *RedisClient) SetUserOffline(ctx context.Context, userID int64) error {
-	return rc.client.Del(ctx, presencePrefix+fmt.Sprint(userID)).Err()
+func (rc *RedisClient) SetUserOffline(ctx context.Context, userUUID string) error {
+	if userUUID == "" {
+		return nil
+	}
+	return rc.client.Del(ctx, presencePrefix+userUUID).Err()
 }
 
-func (rc *RedisClient) IsUserOnline(ctx context.Context, userID int64) (bool, error) {
-	n, err := rc.client.Exists(ctx, presencePrefix+fmt.Sprint(userID)).Result()
+func (rc *RedisClient) IsUserOnline(ctx context.Context, userUUID string) (bool, error) {
+	if userUUID == "" {
+		return false, nil
+	}
+	n, err := rc.client.Exists(ctx, presencePrefix+userUUID).Result()
 	if err != nil {
 		return false, err
 	}
 	return n > 0, nil
 }
 
-func (rc *RedisClient) GetOnlineUsers(ctx context.Context, userIDs []int64) ([]int64, error) {
-	if len(userIDs) == 0 {
+func (rc *RedisClient) GetOnlineUsers(ctx context.Context, userUUIDs []string) ([]string, error) {
+	if len(userUUIDs) == 0 {
 		return nil, nil
 	}
-	keys := make([]string, len(userIDs))
-	for i, id := range userIDs {
-		keys[i] = presencePrefix + fmt.Sprint(id)
+	keys := make([]string, len(userUUIDs))
+	for i, id := range userUUIDs {
+		keys[i] = presencePrefix + id
 	}
 	results, err := rc.client.MGet(ctx, keys...).Result()
 	if err != nil {
 		return nil, err
 	}
-	var online []int64
+	var online []string
 	for i, val := range results {
 		if val != nil {
-			online = append(online, userIDs[i])
+			online = append(online, userUUIDs[i])
 		}
 	}
 	return online, nil

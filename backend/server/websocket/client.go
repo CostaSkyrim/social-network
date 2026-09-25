@@ -30,12 +30,13 @@ type Client struct {
 	mu       sync.Mutex
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, userID int64) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, userID int64, userUUID string) *Client {
 	return &Client{
-		Hub:    hub,
-		Conn:   conn,
-		UserID: userID,
-		Send:   make(chan []byte, 256),
+		Hub:      hub,
+		Conn:     conn,
+		UserID:   userID,
+		UserUUID: userUUID,
+		Send:     make(chan []byte, 256),
 	}
 }
 
@@ -68,6 +69,7 @@ func (c *Client) ReadPump() {
 		}
 
 		msg.SenderID = c.UserID
+		msg.SenderUUID = c.UserUUID
 		msg.Timestamp = time.Now()
 
 		c.Hub.HandleMessage(c, &msg)
@@ -103,7 +105,7 @@ func (c *Client) WritePump() {
 
 		case <-presenceTicker.C:
 			// Keep the Redis presence key alive while the socket is open.
-			c.Hub.HeartbeatUser(c.UserID)
+			c.Hub.HeartbeatUser(c.UserUUID)
 		}
 	}
 }

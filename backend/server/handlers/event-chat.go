@@ -57,7 +57,7 @@ func GetDMsHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase
 		if dm.OtherUser != nil {
 			unread, _ := db.GetUnreadCountForDM(r.Context(), dm.ID, userID)
 			item.UnreadCount = unread
-			item.OtherUser.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnected(dm.OtherUser.ID)
+			item.OtherUser.IsOnline = GlobalHub != nil && GlobalHub.IsUserConnectedUUID(dm.OtherUser.UUID)
 
 			// History stays viewable, but sending requires at least one
 			// direction of following.

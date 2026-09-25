@@ -19,7 +19,10 @@ import (
 
 type contextKey string
 
-const userIDKey contextKey = "userID"
+const (
+	userIDKey   contextKey = "userID"
+	userUUIDKey contextKey = "userUUID"
+)
 
 type (
 	writer  = http.ResponseWriter
@@ -114,6 +117,7 @@ func AuthMiddleware(
 
 	if isAuthenticated {
 		ctx := context.WithValue(r.Context(), userIDKey, user.ID)
+		ctx = context.WithValue(ctx, userUUIDKey, user.UUID)
 		r = r.WithContext(ctx)
 	}
 
@@ -123,6 +127,15 @@ func AuthMiddleware(
 func GetUserIDFromContext(r *http.Request) (int64, bool) {
 	userID, ok := r.Context().Value(userIDKey).(int64)
 	return userID, ok
+}
+
+// GetUserUUIDFromContext returns the authenticated user's public identifier.
+// Authorization decisions compare this rather than the internal numeric id, so
+// they use the same identifier the API exposes. A missing or empty value is
+// reported as not-ok so a blank comparison can never authorise.
+func GetUserUUIDFromContext(r *http.Request) (string, bool) {
+	userUUID, ok := r.Context().Value(userUUIDKey).(string)
+	return userUUID, ok && userUUID != ""
 }
 
 // clientIP returns the best-effort client address for rate limiting.
