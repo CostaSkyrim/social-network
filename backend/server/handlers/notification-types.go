@@ -9,6 +9,7 @@ const (
 	NotifGroupInvitation  = "group_invitation"
 	NotifGroupJoinRequest = "group_join_request"
 	NotifGroupAccepted    = "group_accepted"
+	NotifGroupKicked      = "group_kicked"
 	NotifNewEvent         = "new_event"
 	NotifEventReminder    = "event_reminder"
 )

@@ -719,7 +719,8 @@ func KickGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database
 		return
 	}
 
-	if _, ok := GetUserIDFromContext(r); !ok {
+	currentUserID, ok := GetUserIDFromContext(r)
+	if !ok {
 		RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
@@ -764,6 +765,9 @@ func KickGroupMemberHandler(w http.ResponseWriter, r *http.Request, db *database
 		RespondError(w, http.StatusNotFound, "Member not found")
 		return
 	}
+
+	sendNotification(db, targetUser.ID, currentUserID, NotifGroupKicked,
+		"You were removed from group: "+group.Title, &groupID, &group.UUID)
 
 	RespondSuccess(w, http.StatusOK, "Member removed", nil)
 }

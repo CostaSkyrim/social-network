@@ -17,6 +17,7 @@ const notif_icons: Record<string, string> = {
   group_invitation: '👥',
   group_join_request: '🚪',
   group_accepted: '🎉',
+  group_kicked: '🚫',
   new_event: '📅',
   event_reminder: '⏰',
 }
@@ -27,6 +28,7 @@ const group_types = new Set([
   'group_invitation',
   'group_join_request',
   'group_accepted',
+  'group_kicked',
 ])
 const event_types = new Set(['new_event', 'event_reminder'])
 
