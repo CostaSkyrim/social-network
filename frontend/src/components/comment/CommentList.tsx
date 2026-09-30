@@ -33,13 +33,13 @@ function buildCommentTree(comments: Comment[]): CommentNode[] {
   return roots
 }
 
-function renderTree(nodes: CommentNode[], depth = 0) {
+function renderTree(nodes: CommentNode[]) {
   return nodes.map((node) => (
     <div key={node.id}>
-      <CommentItem comment={node} depth={depth} />
+      <CommentItem comment={node} />
       {node.children.length > 0 && (
-        <div className="mt-2 space-y-2">
-          {renderTree(node.children, depth + 1)}
+        <div className="mt-2 space-y-2 border-l border-purple-400/20 pl-4">
+          {renderTree(node.children)}
         </div>
       )}
     </div>

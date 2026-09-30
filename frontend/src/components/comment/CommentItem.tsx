@@ -9,19 +9,20 @@ import { format_date } from '@/lib/format'
 import { get_media_url } from '@/lib/media'
 import { useAuth } from '@/context/AuthProvider'
 import { useEditComment, useDeleteComment } from '@/hooks/useComments'
+import { CommentForm } from './CommentForm'
 import type { Comment } from '@/types/comment'
 
 interface CommentItemProps {
   comment: Comment
-  depth?: number
 }
 
-export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
+export function CommentItem({ comment }: CommentItemProps) {
   const { user } = useAuth()
   const edit_mutation = useEditComment()
   const delete_mutation = useDeleteComment()
 
   const [is_editing, set_editing] = useState(false)
+  const [is_replying, set_replying] = useState(false)
   const [edit_content, set_edit_content] = useState(comment.content ?? '')
   const [edit_image, set_edit_image] = useState<File | null>(null)
   const [edit_preview_url, set_edit_preview_url] = useState<string | null>(null)
@@ -73,7 +74,7 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
   }
 
   return (
-    <div className={`flex items-start gap-3 ${depth > 0 ? 'ml-8' : ''}`}>
+    <div className="flex items-start gap-3">
       <Link href={`/profile/${comment.author_id}`}>
         <Avatar
           src={comment.author?.avatar_path}
@@ -188,6 +189,25 @@ export function CommentItem({ comment, depth = 0 }: CommentItemProps) {
             </div>
           )}
         </div>
+        {!is_deleted && (
+          <div className="mt-1 pl-1">
+            <button
+              onClick={() => set_replying((v) => !v)}
+              className="text-xs font-medium text-gray-300 hover:text-violet-300"
+            >
+              {is_replying ? 'Cancel' : 'Reply'}
+            </button>
+          </div>
+        )}
+        {is_replying && (
+          <div className="mt-2">
+            <CommentForm
+              postId={comment.post_id}
+              parentCommentId={comment.id}
+              onSubmitted={() => set_replying(false)}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

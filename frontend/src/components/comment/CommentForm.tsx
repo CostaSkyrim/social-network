@@ -116,7 +116,7 @@ export function CommentForm({ postId, parentCommentId, onSubmitted }: CommentFor
             onKeyUp={track_cursor}
             onClick={track_cursor}
             onMouseUp={track_cursor}
-            placeholder="Write a comment..."
+            placeholder={parentCommentId ? 'Write a reply...' : 'Write a comment...'}
             rows={2}
             maxLength={2000}
             className="w-full resize-none rounded-lg border border-purple-400/30 p-2.5 text-sm outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-300/40"
@@ -169,7 +169,7 @@ export function CommentForm({ postId, parentCommentId, onSubmitted }: CommentFor
             loading={create_comment.isPending}
             disabled={!content.trim() && !image}
           >
-            Comment
+            {parentCommentId ? 'Reply' : 'Comment'}
           </Button>
         </div>
       </div>
