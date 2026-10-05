@@ -297,6 +297,8 @@ make env            # creates .env from .env.example
 
 The backend overrides the blank `oauth` fields from those environment variables at load time. Direct `go run` targets via `make` read `.env` automatically, and Docker Compose interpolates the same variables into the backend container. Leave them unset to run without OAuth (the endpoints will be disabled).
 
+**Running without OAuth (e.g. a fresh clone):** no secrets are required. Email/password sign-in works fully, and the login/signup pages query `GET /api/auth/providers` to hide the Google/GitHub buttons when they aren't configured (the OAuth endpoints then return `503`). So a reviewer can simply `make dev` (or `make docker-up`) and log in with the seeded users — no credentials to obtain.
+
 ### Seed Data
 
 On first launch 7 users are loaded (all with password `password123`): Alice Johnson, Bob Smith, Carol Williams, Dave Brown, Eve Davis, Frank Miller, and Yuki Minakami. The seed also includes posts, comments (some soft-deleted), groups, events, DMs, and notifications for exercising privacy, soft-delete, membership, and event features.

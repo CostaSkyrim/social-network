@@ -110,7 +110,7 @@ Endpoints are registered in `SetHandlers()` via `makeEndpoint(path, requireAuth,
 
 **Registered endpoints** (current, all prefixed `/api`):
 - Auth: `POST /signup`, `POST /login`, `GET /auth/check`, `POST /logout`, `POST /logout-all`
-- OAuth: `GET /auth/{provider}` (redirect to Google/GitHub), `GET /auth/{provider}/callback` (exchange + login)
+- OAuth: `GET /auth/providers` (which providers are configured, for hiding buttons), `GET /auth/{provider}` (redirect to Google/GitHub), `GET /auth/{provider}/callback` (exchange + login)
 - Posts: `GET /feed`, `POST /posts`, `GET /post/{id}`, `DELETE /posts/{id}`, `POST /posts/{id}/edit`, `GET /user/posts`
 - Comments: `POST /comments`, `GET /posts/{id}/comments`, `DELETE /comments/{id}`, `POST /comments/{id}/edit`
 - Follows: `POST /follow/request`, `POST /follow/accept`, `POST /follow/decline`, `POST /follow/remove`, `GET /followers`, `GET /following`, `GET /follow/pending`

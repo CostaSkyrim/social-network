@@ -43,6 +43,23 @@ func isKnownOAuthProvider(name string) bool {
 	return name == "google" || name == "github"
 }
 
+// isOAuthConfigured reports whether a provider has both a client ID and secret.
+func isOAuthConfigured(name string) bool {
+	provider := getOAuthProvider(name)
+	return provider != nil && provider.IsConfigured()
+}
+
+// OAuthProvidersHandler reports which OAuth providers are configured so the
+// frontend can hide sign-in buttons for providers that are not set up. This
+// keeps the app usable with email/password only (e.g. a fresh clone with no
+// credentials in the environment).
+func OAuthProvidersHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
+	RespondSuccess(w, http.StatusOK, "OAuth providers", map[string]bool{
+		"google": isOAuthConfigured("google"),
+		"github": isOAuthConfigured("github"),
+	})
+}
+
 // OAuthLoginHandler redirects the user to the provider's authorization page.
 func OAuthLoginHandler(w http.ResponseWriter, r *http.Request, db *database.DataBase) {
 	providerName := r.PathValue("provider")

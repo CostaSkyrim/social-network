@@ -7,6 +7,21 @@ interface AuthResponse {
   error?: string
 }
 
+export interface OAuthProviders {
+  google: boolean
+  github: boolean
+}
+
+/**
+ * Reports which OAuth providers the backend has credentials for. Providers
+ * that are not configured are hidden in the UI so the app runs fine without
+ * any OAuth secrets.
+ */
+export async function getOAuthProviders(): Promise<OAuthProviders> {
+  const res = await client.get<{ data?: OAuthProviders }>('/api/auth/providers')
+  return res.data.data ?? { google: false, github: false }
+}
+
 export async function login(email: string, password: string): Promise<User> {
   const res = await client.post<AuthResponse>('/api/login', { email, password })
   if (!res.data.data) throw new Error(res.data.error || 'Login failed')

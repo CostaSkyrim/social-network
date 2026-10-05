@@ -1,5 +1,8 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
+import { getOAuthProviders } from '@/api/auth'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 function oauth_url(provider: 'google' | 'github'): string {
@@ -7,6 +10,18 @@ function oauth_url(provider: 'google' | 'github'): string {
 }
 
 export default function OAuthButtons() {
+  const { data } = useQuery({
+    queryKey: ['oauth-providers'],
+    queryFn: getOAuthProviders,
+    staleTime: Infinity,
+    retry: false,
+  })
+
+  const providers = data ?? { google: false, github: false }
+  // No providers configured (e.g. a fresh clone with no OAuth secrets):
+  // hide the whole section rather than showing buttons that would 503.
+  if (!providers.google && !providers.github) return null
+
   return (
     <>
       <div className="flex items-center gap-3">
@@ -15,21 +30,25 @@ export default function OAuthButtons() {
         <div className="h-px flex-1 bg-purple-400/20" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <a
-          href={oauth_url('google')}
-          className="flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100"
-        >
-          <GoogleIcon />
-          Google
-        </a>
-        <a
-          href={oauth_url('github')}
-          className="flex items-center justify-center gap-2 rounded-lg border border-purple-400/30 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-        >
-          <GithubIcon />
-          GitHub
-        </a>
+      <div className={`grid gap-3 ${providers.google && providers.github ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {providers.google && (
+          <a
+            href={oauth_url('google')}
+            className="flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100"
+          >
+            <GoogleIcon />
+            Google
+          </a>
+        )}
+        {providers.github && (
+          <a
+            href={oauth_url('github')}
+            className="flex items-center justify-center gap-2 rounded-lg border border-purple-400/30 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+          >
+            <GithubIcon />
+            GitHub
+          </a>
+        )}
       </div>
     </>
   )

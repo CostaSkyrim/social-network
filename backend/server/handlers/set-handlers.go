@@ -56,6 +56,7 @@ func SetHandlers(db *database.DataBase, redisClient *cache.RedisClient) *http.Se
 		makeEndpoint("/api/logout-all", true, LogoutAllHandler),
 
 		// OAuth endpoints
+		makeEndpoint("/api/auth/providers", false, OAuthProvidersHandler),
 		makeEndpoint("/api/auth/{provider}", false, OAuthLoginHandler),
 		makeEndpoint("/api/auth/{provider}/callback", false, OAuthCallbackHandler),
 
