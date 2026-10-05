@@ -261,6 +261,7 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 | `make frontend-build` | Production build |
 | `make frontend-check` | TypeScript type check |
 | `make check` | `go vet` + TypeScript check |
+| `make env` | Create `.env` from `.env.example` if missing |
 | `make redis-start` / `make redis-stop` | Start/stop Redis |
 | `make kill-ports` | Free ports 3000/5173/5174/5175/8080 |
 | `make db-reset` / `make db-seed` / `make db-delete` | Manage the database |
@@ -271,6 +272,8 @@ Caddy terminates TLS and routes `/api/*` to the backend and everything else to t
 |----------|---------|-------------|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL (frontend) |
 | `REDIS_ADDR` | `localhost:6379` | Redis address (backend, required) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth credentials (backend, optional) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | — | GitHub OAuth credentials (backend, optional) |
 
 ### Configuration
 
@@ -281,7 +284,18 @@ Settings live in `backend/configs.json` (local) / `backend/configs.docker.json` 
 - `redis` — address, pool size, timeouts, retries.
 - `database_configuration` — path, WAL pragmas, `use_cache` (read-through caching), session cleanup interval, and validation `limits` (username/password/name/bio/title/description/post/comment/message/group-title lengths, `rows_limit` pagination cap).
 - `handlers` — image constraints and per-path `rate_limits`.
-- `oauth` — Google/GitHub provider credentials (`client_id`, `client_secret`, scopes, endpoints, redirect URIs).
+- `oauth` — Google/GitHub provider endpoints, scopes, and redirect URIs. The `client_id`/`client_secret` fields are intentionally blank in the tracked files; supply real values via environment variables (see below).
+
+#### Secrets
+
+OAuth credentials are never committed. Copy the root `.env.example` to `.env` (gitignored) and fill in the four variables above:
+
+```bash
+make env            # creates .env from .env.example
+# then edit .env and add your Google/GitHub credentials
+```
+
+The backend overrides the blank `oauth` fields from those environment variables at load time. Direct `go run` targets via `make` read `.env` automatically, and Docker Compose interpolates the same variables into the backend container. Leave them unset to run without OAuth (the endpoints will be disabled).
 
 ### Seed Data
 

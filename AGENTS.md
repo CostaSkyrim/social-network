@@ -153,8 +153,10 @@ Config lives at `backend/configs.json` (local) or `backend/configs.docker.json` 
 - `redis` — Redis address, pool, timeouts
 - `database_configuration` — path, WAL, session cleanup interval, validation limits, system images
 - `server` — Addr (`:8080`)
-- `oauth` — Google/GitHub OAuth provider config (client_id, client_secret, scopes, URLs, redirect_uri)
+- `oauth` — Google/GitHub OAuth provider endpoints/scopes/redirect URIs. The `client_id`/`client_secret` fields are blank in the tracked files; real values are injected from env vars (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`) by `applySecretOverrides()` in `config.go`. Never commit credentials.
 - `handlers` — rate limits per path, image config, cookie expiration
+
+**Secrets**: stored in a gitignored root `.env` (template: `.env.example`); `make env` creates it. `make` targets export `.env` for `go run`, and Docker Compose interpolates it into the backend container.
 
 **Note**: HTTPS is terminated by Caddy, so there is no `certifications` config in the backend.
 
