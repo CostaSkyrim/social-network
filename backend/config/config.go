@@ -162,28 +162,35 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	// Secrets must never live in a committed config file, so the OAuth
 	// credentials are overridden from the environment when present.
-	applySecretOverrides(&config)
+	applyOAuthEnvOverrides(&config)
 
 	AppConfig = &config
 	return &config, nil
 }
 
-// applySecretOverrides lets environment variables take precedence over the
-// values decoded from the config file. This keeps sensitive OAuth credentials
-// out of version control while the JSON file continues to hold every
-// non-sensitive setting. Unset variables leave the file value untouched.
-func applySecretOverrides(c *Config) {
+// applyOAuthEnvOverrides lets environment variables take precedence over the
+// OAuth values decoded from the config file. This keeps sensitive credentials
+// out of version control and lets anyone run their own OAuth app (with their
+// own redirect URI) without editing tracked files. Unset variables leave the
+// file value untouched.
+func applyOAuthEnvOverrides(c *Config) {
 	if v := os.Getenv("GOOGLE_CLIENT_ID"); v != "" {
 		c.OAuth.Google.ClientID = v
 	}
 	if v := os.Getenv("GOOGLE_CLIENT_SECRET"); v != "" {
 		c.OAuth.Google.ClientSecret = v
 	}
+	if v := os.Getenv("GOOGLE_REDIRECT_URI"); v != "" {
+		c.OAuth.Google.RedirectURI = v
+	}
 	if v := os.Getenv("GITHUB_CLIENT_ID"); v != "" {
 		c.OAuth.Github.ClientID = v
 	}
 	if v := os.Getenv("GITHUB_CLIENT_SECRET"); v != "" {
 		c.OAuth.Github.ClientSecret = v
+	}
+	if v := os.Getenv("GITHUB_REDIRECT_URI"); v != "" {
+		c.OAuth.Github.RedirectURI = v
 	}
 }
 

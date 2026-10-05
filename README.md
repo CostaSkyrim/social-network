@@ -288,7 +288,7 @@ Settings live in `backend/configs.json` (local) / `backend/configs.docker.json` 
 
 #### Secrets
 
-OAuth credentials are never committed. Copy the root `.env.example` to `.env` (gitignored) and fill in the four variables above:
+OAuth credentials are never committed. Copy the root `.env.example` to `.env` (gitignored) and fill in the variables there:
 
 ```bash
 make env            # creates .env from .env.example
@@ -298,6 +298,34 @@ make env            # creates .env from .env.example
 The backend overrides the blank `oauth` fields from those environment variables at load time. Direct `go run` targets via `make` read `.env` automatically, and Docker Compose interpolates the same variables into the backend container. Leave them unset to run without OAuth (the endpoints will be disabled).
 
 **Running without OAuth (e.g. a fresh clone):** no secrets are required. Email/password sign-in works fully, and the login/signup pages query `GET /api/auth/providers` to hide the Google/GitHub buttons when they aren't configured (the OAuth endpoints then return `503`). So a reviewer can simply `make dev` (or `make docker-up`) and log in with the seeded users — no credentials to obtain.
+
+#### Enabling OAuth with your own app
+
+You never need the original developer's credentials. Anyone can create their **own** Google/GitHub OAuth app pointing at their local instance; the backend performs the token exchange with whatever credentials it is given.
+
+**1. Run the app first** (`make dev`) so the backend listens on `http://localhost:8080`.
+
+**2. Create a Google OAuth client** — [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials):
+- Configure the OAuth consent screen if prompted (External + app name/support email; leave it in **Testing** and add your own Google account under **Test users**).
+- **Create credentials → OAuth client ID → Web application**.
+- Authorized redirect URI: `http://localhost:8080/api/auth/google/callback`
+- Copy the generated **Client ID** and **Client secret**.
+
+**3. Create a GitHub OAuth app** — [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**:
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:8080/api/auth/github/callback`
+- Register, then **Generate a new client secret** and copy the **Client ID**.
+
+**4. Add them to `.env`** (run `make env` first) and restart:
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+The Google/GitHub buttons now appear on the login and signup pages.
+
+> **Redirect URIs must match exactly.** The defaults above work for `make dev`. If you run the Docker stack (Caddy on `https://localhost`) register `https://localhost/api/auth/<provider>/callback` instead. For any other host/port, also set `GOOGLE_REDIRECT_URI` / `GITHUB_REDIRECT_URI` in `.env` to the exact URI you registered.
 
 ### Seed Data
 
