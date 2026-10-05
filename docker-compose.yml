@@ -13,6 +13,12 @@ services:
       - go_build_cache:/root/.cache/go-build
       - backend_db:/app/backend/data/db
       - backend_images:/app/backend/data/images
+    environment:
+      # Secrets live in .env (gitignored); Compose interpolates them here.
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
     networks:
       - social-net
     depends_on:

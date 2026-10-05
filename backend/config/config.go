@@ -160,8 +160,31 @@ func LoadConfig(configPath string) (*Config, error) {
 		config.Frontend.URL = "http://localhost:3000" // this is a default dev url
 	}
 
+	// Secrets must never live in a committed config file, so the OAuth
+	// credentials are overridden from the environment when present.
+	applySecretOverrides(&config)
+
 	AppConfig = &config
 	return &config, nil
+}
+
+// applySecretOverrides lets environment variables take precedence over the
+// values decoded from the config file. This keeps sensitive OAuth credentials
+// out of version control while the JSON file continues to hold every
+// non-sensitive setting. Unset variables leave the file value untouched.
+func applySecretOverrides(c *Config) {
+	if v := os.Getenv("GOOGLE_CLIENT_ID"); v != "" {
+		c.OAuth.Google.ClientID = v
+	}
+	if v := os.Getenv("GOOGLE_CLIENT_SECRET"); v != "" {
+		c.OAuth.Google.ClientSecret = v
+	}
+	if v := os.Getenv("GITHUB_CLIENT_ID"); v != "" {
+		c.OAuth.Github.ClientID = v
+	}
+	if v := os.Getenv("GITHUB_CLIENT_SECRET"); v != "" {
+		c.OAuth.Github.ClientSecret = v
+	}
 }
 
 func GetConfig() *Config {

@@ -2,7 +2,23 @@
 	frontend-dev frontend-build frontend-check frontend-install \
 	check dev kill-ports redis-start redis-stop \
 	db-reset db-delete db-seed \
-	docker-up docker-down docker-build docker-clean docker-reset
+	docker-up docker-down docker-build docker-clean docker-reset env
+
+# Load local secrets from .env (gitignored) for direct `go run` targets.
+# Docker Compose picks .env up on its own for the backend container.
+ifneq (,$(wildcard ./.env))
+    include .env
+    export GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET
+endif
+
+# ── Environment ───────────────────────────────────────
+env:
+	@if [ -f .env ]; then \
+		echo "   .env already exists"; \
+	else \
+		cp .env.example .env; \
+		echo "   ✅ Created .env from .env.example — fill in your OAuth credentials"; \
+	fi
 
 # ── Redis ───────────────────────────────────────────────
 redis-start:
